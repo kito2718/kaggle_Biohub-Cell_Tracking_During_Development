@@ -1,4 +1,5 @@
 # ローカル実行環境
+```tree
 d:\BizOwn\000_Biw2\51_googleantigravity\007_kaggle_Biohub-Cell_Tracking_During_Development\   (★作業ディレクトリのルート)
 ├── local_env/                                  <- ★uvで作成した新しいPython仮想環境
 │   ├── Scripts/python.exe                      <- VS Code等のJupyterで指定するPythonパス
@@ -14,3 +15,4 @@ d:\BizOwn\000_Biw2\51_googleantigravity\007_kaggle_Biohub-Cell_Tracking_During_D
 └── kaggle_Biohub-Cell_Tracking_During_Development/
     └── notebooks/
         └── baseline_pipeline.ipynb
+```
