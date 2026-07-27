@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# === Biohub Cell Tracking Custom Ignores ===
+/input/
+/outputs/
+/working/kaggle_cell_tracking_competition/
+.lock
+
