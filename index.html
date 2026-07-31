@@ -105,28 +105,29 @@
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            gap: 1.5rem;
+            gap: 1.2rem;
             overflow-y: auto;
+            flex-shrink: 0;
         }
 
         .card-title {
             font-family: var(--font-outfit);
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 600;
             color: var(--text-primary);
             border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-bottom: 0.5rem;
+            padding-bottom: 0.4rem;
+            margin-bottom: 0.4rem;
         }
 
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .control-label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
             font-weight: 500;
             text-transform: uppercase;
@@ -184,7 +185,7 @@
         .toggle-group {
             display: flex;
             flex-direction: column;
-            gap: 0.6rem;
+            gap: 0.5rem;
             background: rgba(15, 23, 42, 0.4);
             padding: 0.8rem;
             border-radius: 10px;
@@ -195,21 +196,21 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             cursor: pointer;
         }
 
         .toggle-checkbox {
             cursor: pointer;
-            width: 16px;
-            height: 16px;
+            width: 15px;
+            height: 15px;
             accent-color: var(--accent);
         }
 
         .legend-color {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 9px;
+            height: 9px;
             border-radius: 50%;
             margin-right: 6px;
         }
@@ -222,7 +223,7 @@
 
         .slider-value {
             font-family: var(--font-mono);
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--accent);
             text-align: right;
         }
@@ -231,9 +232,17 @@
         .viewport {
             flex: 1;
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1.15fr 0.85fr;
             gap: 1.5rem;
             height: 100%;
+        }
+
+        .left-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+            overflow-y: auto;
         }
 
         .view-card {
@@ -251,8 +260,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.5rem;
-            padding-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
+            padding-bottom: 0.4rem;
             border-bottom: 1px solid rgba(255,255,255,0.05);
         }
 
@@ -267,7 +276,7 @@
             flex: 1;
             width: 100%;
             height: 100%;
-            min-height: 200px;
+            min-height: 220px;
         }
 
         .mips-grid {
@@ -311,22 +320,39 @@
             z-index: 10;
         }
 
-        /* Timeline and Animation Bar */
-        .timeline-bar {
-            background: var(--bg-surface);
+        /* Plane Gizmo SVG Overlays */
+        .plane-gizmo {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: rgba(15, 23, 42, 0.65);
             border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 1rem 1.5rem;
+            padding: 4px;
+            border-radius: 8px;
+            pointer-events: none;
+            z-index: 10;
             display: flex;
             align-items: center;
-            gap: 1.5rem;
-            margin-top: auto;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Timeline and Animation Bar */
+        .timeline-bar {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
         }
 
         .play-btn {
-            font-size: 1.2rem;
-            width: 40px;
-            height: 40px;
+            font-size: 0.9rem;
+            width: 32px;
+            height: 32px;
             border-radius: 50%;
             padding: 0;
             flex-shrink: 0;
@@ -336,7 +362,7 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 0.3rem;
+            gap: 0.2rem;
         }
 
         .timeline-info {
@@ -345,31 +371,59 @@
             font-size: 0.8rem;
             color: var(--text-secondary);
             font-family: var(--font-mono);
+            align-items: center;
         }
 
-        /* Info Display & Tooltip */
+        .frame-input-spinner {
+            background-color: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-color);
+            color: var(--accent);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            width: 65px;
+            text-align: center;
+        }
+
+        .frame-input-spinner:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Stats Blocks */
+        .stats-section-title {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.4rem;
+            margin-bottom: 0.2rem;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
+            gap: 0.4rem;
         }
 
         .stat-box {
             background: rgba(15, 23, 42, 0.4);
             border: 1px solid rgba(255,255,255,0.03);
             border-radius: 8px;
-            padding: 0.5rem;
+            padding: 0.4rem;
             text-align: center;
         }
 
         .stat-val {
             font-family: var(--font-mono);
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 600;
         }
 
         .stat-label {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--text-secondary);
             text-transform: uppercase;
         }
@@ -381,7 +435,7 @@
             padding: 0.8rem;
             font-size: 0.85rem;
             min-height: 80px;
-            max-height: 150px;
+            max-height: 120px;
             overflow-y: auto;
         }
 
@@ -437,7 +491,6 @@
             100% { transform: scale(1); opacity: 1; }
         }
 
-        /* Loading Indicator */
         .loading-spinner {
             width: 40px;
             height: 40px;
@@ -519,7 +572,9 @@
             </div>
 
             <div class="control-group">
-                <div class="card-title">Frame Stats</div>
+                <div class="card-title">Frame Evaluation Stats</div>
+                
+                <div class="stats-section-title">Detection (Active Frame)</div>
                 <div class="stats-grid">
                     <div class="stat-box">
                         <div id="stat-tp" class="stat-val" style="color: var(--color-tp);">-</div>
@@ -534,18 +589,36 @@
                         <div class="stat-label">FN</div>
                     </div>
                 </div>
-                <div class="stats-grid" style="margin-top: 0.5rem;">
+                
+                <div class="stats-section-title">Tracking (Active Frame)</div>
+                <div class="stats-grid">
                     <div class="stat-box">
-                        <div id="stat-precision" class="stat-val">-</div>
-                        <div class="stat-label">Precision</div>
+                        <div id="stat-edge-tp" class="stat-val" style="color: var(--color-tp);">-</div>
+                        <div class="stat-label">Edge TP</div>
                     </div>
                     <div class="stat-box">
-                        <div id="stat-recall" class="stat-val">-</div>
-                        <div class="stat-label">Recall</div>
+                        <div id="stat-edge-fp" class="stat-val" style="color: var(--color-fp);">-</div>
+                        <div class="stat-label">Edge FP</div>
                     </div>
                     <div class="stat-box">
-                        <div id="stat-f1" class="stat-val">-</div>
-                        <div class="stat-label">F1-Score</div>
+                        <div id="stat-edge-fn" class="stat-val" style="color: var(--color-fn);">-</div>
+                        <div class="stat-label">Edge FN</div>
+                    </div>
+                </div>
+
+                <div class="stats-section-title" style="margin-top:0.6rem;">Metrics Summary</div>
+                <div class="stats-grid">
+                    <div class="stat-box">
+                        <div id="stat-precision" class="stat-val" style="font-size:0.85rem;">-</div>
+                        <div class="stat-label">Det Prec</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="stat-recall" class="stat-val" style="font-size:0.85rem;">-</div>
+                        <div class="stat-label">Det Rec</div>
+                    </div>
+                    <div class="stat-box">
+                        <div id="stat-f1" class="stat-val" style="font-size:0.85rem;">-</div>
+                        <div class="stat-label">Det F1</div>
                     </div>
                 </div>
             </div>
@@ -559,47 +632,110 @@
         </div>
 
         <!-- Main Viewports -->
-        <div style="flex: 1; display: flex; flex-direction: column; gap: 1.5rem; height: 100%;">
-            <div class="viewport">
-                <!-- 3D Point Cloud View -->
-                <div class="view-card">
+        <div class="viewport">
+            <!-- Left Column: Cell Detection plot, timeline, and Tracking plot, timeline -->
+            <div class="left-column">
+                <!-- 3D Point Cloud View (Cell Detection) -->
+                <div class="view-card" style="flex: 1; min-height: 250px;">
                     <div class="view-card-header">
-                        <div class="view-title">3D Point Cloud (Interactive)</div>
+                        <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
                 </div>
 
-                <!-- 3D MIP Overlay View -->
-                <div class="view-card">
-                    <div class="view-card-header">
-                        <div class="view-title">3D MIP Overlays (2D Projections)</div>
+                <!-- Timeline Controller (Detection & MIPs) -->
+                <div class="timeline-bar">
+                    <button id="play-btn-det" class="btn play-btn">▶</button>
+                    <div class="timeline-slider-container">
+                        <div class="timeline-info">
+                            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                Detection Frame: 
+                                <input type="number" id="current-frame-input-det" class="frame-input-spinner" value="0" min="0">
+                            </span>
+                            <span>Total: <span id="total-frames-lbl-det">0</span></span>
+                        </div>
+                        <input type="range" id="timeline-slider-det" class="range-slider" min="0" max="0" value="0">
                     </div>
-                    <div class="mips-grid">
-                        <div class="mip-container">
-                            <span class="mip-label">XY Projection</span>
-                            <canvas id="canvas-xy" class="mip-canvas"></canvas>
+                </div>
+
+                <!-- 3D Tracking Plot (Tracking Evaluation) -->
+                <div class="view-card" style="flex: 1; min-height: 250px;">
+                    <div class="view-card-header">
+                        <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
+                    </div>
+                    <div id="plotly-tracking" class="plotly-container"></div>
+                </div>
+
+                <!-- Timeline Controller (Tracking) -->
+                <div class="timeline-bar">
+                    <button id="play-btn-track" class="btn play-btn">▶</button>
+                    <div class="timeline-slider-container">
+                        <div class="timeline-info">
+                            <span style="display: flex; align-items: center; gap: 0.5rem;">
+                                Tracking Frame: 
+                                <input type="number" id="current-frame-input-track" class="frame-input-spinner" value="0" min="0">
+                            </span>
+                            <span>Total: <span id="total-frames-lbl-track">0</span></span>
                         </div>
-                        <div class="mip-container">
-                            <span class="mip-label">XZ Projection</span>
-                            <canvas id="canvas-xz" class="mip-canvas"></canvas>
-                        </div>
-                        <div class="mip-container">
-                            <span class="mip-label">YZ Projection</span>
-                            <canvas id="canvas-yz" class="mip-canvas"></canvas>
-                        </div>
+                        <input type="range" id="timeline-slider-track" class="range-slider" min="0" max="0" value="0">
                     </div>
                 </div>
             </div>
 
-            <!-- Timeline Controller -->
-            <div class="timeline-bar">
-                <button id="play-btn" class="btn play-btn">▶</button>
-                <div class="timeline-slider-container">
-                    <div class="timeline-info">
-                        <span>Frame: <span id="current-frame-lbl" style="font-weight: 600; color: var(--accent);">0</span></span>
-                        <span>Total: <span id="total-frames-lbl">0</span></span>
+            <!-- Right Column: 3D MIP Overlays -->
+            <div class="view-card">
+                <div class="view-card-header">
+                    <div class="view-title">3D MIP Overlays (2D Projections - 検出フレーム連動)</div>
+                </div>
+                <div class="mips-grid">
+                    <!-- XY Projection -->
+                    <div class="mip-container">
+                        <span class="mip-label">XY Projection</span>
+                        <div class="plane-gizmo" id="gizmo-xy">
+                            <svg width="34" height="34" viewBox="0 0 50 50">
+                                <!-- Top Face (XY) - Highlight Yellow -->
+                                <polygon points="25,10 38,17 25,25 12,17" fill="#eab308" stroke="#fef08a" stroke-width="1.2"/>
+                                <text x="25" y="19" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XY</text>
+                                <!-- Left Face (XZ) - Semitransparent Gray -->
+                                <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                                <!-- Right Face (YZ) - Semitransparent Gray -->
+                                <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <canvas id="canvas-xy" class="mip-canvas"></canvas>
                     </div>
-                    <input type="range" id="timeline-slider" class="range-slider" min="0" max="0" value="0">
+                    <!-- XZ Projection -->
+                    <div class="mip-container">
+                        <span class="mip-label">XZ Projection</span>
+                        <div class="plane-gizmo" id="gizmo-xz">
+                            <svg width="34" height="34" viewBox="0 0 50 50">
+                                <!-- Top Face (XY) - Semitransparent Gray -->
+                                <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                                <!-- Left Face (XZ) - Highlight Magenta -->
+                                <polygon points="12,17 25,25 25,40 12,32" fill="#ec4899" stroke="#fbcfe8" stroke-width="1.2"/>
+                                <text x="18" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XZ</text>
+                                <!-- Right Face (YZ) - Semitransparent Gray -->
+                                <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            </svg>
+                        </div>
+                        <canvas id="canvas-xz" class="mip-canvas"></canvas>
+                    </div>
+                    <!-- YZ Projection -->
+                    <div class="mip-container">
+                        <span class="mip-label">YZ Projection</span>
+                        <div class="plane-gizmo" id="gizmo-yz">
+                            <svg width="34" height="34" viewBox="0 0 50 50">
+                                <!-- Top Face (XY) - Semitransparent Gray -->
+                                <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                                <!-- Left Face (XZ) - Semitransparent Gray -->
+                                <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                                <!-- Right Face (YZ) - Highlight Cyan -->
+                                <polygon points="25,25 38,17 38,32 25,40" fill="#06b6d4" stroke="#cffafe" stroke-width="1.2"/>
+                                <text x="32" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">YZ</text>
+                            </svg>
+                        </div>
+                        <canvas id="canvas-yz" class="mip-canvas"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -622,9 +758,12 @@
             dataUrl: '',
             meta: null,
             framesData: {},      // viewer_data.json の中身
-            currentFrame: 0,
-            isPlaying: false,
-            playInterval: null,
+            currentFrame: 0,     // 検出用（MIPと連動）
+            currentTrackingFrame: 0, // トラッキング確認用（独立）
+            isPlayingDet: false,
+            isPlayingTrack: false,
+            playIntervalDet: null,
+            playIntervalTrack: null,
             selectedSpot: null,
             selectedTrackId: null,
             imageCache: {},      // ロード済みのMIP画像キャッシュ
@@ -662,14 +801,21 @@
             statTp: document.getElementById('stat-tp'),
             statFp: document.getElementById('stat-fp'),
             statFn: document.getElementById('stat-fn'),
+            statEdgeTp: document.getElementById('stat-edge-tp'),
+            statEdgeFp: document.getElementById('stat-edge-fp'),
+            statEdgeFn: document.getElementById('stat-edge-fn'),
             statPrecision: document.getElementById('stat-precision'),
             statRecall: document.getElementById('stat-recall'),
             statF1: document.getElementById('stat-f1'),
             inspectorPanel: document.getElementById('inspector-panel'),
-            playBtn: document.getElementById('play-btn'),
-            timelineSlider: document.getElementById('timeline-slider'),
-            currentFrameLbl: document.getElementById('current-frame-lbl'),
-            totalFramesLbl: document.getElementById('total-frames-lbl'),
+            playBtnDet: document.getElementById('play-btn-det'),
+            timelineSliderDet: document.getElementById('timeline-slider-det'),
+            currentFrameInputDet: document.getElementById('current-frame-input-det'),
+            totalFramesLblDet: document.getElementById('total-frames-lbl-det'),
+            playBtnTrack: document.getElementById('play-btn-track'),
+            timelineSliderTrack: document.getElementById('timeline-slider-track'),
+            currentFrameInputTrack: document.getElementById('current-frame-input-track'),
+            totalFramesLblTrack: document.getElementById('total-frames-lbl-track'),
             statusOverlay: document.getElementById('status-overlay'),
             statusTitle: document.getElementById('status-title'),
             statusMsg: document.getElementById('status-msg'),
@@ -695,14 +841,12 @@
             let dataParam = urlParams.get('data');
             
             if (dataParam) {
-                // 末尾にスラッシュを保証
                 if (!dataParam.endsWith('/')) dataParam += '/';
                 state.dataUrl = dataParam;
             } else {
-                // デフォルトは同一ホストの `./viewer_data/`
                 const loc = window.location;
                 const pathParts = loc.pathname.split('/');
-                pathParts.pop(); // index.html を除く
+                pathParts.pop();
                 const baseDir = pathParts.join('/');
                 state.dataUrl = `${loc.protocol}//${loc.host}${baseDir}/viewer_data/`;
             }
@@ -717,7 +861,6 @@
                 if (!inputUrl) return;
                 if (!inputUrl.endsWith('/')) inputUrl += '/';
                 
-                // URLパラメータを更新してリロード
                 const newUrl = new URL(window.location.href);
                 newUrl.searchParams.set('data', inputUrl);
                 window.location.href = newUrl.toString();
@@ -727,34 +870,68 @@
                 loadViewerData();
             });
 
-            // 表示スイッチ
-            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; renderCurrentFrame(); });
-            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; renderCurrentFrame(); });
-            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; renderCurrentFrame(); });
-            elements.showTracks.addEventListener('change', (e) => { config.showTracks = e.target.checked; renderCurrentFrame(); });
+            // 表示フィルターのトグルイベント
+            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; renderDetectionFrame(); });
+            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; renderDetectionFrame(); });
+            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; renderDetectionFrame(); });
+            elements.showTracks.addEventListener('change', (e) => { 
+                config.showTracks = e.target.checked; 
+                renderDetectionFrame(); 
+                renderTrackingFrame();
+            });
 
-            // スライダー系
+            // スライダー・描画オプション
             elements.spotRadiusSlider.addEventListener('input', (e) => {
                 config.spotRadius = parseFloat(e.target.value);
                 elements.spotRadiusVal.textContent = `${config.spotRadius.toFixed(1)}px`;
-                renderCurrentFrame();
+                renderDetectionFrame();
+                renderTrackingFrame();
             });
 
             elements.opacitySlider.addEventListener('input', (e) => {
                 config.opacity = parseFloat(e.target.value);
                 elements.opacityVal.textContent = config.opacity.toFixed(2);
-                renderCurrentFrame();
+                renderDetectionFrame();
+                renderTrackingFrame();
             });
 
-            // 再生・タイムライン
-            elements.playBtn.addEventListener('click', togglePlay);
-            elements.timelineSlider.addEventListener('input', (e) => {
-                stopPlay();
+            // --- 検出用タイムライン (スライダー & 数値入力 & 再生) ---
+            elements.playBtnDet.addEventListener('click', togglePlayDet);
+            
+            elements.timelineSliderDet.addEventListener('input', (e) => {
+                stopPlayDet();
                 state.currentFrame = parseInt(e.target.value);
-                renderCurrentFrame();
+                renderDetectionFrame();
             });
 
-            // Canvas クリックイベント
+            elements.currentFrameInputDet.addEventListener('change', (e) => {
+                stopPlayDet();
+                let val = parseInt(e.target.value);
+                if (isNaN(val)) val = 0;
+                val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
+                state.currentFrame = val;
+                renderDetectionFrame();
+            });
+
+            // --- トラッキング用タイムライン (スライダー & 数値入力 & 再生) ---
+            elements.playBtnTrack.addEventListener('click', togglePlayTrack);
+            
+            elements.timelineSliderTrack.addEventListener('input', (e) => {
+                stopPlayTrack();
+                state.currentTrackingFrame = parseInt(e.target.value);
+                renderTrackingFrame();
+            });
+
+            elements.currentFrameInputTrack.addEventListener('change', (e) => {
+                stopPlayTrack();
+                let val = parseInt(e.target.value);
+                if (isNaN(val)) val = 0;
+                val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
+                state.currentTrackingFrame = val;
+                renderTrackingFrame();
+            });
+
+            // Canvas クリック＆ホバーイベント
             Object.keys(elements.canvases).forEach(axis => {
                 const canvas = elements.canvases[axis];
                 canvas.addEventListener('mousemove', (e) => handleCanvasHover(e, axis));
@@ -802,21 +979,33 @@
                 state.framesData = data;
                 state.meta = data.metadata;
                 
-                // タイムラインの初期化
                 const numFrames = state.meta.num_frames;
                 if (!numFrames || numFrames <= 0) {
                     throw new Error('Total frame count is 0 or undefined in metadata.');
                 }
                 
-                elements.timelineSlider.max = numFrames - 1;
-                elements.timelineSlider.min = 0;
-                elements.timelineSlider.value = 0;
-                elements.totalFramesLbl.textContent = numFrames;
+                // 検出用タイムライン初期化
+                elements.timelineSliderDet.max = numFrames - 1;
+                elements.timelineSliderDet.min = 0;
+                elements.timelineSliderDet.value = 0;
+                elements.currentFrameInputDet.max = numFrames - 1;
+                elements.currentFrameInputDet.value = 0;
+                elements.totalFramesLblDet.textContent = numFrames;
+                
+                // トラッキング用タイムライン初期化
+                elements.timelineSliderTrack.max = numFrames - 1;
+                elements.timelineSliderTrack.min = 0;
+                elements.timelineSliderTrack.value = 0;
+                elements.currentFrameInputTrack.max = numFrames - 1;
+                elements.currentFrameInputTrack.value = 0;
+                elements.totalFramesLblTrack.textContent = numFrames;
                 
                 state.currentFrame = 0;
+                state.currentTrackingFrame = 0;
                 
                 setStatus(false);
-                renderCurrentFrame();
+                renderDetectionFrame();
+                renderTrackingFrame();
             } catch (err) {
                 console.error(err);
                 let detailedMsg = err.message;
@@ -827,30 +1016,49 @@
             }
         }
 
-        // 現在フレームの再描画
-        function renderCurrentFrame() {
+        // 検出フレーム（およびMIP）の描画更新
+        function renderDetectionFrame() {
             const f = state.currentFrame;
-            elements.currentFrameLbl.textContent = f;
-            elements.timelineSlider.value = f;
+            elements.currentFrameInputDet.value = f;
+            elements.timelineSliderDet.value = f;
 
             const frameData = state.framesData.frames[f];
             if (!frameData) {
-                console.warn(`Frame ${f} has no data.`);
+                console.warn(`Detection frame ${f} has no data.`);
                 return;
             }
 
-            // (1) 統計情報の更新
-            updateStats(frameData);
+            // 1. 検出情報の統計表示更新
+            updateDetectionStats(frameData);
 
-            // (2) 3D Point Cloud 描画
+            // 2. 3D Point Cloud 描画
             render3DPlot(frameData);
 
-            // (3) 3方向 MIP オーバーレイの描画
+            // 3. 3方向 MIP オーバーレイの描画
             renderMips(f, frameData);
         }
 
-        // 統計表示更新
-        function updateStats(frameData) {
+        // トラッキングフレームの描画更新 (独立)
+        function renderTrackingFrame() {
+            const f = state.currentTrackingFrame;
+            elements.currentFrameInputTrack.value = f;
+            elements.timelineSliderTrack.value = f;
+
+            const frameData = state.framesData.frames[f];
+            if (!frameData) {
+                console.warn(`Tracking frame ${f} has no data.`);
+                return;
+            }
+
+            // 1. トラッキング情報の統計表示更新
+            updateTrackingStats(frameData);
+
+            // 2. 3D Tracking 描画
+            renderTrackingPlot(frameData);
+        }
+
+        // 検出統計パネルの更新
+        function updateDetectionStats(frameData) {
             elements.statTp.textContent = frameData.tp_coords ? frameData.tp_coords.length : 0;
             elements.statFp.textContent = frameData.fp_coords ? frameData.fp_coords.length : 0;
             elements.statFn.textContent = frameData.fn_coords ? frameData.fn_coords.length : 0;
@@ -861,7 +1069,15 @@
             elements.statF1.textContent = summary.f1 !== undefined ? summary.f1.toFixed(4) : '-';
         }
 
-        // Plotly 3D点群描画
+        // トラッキング統計パネルの更新
+        function updateTrackingStats(frameData) {
+            const summary = frameData.summary || {};
+            elements.statEdgeTp.textContent = summary.edge_tp !== undefined ? summary.edge_tp : 0;
+            elements.statEdgeFp.textContent = summary.edge_fp !== undefined ? summary.edge_fp : 0;
+            elements.statEdgeFn.textContent = summary.edge_fn !== undefined ? summary.edge_fn : 0;
+        }
+
+        // Plotly 3D点群描画 (細胞検出)
         function render3DPlot(frameData) {
             const scale = state.meta.scale || [1.0, 1.0, 1.0];
             const traces = [];
@@ -914,7 +1130,6 @@
             // Tracks (lines)
             if (config.showTracks && frameData.tracks && frameData.tracks.length > 0) {
                 frameData.tracks.forEach(t => {
-                    // 選択されたトラックのみハイライト、もしくは全部
                     const isSelected = state.selectedTrackId !== null && t.track_id === state.selectedTrackId;
                     const lineWidth = isSelected ? 4 : 1.5;
                     const lineColor = isSelected ? '#a5b4fc' : 'rgba(165, 180, 252, 0.4)';
@@ -943,20 +1158,143 @@
                     yaxis: { title: 'Y (Height)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     aspectmode: 'manual',
-                    aspectratio: { x: 1, y: 1, z: 0.6 }
+                    aspectratio: { x: 1, y: 1, z: 0.6 },
+                    camera: {
+                        eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
+                    }
                 }
             };
 
-            Plotly.react('plotly-3d', traces, layout);
-            
-            // Plotlyをクリックした際のInspector連携
-            document.getElementById('plotly-3d').removeAllListeners('plotly_click');
-            document.getElementById('plotly-3d').on('plotly_click', (data) => {
-                if (data.points && data.points[0] && data.points[0].customdata) {
-                    const info = data.points[0].customdata;
-                    selectSpot(info);
-                }
+            Plotly.react('plotly-3d', traces, layout).then(() => {
+                const gd = document.getElementById('plotly-3d');
+                gd.removeAllListeners('plotly_click');
+                gd.on('plotly_click', (data) => {
+                    if (data.points && data.points[0] && data.points[0].customdata) {
+                        const info = data.points[0].customdata;
+                        selectSpot(info);
+                    }
+                });
             });
+        }
+
+        // Plotly 3Dトラッキング確認プロットの描画
+        function renderTrackingPlot(frameData) {
+            const scale = state.meta.scale || [1.0, 1.0, 1.0];
+            const traces = [];
+
+            // 1. Edge TP (緑・実線)
+            if (config.showTracks && frameData.edge_tp && frameData.edge_tp.length > 0) {
+                frameData.edge_tp.forEach(e => {
+                    traces.push({
+                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                        mode: 'lines',
+                        type: 'scatter3d',
+                        showlegend: false,
+                        line: { color: '#10b981', width: 2 },
+                        hoverinfo: 'none'
+                    });
+                });
+            }
+
+            // 2. Edge FP (赤・破線)
+            if (config.showTracks && frameData.edge_fp && frameData.edge_fp.length > 0) {
+                frameData.edge_fp.forEach(e => {
+                    traces.push({
+                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                        mode: 'lines',
+                        type: 'scatter3d',
+                        showlegend: false,
+                        line: { color: '#ef4444', width: 2, dash: 'dash' },
+                        hoverinfo: 'none'
+                    });
+                });
+            }
+
+            // 3. Edge FN (シアン・点線)
+            if (config.showTracks && frameData.edge_fn && frameData.edge_fn.length > 0) {
+                frameData.edge_fn.forEach(e => {
+                    traces.push({
+                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                        mode: 'lines',
+                        type: 'scatter3d',
+                        showlegend: false,
+                        line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                        hoverinfo: 'none'
+                    });
+                });
+            }
+
+            // マーカー端点
+            const addEndPoints = (edges, color) => {
+                if (!edges || edges.length === 0) return;
+                const xs = [], ys = [], zs = [];
+                edges.forEach(e => {
+                    xs.push(e.start[2] * scale[2], e.end[2] * scale[2]);
+                    ys.push(e.start[1] * scale[1], e.end[1] * scale[1]);
+                    zs.push(e.start[0] * scale[0], e.end[0] * scale[0]);
+                });
+                traces.push({
+                    x: xs, y: ys, z: zs,
+                    mode: 'markers',
+                    type: 'scatter3d',
+                    marker: { size: Math.max(2, config.spotRadius - 1.5), color: color, opacity: 0.8 },
+                    hoverinfo: 'none',
+                    showlegend: false
+                });
+            };
+
+            if (frameData.edge_tp) addEndPoints(frameData.edge_tp, '#10b981');
+            if (frameData.edge_fp) addEndPoints(frameData.edge_fp, '#ef4444');
+            if (frameData.edge_fn) addEndPoints(frameData.edge_fn, '#06b6d4');
+
+            // ダミー凡例用トレース
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'lines',
+                name: 'Edge TP (Correct Connection)',
+                line: { color: '#10b981', width: 2 },
+                type: 'scatter3d'
+            });
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'lines',
+                name: 'Edge FP (Extra Connection)',
+                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                type: 'scatter3d'
+            });
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'lines',
+                name: 'Edge FN (Missing Connection)',
+                line: { color: '#06b6d4', width: 2, dash: 'dot' },
+                type: 'scatter3d'
+            });
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                margin: { l: 0, r: 0, b: 0, t: 0 },
+                showlegend: true,
+                legend: { x: 0, y: 1, font: { color: '#94a3b8', size: 9 } },
+                scene: {
+                    xaxis: { title: 'X', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
+                    yaxis: { title: 'Y', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
+                    zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
+                    aspectmode: 'manual',
+                    aspectratio: { x: 1, y: 1, z: 0.6 },
+                    camera: {
+                        eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
+                    }
+                }
+            };
+
+            Plotly.react('plotly-tracking', traces, layout);
         }
 
         // MIP画像の非同期ロードとキャッシュ処理
@@ -990,7 +1328,6 @@
                 try {
                     const img = await fetchMipImage(frameIdx, axis);
                     
-                    // 解像度合わせ
                     if (canvas.width !== img.width || canvas.height !== img.height) {
                         canvas.width = img.width;
                         canvas.height = img.height;
@@ -1004,7 +1341,6 @@
                     drawOverlay(ctx, axis, frameData);
 
                 } catch (err) {
-                    // 画像の読み込みが失敗した場合は黒塗りでフォールバック
                     ctx.fillStyle = '#0f172a';
                     ctx.fillRect(0, 0, canvas.width || 300, canvas.height || 150);
                     ctx.fillStyle = '#ef4444';
@@ -1012,33 +1348,49 @@
                     ctx.fillText('Image Load Error', 10, canvas.height / 2);
                     console.error(err);
                     
-                    // 点群だけのオーバーレイは可能な限り実行
                     drawOverlay(ctx, axis, frameData);
                 }
             });
         }
+
+        // 2D投影の座標変換 (MIP Canvas解像度 ⇔ ZARRピクセル座標)
+        const get2DPos = (coord, axis) => {
+            const z = coord[0];
+            const y = coord[1];
+            const x = coord[2];
+            
+            if (!state.meta || !state.meta.shape) {
+                return { x: x, y: y };
+            }
+            
+            const shape = state.meta.shape; // [nz, ny, nx]
+            const nz = shape[0], ny = shape[1], nx = shape[2];
+            
+            const canvas = elements.canvases[axis];
+            const cw = canvas.width;
+            const ch = canvas.height;
+            
+            if (axis === 'xy') {
+                return { x: (x / nx) * cw, y: (y / ny) * ch };
+            }
+            if (axis === 'xz') {
+                return { x: (x / nx) * cw, y: (z / nz) * ch };
+            }
+            if (axis === 'yz') {
+                return { x: (y / ny) * cw, y: (z / nz) * ch };
+            }
+        };
 
         // Canvas上のMIP 2D投影描画
         function drawOverlay(ctx, axis, frameData) {
             const r = config.spotRadius;
             const opacity = config.opacity;
 
-            // マッピングルール：各軸に投影された座標を取り出す
-            // coords = [z, y, x, id, track_id]
-            const get2DPos = (coord) => {
-                const z = coord[0];
-                const y = coord[1];
-                const x = coord[2];
-                if (axis === 'xy') return { x: x, y: y };
-                if (axis === 'xz') return { x: x, y: z };
-                if (axis === 'yz') return { x: y, y: z };
-            };
-
             // 1. トラッキング線描画
             if (config.showTracks && frameData.tracks && frameData.tracks.length > 0) {
                 frameData.tracks.forEach(t => {
-                    const pStart = get2DPos(t.start);
-                    const pEnd = get2DPos(t.end);
+                    const pStart = get2DPos(t.start, axis);
+                    const pEnd = get2DPos(t.end, axis);
                     
                     const isSelected = state.selectedTrackId !== null && t.track_id === state.selectedTrackId;
                     ctx.beginPath();
@@ -1050,9 +1402,9 @@
                 });
             }
 
-            // 2. 細胞スポット(TP, FP, FN)描画
+            // 2. 細胞スポット描画
             const drawSpot = (coord, type) => {
-                const pos = get2DPos(coord);
+                const pos = get2DPos(coord, axis);
                 const isSelected = state.selectedSpot && state.selectedSpot.id === coord[3];
                 
                 ctx.beginPath();
@@ -1063,7 +1415,6 @@
                     ctx.fillStyle = '#10b981';
                     ctx.fill();
                 } else if (type === 'FP') {
-                    // xマーク
                     ctx.strokeStyle = '#ef4444';
                     ctx.lineWidth = 1.5;
                     ctx.moveTo(pos.x - r, pos.y - r);
@@ -1072,7 +1423,6 @@
                     ctx.lineTo(pos.x - r, pos.y + r);
                     ctx.stroke();
                 } else if (type === 'FN') {
-                    // ダイヤモンド
                     ctx.fillStyle = '#06b6d4';
                     ctx.moveTo(pos.x, pos.y - r);
                     ctx.lineTo(pos.x + r, pos.y);
@@ -1102,7 +1452,7 @@
 
         // --- Canvasとのインタラクション処理 ---
 
-        // マウス位置から最も近い Spot を検索する
+        // マウス位置から最も近い Spot を検索する (Canvas 座標系での比較)
         function findNearestSpot(x, y, axis, frameData) {
             const rThreshold = config.spotRadius + 6;
             let nearest = null;
@@ -1114,23 +1464,15 @@
             if (config.showFn && frameData.fn_coords) frameData.fn_coords.forEach(c => searchList.push({ coord: c, type: 'FN' }));
 
             searchList.forEach(item => {
-                const z = item.coord[0];
-                const sy = item.coord[1];
-                const sx = item.coord[2];
-
-                let px, py;
-                if (axis === 'xy') { px = sx; py = sy; }
-                else if (axis === 'xz') { px = sx; py = z; }
-                else if (axis === 'yz') { px = sy; py = z; }
-
-                const dist = Math.hypot(x - px, y - py);
+                const pos = get2DPos(item.coord, axis);
+                const dist = Math.hypot(x - pos.x, y - pos.y);
                 if (dist < minDistance && dist <= rThreshold) {
                     minDistance = dist;
                     nearest = {
                         id: item.coord[3],
                         track_id: item.coord[4],
                         type: item.type,
-                        z: z, y: sy, x: sx
+                        z: item.coord[0], y: item.coord[1], x: item.coord[2]
                     };
                 }
             });
@@ -1143,7 +1485,6 @@
             const canvas = elements.canvases[axis];
             const rect = canvas.getBoundingClientRect();
             
-            // Canvasの論理解像度とCSS上の表示サイズの倍率
             const scaleX = canvas.width / rect.width;
             const scaleY = canvas.height / rect.height;
             const mouseX = (e.clientX - rect.left) * scaleX;
@@ -1207,39 +1548,70 @@
                 state.selectedTrackId = null;
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
             }
-            renderCurrentFrame();
+            renderDetectionFrame();
         }
 
-        // --- 再生アニメーション制御 ---
-
-        function togglePlay() {
-            if (state.isPlaying) {
-                stopPlay();
+        // --- 再生アニメーション制御 (検出・MIP用) ---
+        function togglePlayDet() {
+            if (state.isPlayingDet) {
+                stopPlayDet();
             } else {
-                startPlay();
+                startPlayDet();
             }
         }
 
-        function startPlay() {
+        function startPlayDet() {
             if (!state.meta) return;
-            state.isPlaying = true;
-            elements.playBtn.textContent = '⏸';
-            elements.playBtn.classList.add('btn-secondary');
+            state.isPlayingDet = true;
+            elements.playBtnDet.textContent = '⏸';
+            elements.playBtnDet.classList.add('btn-secondary');
             
-            state.playInterval = setInterval(() => {
+            state.playIntervalDet = setInterval(() => {
                 const nextFrame = (state.currentFrame + 1) % state.meta.num_frames;
                 state.currentFrame = nextFrame;
-                renderCurrentFrame();
+                renderDetectionFrame();
             }, config.playSpeed);
         }
 
-        function stopPlay() {
-            state.isPlaying = false;
-            elements.playBtn.textContent = '▶';
-            elements.playBtn.classList.remove('btn-secondary');
-            if (state.playInterval) {
-                clearInterval(state.playInterval);
-                state.playInterval = null;
+        function stopPlayDet() {
+            state.isPlayingDet = false;
+            elements.playBtnDet.textContent = '▶';
+            elements.playBtnDet.classList.remove('btn-secondary');
+            if (state.playIntervalDet) {
+                clearInterval(state.playIntervalDet);
+                state.playIntervalDet = null;
+            }
+        }
+
+        // --- 再生アニメーション制御 (トラッキング用) ---
+        function togglePlayTrack() {
+            if (state.isPlayingTrack) {
+                stopPlayTrack();
+            } else {
+                startPlayTrack();
+            }
+        }
+
+        function startPlayTrack() {
+            if (!state.meta) return;
+            state.isPlayingTrack = true;
+            elements.playBtnTrack.textContent = '⏸';
+            elements.playBtnTrack.classList.add('btn-secondary');
+            
+            state.playIntervalTrack = setInterval(() => {
+                const nextFrame = (state.currentTrackingFrame + 1) % state.meta.num_frames;
+                state.currentTrackingFrame = nextFrame;
+                renderTrackingFrame();
+            }, config.playSpeed);
+        }
+
+        function stopPlayTrack() {
+            state.isPlayingTrack = false;
+            elements.playBtnTrack.textContent = '▶';
+            elements.playBtnTrack.classList.remove('btn-secondary');
+            if (state.playIntervalTrack) {
+                clearInterval(state.playIntervalTrack);
+                state.playIntervalTrack = null;
             }
         }
     </script>
