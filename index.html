@@ -770,6 +770,11 @@
                 xy: { w: 0, h: 0 },
                 xz: { w: 0, h: 0 },
                 yz: { w: 0, h: 0 }
+            },
+            canvasGestures: {
+                xy: { scale: 1, translateX: 0, translateY: 0, rotate: 0 },
+                xz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 },
+                yz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 }
             }
         };
 
@@ -930,12 +935,90 @@
                 renderTrackingFrame();
             });
 
-            // Canvas クリック＆ホバーイベント
+            // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
             Object.keys(elements.canvases).forEach(axis => {
                 const canvas = elements.canvases[axis];
-                canvas.addEventListener('mousemove', (e) => handleCanvasHover(e, axis));
-                canvas.addEventListener('mouseleave', () => { elements.tooltip.style.display = 'none'; });
-                canvas.addEventListener('click', (e) => handleCanvasClick(e, axis));
+                
+                canvas.style.transformOrigin = 'center center';
+                canvas.style.transition = 'transform 0.05s ease-out';
+                
+                let isDragging = false;
+                let startX = 0;
+                let startY = 0;
+
+                const updateTransform = () => {
+                    const g = state.canvasGestures[axis];
+                    canvas.style.transform = `translate(${g.translateX}px, ${g.translateY}px) scale(${g.scale})`;
+                };
+
+                // ホイールでズーム
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const g = state.canvasGestures[axis];
+                    const zoomFactor = 1.1;
+                    if (e.deltaY < 0) {
+                        g.scale = Math.min(10, g.scale * zoomFactor);
+                    } else {
+                        g.scale = Math.max(0.3, g.scale / zoomFactor);
+                    }
+                    updateTransform();
+                }, { passive: false });
+
+                // ドラッグ開始
+                canvas.addEventListener('mousedown', (e) => {
+                    // 左クリックドラッグのみ平行移動
+                    if (e.button === 0) {
+                        e.preventDefault();
+                        isDragging = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                    }
+                });
+
+                // ドラッグ中
+                canvas.addEventListener('mousemove', (e) => {
+                    if (isDragging) {
+                        e.preventDefault();
+                        const g = state.canvasGestures[axis];
+                        
+                        const deltaX = (e.clientX - startX) / g.scale;
+                        const deltaY = (e.clientY - startY) / g.scale;
+                        
+                        g.translateX += deltaX * g.scale;
+                        g.translateY += deltaY * g.scale;
+                        
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        updateTransform();
+                    } else {
+                        handleCanvasHover(e, axis);
+                    }
+                });
+
+                const stopDrag = () => {
+                    isDragging = false;
+                };
+                canvas.addEventListener('mouseup', stopDrag);
+                canvas.addEventListener('mouseleave', () => {
+                    stopDrag();
+                    elements.tooltip.style.display = 'none';
+                });
+
+                // ダブルクリックでリセット
+                canvas.addEventListener('dblclick', (e) => {
+                    e.preventDefault();
+                    const g = state.canvasGestures[axis];
+                    g.scale = 1;
+                    g.translateX = 0;
+                    g.translateY = 0;
+                    g.rotate = 0; // rotate も 0 にリセット
+                    updateTransform();
+                });
+
+                // クリック
+                canvas.addEventListener('click', (e) => {
+                    handleCanvasClick(e, axis);
+                });
             });
         }
 
@@ -1527,20 +1610,39 @@
             return nearest;
         }
 
+        // CSS transform された Canvas 内のマウスのローカル元画像座標を幾何逆変換で算出する
+        function getCanvasMouseLocalCoords(e, axis) {
+            const canvas = elements.canvases[axis];
+            const g = state.canvasGestures[axis];
+            const container = canvas.parentElement;
+            const cRect = container.getBoundingClientRect();
+            
+            // コンテナ中心を原点としたマウス相対座標
+            const cx = e.clientX - (cRect.left + cRect.width / 2);
+            const cy = e.clientY - (cRect.top + cRect.height / 2);
+            
+            // 1. 逆平行移動
+            let mx = cx - g.translateX;
+            let my = cy - g.translateY;
+            
+            // 2. 逆スケール (回転なし)
+            const sx = mx / g.scale;
+            const sy = my / g.scale;
+            
+            // 3. Canvas 内ローカル元画像座標
+            const mouseX = sx + canvas.width / 2;
+            const mouseY = sy + canvas.height / 2;
+            
+            return { x: mouseX, y: mouseY };
+        }
+
         // ホバー処理 (ツールチップ表示)
         function handleCanvasHover(e, axis) {
-            const canvas = elements.canvases[axis];
-            const rect = canvas.getBoundingClientRect();
-            
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
-
             const frameData = state.framesData.frames[state.currentFrame];
             if (!frameData) return;
 
-            const spot = findNearestSpot(mouseX, mouseY, axis, frameData);
+            const coords = getCanvasMouseLocalCoords(e, axis);
+            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
             
             if (spot) {
                 elements.tooltip.style.display = 'block';
@@ -1561,17 +1663,11 @@
 
         // クリック処理
         function handleCanvasClick(e, axis) {
-            const canvas = elements.canvases[axis];
-            const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width;
-            const scaleY = canvas.height / rect.height;
-            const mouseX = (e.clientX - rect.left) * scaleX;
-            const mouseY = (e.clientY - rect.top) * scaleY;
-
             const frameData = state.framesData.frames[state.currentFrame];
             if (!frameData) return;
 
-            const spot = findNearestSpot(mouseX, mouseY, axis, frameData);
+            const coords = getCanvasMouseLocalCoords(e, axis);
+            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
             selectSpot(spot);
         }
 
