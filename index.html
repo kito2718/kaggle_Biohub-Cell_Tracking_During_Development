@@ -1253,6 +1253,13 @@
                 });
             }
 
+            // 現在のカメラアングル・ズーム・平行移動を _fullLayout から完全に維持
+            const gd = document.getElementById('plotly-3d');
+            let currentCamera = null;
+            if (gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
+                currentCamera = JSON.parse(JSON.stringify(gd._fullLayout.scene.camera));
+            }
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1265,7 +1272,7 @@
                     zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
-                    camera: {
+                    camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
                 }
@@ -1406,6 +1413,13 @@
                 });
             }
 
+            // 現在のカメラアングル・ズーム・平行移動を _fullLayout から完全に維持
+            const gd = document.getElementById('plotly-tracking');
+            let currentCamera = null;
+            if (gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
+                currentCamera = JSON.parse(JSON.stringify(gd._fullLayout.scene.camera));
+            }
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1418,7 +1432,7 @@
                     zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
-                    camera: {
+                    camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
                 }
