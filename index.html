@@ -775,7 +775,8 @@
                 xy: { scale: 1, translateX: 0, translateY: 0, rotate: 0 },
                 xz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 },
                 yz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 }
-            }
+            },
+            preventClick: false
         };
 
         // --- 設定値 ---
@@ -945,6 +946,9 @@
                 let isDragging = false;
                 let startX = 0;
                 let startY = 0;
+                let startClientX = 0;
+                let startClientY = 0;
+                let preventClickTimeout = null;
 
                 const updateTransform = () => {
                     const g = state.canvasGestures[axis];
@@ -972,6 +976,8 @@
                         isDragging = true;
                         startX = e.clientX;
                         startY = e.clientY;
+                        startClientX = e.clientX;
+                        startClientY = e.clientY;
                     }
                 });
 
@@ -1007,6 +1013,14 @@
                 // ダブルクリックでリセット
                 canvas.addEventListener('dblclick', (e) => {
                     e.preventDefault();
+                    
+                    // ダブルクリック時の誤クリック選択を300msの間抑制する
+                    state.preventClick = true;
+                    if (preventClickTimeout) clearTimeout(preventClickTimeout);
+                    preventClickTimeout = setTimeout(() => {
+                        state.preventClick = false;
+                    }, 300);
+
                     const g = state.canvasGestures[axis];
                     g.scale = 1;
                     g.translateX = 0;
@@ -1017,7 +1031,13 @@
 
                 // クリック
                 canvas.addEventListener('click', (e) => {
-                    handleCanvasClick(e, axis);
+                    if (state.preventClick) return;
+                    
+                    const dist = Math.hypot(e.clientX - startClientX, e.clientY - startClientY);
+                    // マウスの総移動距離が 4px 未満の場合のみクリック選択を有効にする
+                    if (dist < 4) {
+                        handleCanvasClick(e, axis);
+                    }
                 });
             });
         }
@@ -1343,28 +1363,25 @@
                 });
             }
 
-            // マーカー端点
-            const addEndPoints = (edges, color) => {
-                if (!edges || edges.length === 0) return;
-                const xs = [], ys = [], zs = [];
-                edges.forEach(e => {
-                    xs.push(e.start[2] * scale[2], e.end[2] * scale[2]);
-                    ys.push(e.start[1] * scale[1], e.end[1] * scale[1]);
-                    zs.push(e.start[0] * scale[0], e.end[0] * scale[0]);
-                });
+            // トラッキングプロット上の細胞点群の描画 (customdata / hovertemplate 付き)
+            const addEndPoints = (coords, color, type) => {
+                if (!coords || coords.length === 0) return;
+                
                 traces.push({
-                    x: xs, y: ys, z: zs,
+                    x: coords.map(c => c[2] * scale[2]),
+                    y: coords.map(c => c[1] * scale[1]),
+                    z: coords.map(c => c[0] * scale[0]),
                     mode: 'markers',
                     type: 'scatter3d',
-                    marker: { size: Math.max(2, config.spotRadius - 1.5), color: color, opacity: 0.8 },
-                    hoverinfo: 'none',
-                    showlegend: false
+                    marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: 0.85 },
+                    customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2] })),
+                    hovertemplate: `ID: %{customdata.id}<br>${type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>'}Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                 });
             };
 
-            if (frameData.edge_tp) addEndPoints(frameData.edge_tp, '#10b981');
-            if (frameData.edge_fp) addEndPoints(frameData.edge_fp, '#ef4444');
-            if (frameData.edge_fn) addEndPoints(frameData.edge_fn, '#06b6d4');
+            if (config.showTp) addEndPoints(frameData.tp_coords, '#10b981', 'TP');
+            if (config.showFp) addEndPoints(frameData.fp_coords, '#ef4444', 'FP');
+            if (config.showFn) addEndPoints(frameData.fn_coords, '#06b6d4', 'FN');
 
             // ダミー凡例用トレース
             traces.push({
@@ -1438,7 +1455,16 @@
                 }
             };
 
-            Plotly.react('plotly-tracking', traces, layout);
+            Plotly.react('plotly-tracking', traces, layout).then(() => {
+                const gd = document.getElementById('plotly-tracking');
+                gd.removeAllListeners('plotly_click');
+                gd.on('plotly_click', (data) => {
+                    if (data.points && data.points[0] && data.points[0].customdata) {
+                        const info = data.points[0].customdata;
+                        selectSpot(info);
+                    }
+                });
+            });
         }
 
         // MIP画像の非同期ロードとキャッシュ処理
