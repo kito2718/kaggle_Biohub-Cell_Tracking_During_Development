@@ -636,7 +636,7 @@
             <!-- Left Column: Cell Detection plot, timeline, and Tracking plot, timeline -->
             <div class="left-column">
                 <!-- 3D Point Cloud View (Cell Detection) -->
-                <div class="view-card" style="flex: 1; min-height: 250px;">
+                <div class="view-card" style="height: 800px; flex-shrink: 0; margin-bottom: 1.5rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                     </div>
@@ -644,7 +644,7 @@
                 </div>
 
                 <!-- Timeline Controller (Detection & MIPs) -->
-                <div class="timeline-bar">
+                <div class="timeline-bar" style="margin-bottom: 1.5rem;">
                     <button id="play-btn-det" class="btn play-btn">▶</button>
                     <div class="timeline-slider-container">
                         <div class="timeline-info">
@@ -659,7 +659,7 @@
                 </div>
 
                 <!-- 3D Tracking Plot (Tracking Evaluation) -->
-                <div class="view-card" style="flex: 1; min-height: 250px;">
+                <div class="view-card" style="height: 800px; flex-shrink: 0; margin-bottom: 1.5rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                     </div>
@@ -1147,6 +1147,13 @@
                 });
             }
 
+            // 現在のカメラアングルを維持
+            const gd = document.getElementById('plotly-3d');
+            let currentCamera = null;
+            if (gd && gd.layout && gd.layout.scene && gd.layout.scene.camera) {
+                currentCamera = gd.layout.scene.camera;
+            }
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1159,7 +1166,7 @@
                     zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
-                    camera: {
+                    camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
                 }
@@ -1276,6 +1283,13 @@
                 type: 'scatter3d'
             });
 
+            // 現在のカメラアングルを維持
+            const gd = document.getElementById('plotly-tracking');
+            let currentCamera = null;
+            if (gd && gd.layout && gd.layout.scene && gd.layout.scene.camera) {
+                currentCamera = gd.layout.scene.camera;
+            }
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1288,7 +1302,7 @@
                     zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
-                    camera: {
+                    camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
                 }
