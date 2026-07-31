@@ -1146,6 +1146,30 @@
                 });
             }
 
+            // 選択されたセルのハイライト（重ね描きトレース）
+            if (state.selectedSpot) {
+                const s = state.selectedSpot;
+                traces.push({
+                    x: [s.x * scale[2]],
+                    y: [s.y * scale[1]],
+                    z: [s.z * scale[0]],
+                    mode: 'markers',
+                    name: 'Selected Cell',
+                    type: 'scatter3d',
+                    marker: {
+                        size: config.spotRadius * 1.8,
+                        color: '#f59e0b',
+                        opacity: 0.95,
+                        line: {
+                            color: '#ffffff',
+                            width: 2
+                        }
+                    },
+                    hoverinfo: 'none',
+                    showlegend: true
+                });
+            }
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -1274,6 +1298,30 @@
                 line: { color: '#06b6d4', width: 2, dash: 'dot' },
                 type: 'scatter3d'
             });
+
+            // 選択されたセルのハイライト（重ね描きトレース）
+            if (state.selectedSpot) {
+                const s = state.selectedSpot;
+                traces.push({
+                    x: [s.x * scale[2]],
+                    y: [s.y * scale[1]],
+                    z: [s.z * scale[0]],
+                    mode: 'markers',
+                    name: 'Selected Cell',
+                    type: 'scatter3d',
+                    marker: {
+                        size: config.spotRadius * 1.8,
+                        color: '#f59e0b',
+                        opacity: 0.95,
+                        line: {
+                            color: '#ffffff',
+                            width: 2
+                        }
+                    },
+                    hoverinfo: 'none',
+                    showlegend: false
+                });
+            }
 
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
@@ -1531,13 +1579,16 @@
         function selectSpot(spot) {
             if (spot) {
                 state.selectedSpot = spot;
-                state.selectedTrackId = spot.track_id || null;
+                state.selectedTrackId = spot.track_id !== undefined ? spot.track_id : (spot.customdata ? spot.customdata.track_id : null);
+                if (state.selectedTrackId === -1 || state.selectedTrackId === undefined) {
+                    state.selectedTrackId = null;
+                }
                 
                 elements.inspectorPanel.innerHTML = `
                     <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
                         <strong>Type:</strong> <span style="color: ${spot.type === 'TP' ? 'var(--color-tp)' : spot.type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">${spot.type}</span><br>
                         <strong>Spot ID:</strong> ${spot.id}<br>
-                        <strong>Track ID:</strong> ${spot.track_id !== null ? spot.track_id : '<span style="color: var(--text-secondary);">None</span>'}<br>
+                        <strong>Track ID:</strong> ${state.selectedTrackId !== null ? state.selectedTrackId : '<span style="color: var(--text-secondary);">None</span>'}<br>
                         <strong>Position (Z, Y, X):</strong><br>
                         &nbsp;&nbsp;(${spot.z.toFixed(2)}, ${spot.y.toFixed(2)}, ${spot.x.toFixed(2)})
                     </div>
@@ -1547,7 +1598,20 @@
                 state.selectedTrackId = null;
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
             }
-            renderDetectionFrame();
+            
+            // トラッキング評価プロットのフレームを同期
+            state.currentTrackingFrame = state.currentFrame;
+            
+            // UIスライダーの値を同期
+            elements.currentFrameInputTrack.value = state.currentTrackingFrame;
+            elements.timelineSliderTrack.value = state.currentTrackingFrame;
+
+            // Plotlyのクリック直後の再描画によるWebGLドラッグハングを防ぐため、
+            // レンダリング処理を一瞬だけ遅延（setTimeout）させて非同期実行する。
+            setTimeout(() => {
+                renderDetectionFrame();
+                renderTrackingFrame();
+            }, 30);
         }
 
         // --- 再生アニメーション制御 (検出・MIP用) ---
