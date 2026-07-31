@@ -776,7 +776,8 @@
                 xz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 },
                 yz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 }
             },
-            preventClick: false
+            preventClick: false,
+            canvasClickTimers: { xy: null, xz: null, yz: null }
         };
 
         // --- 設定値 ---
@@ -1014,12 +1015,11 @@
                 canvas.addEventListener('dblclick', (e) => {
                     e.preventDefault();
                     
-                    // ダブルクリック時の誤クリック選択を300msの間抑制する
-                    state.preventClick = true;
-                    if (preventClickTimeout) clearTimeout(preventClickTimeout);
-                    preventClickTimeout = setTimeout(() => {
-                        state.preventClick = false;
-                    }, 300);
+                    // ダブルクリックが発生したので、先行してセットされたシングルクリック用タイマーを確実にキャンセル！
+                    if (state.canvasClickTimers && state.canvasClickTimers[axis]) {
+                        clearTimeout(state.canvasClickTimers[axis]);
+                        state.canvasClickTimers[axis] = null;
+                    }
 
                     const g = state.canvasGestures[axis];
                     g.scale = 1;
@@ -1031,13 +1031,21 @@
 
                 // クリック
                 canvas.addEventListener('click', (e) => {
-                    if (state.preventClick) return;
-                    
                     const dist = Math.hypot(e.clientX - startClientX, e.clientY - startClientY);
-                    // マウスの総移動距離が 4px 未満の場合のみクリック選択を有効にする
-                    if (dist < 4) {
-                        handleCanvasClick(e, axis);
+                    if (dist >= 4) return; // ドラッグ移動時は無視
+
+                    // すでにタイマーがある場合は、ダブルクリックの2回目のクリックなのでキャンセルして終了
+                    if (state.canvasClickTimers && state.canvasClickTimers[axis]) {
+                        clearTimeout(state.canvasClickTimers[axis]);
+                        state.canvasClickTimers[axis] = null;
+                        return;
                     }
+
+                    // 220ms 遅延させてシングルクリックの選択処理を実行 (ダブルクリック時はこのタイマーがキャンセルされる)
+                    state.canvasClickTimers[axis] = setTimeout(() => {
+                        handleCanvasClick(e, axis);
+                        state.canvasClickTimers[axis] = null;
+                    }, 220);
                 });
             });
         }
