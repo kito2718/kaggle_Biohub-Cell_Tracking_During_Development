@@ -518,6 +518,116 @@
             display: none;
             box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
+
+        /* Dataset Explorer UI */
+        .dataset-explorer {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+        }
+
+        .selected-datasets-box {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            min-height: 30px;
+            max-height: 100px;
+            overflow-y: auto;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 0.5rem;
+        }
+
+        .dataset-badge {
+            background-color: var(--accent);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            padding: 0.2rem 0.5rem;
+            font-size: 0.75rem;
+            font-family: var(--font-mono);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .dataset-badge:hover {
+            opacity: 0.9;
+        }
+
+        .dataset-badge.active-bg {
+            box-shadow: 0 0 8px var(--accent-glow);
+            background: linear-gradient(135deg, #818cf8, var(--accent));
+            border-color: #a5b4fc;
+        }
+
+        .dataset-badge .btn-remove-badge {
+            cursor: pointer;
+            font-weight: bold;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.85rem;
+            display: inline-block;
+            line-height: 1;
+        }
+
+        .dataset-badge .btn-remove-badge:hover {
+            color: #ef4444;
+        }
+
+        .dataset-list-container {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            padding-right: 0.2rem;
+        }
+
+        .dataset-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0.5rem;
+            border-radius: 6px;
+            background: rgba(15, 23, 42, 0.2);
+            border: 1px solid transparent;
+            font-size: 0.8rem;
+            font-family: var(--font-mono);
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .dataset-item:hover {
+            background: var(--bg-surface-hover);
+            border-color: rgba(255,255,255,0.05);
+        }
+
+        .dataset-item.active-bg {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--accent);
+            box-shadow: inset 0 0 4px rgba(99, 102, 241, 0.2);
+        }
+
+        .dataset-item-label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .dataset-item-checkbox {
+            cursor: pointer;
+            width: 14px;
+            height: 14px;
+            accent-color: var(--accent);
+        }
     </style>
 </head>
 <body>
@@ -537,6 +647,23 @@
                 <label class="control-label">Data Directory URL</label>
                 <input type="text" id="data-url-input" class="input-text" placeholder="https://.../viewer_data/">
                 <button id="load-data-btn" class="btn" style="margin-top: 0.5rem;">Load Data</button>
+            </div>
+
+            <div class="control-group" id="dataset-explorer-group" style="display: none;">
+                <div class="card-title">Dataset Explorer</div>
+                <div class="dataset-explorer">
+                    <input type="text" id="dataset-search-input" class="input-text" placeholder="Search datasets..." style="font-family: var(--font-inter); font-size: 0.8rem; padding: 0.4rem 0.6rem;">
+                    
+                    <div class="control-label" style="font-size: 0.7rem; margin-top: 0.2rem;">Selected (Merge View)</div>
+                    <div class="selected-datasets-box" id="selected-datasets-box">
+                        <span style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; line-height: 30px;">None selected</span>
+                    </div>
+
+                    <div class="control-label" style="font-size: 0.7rem; margin-top: 0.2rem;">Available Datasets</div>
+                    <div class="dataset-list-container" id="dataset-list-container">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
             </div>
 
             <div class="control-group">
@@ -777,7 +904,11 @@
                 yz: { scale: 1, translateX: 0, translateY: 0, rotate: 0 }
             },
             preventClick: false,
-            canvasClickTimers: { xy: null, xz: null, yz: null }
+            canvasClickTimers: { xy: null, xz: null, yz: null },
+            availableDatasets: [],    // マニフェストから読み込んだデータセット名配列
+            selectedDatasets: [],     // 現在マージ表示するデータセット名の配列
+            activeDataset: null,       // 背景MIP画像として使用するデータセット名（1つのみ）
+            loadedDatasets: {}        // { datasetName: { metadata, frames } }
         };
 
         // --- 設定値 ---
@@ -838,7 +969,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             setupEventListeners();
             resolveDataUrl();
-            loadViewerData();
+            initDatasetExplorer();
         });
 
         // URLパラメータ、または同一階層からデータのURLを特定
@@ -1072,58 +1203,10 @@
 
         // データ読み込み処理
         async function loadViewerData() {
-            setStatus(true, 'Fetching viewer_data.json...');
-            const jsonUrl = `${state.dataUrl}viewer_data.json`;
-            
-            try {
-                const response = await fetch(jsonUrl, { mode: 'cors' });
-                if (!response.ok) {
-                    throw new Error(`Failed to load viewer_data.json. HTTP status: ${response.status} (${response.statusText}).`);
-                }
-                const data = await response.json();
-                
-                if (!data.metadata || !data.frames) {
-                    throw new Error('Invalid viewer_data.json format. Missing metadata or frames.');
-                }
-                
-                state.framesData = data;
-                state.meta = data.metadata;
-                
-                const numFrames = state.meta.num_frames;
-                if (!numFrames || numFrames <= 0) {
-                    throw new Error('Total frame count is 0 or undefined in metadata.');
-                }
-                
-                // 検出用タイムライン初期化
-                elements.timelineSliderDet.max = numFrames - 1;
-                elements.timelineSliderDet.min = 0;
-                elements.timelineSliderDet.value = 0;
-                elements.currentFrameInputDet.max = numFrames - 1;
-                elements.currentFrameInputDet.value = 0;
-                elements.totalFramesLblDet.textContent = numFrames;
-                
-                // トラッキング用タイムライン初期化
-                elements.timelineSliderTrack.max = numFrames - 1;
-                elements.timelineSliderTrack.min = 0;
-                elements.timelineSliderTrack.value = 0;
-                elements.currentFrameInputTrack.max = numFrames - 1;
-                elements.currentFrameInputTrack.value = 0;
-                elements.totalFramesLblTrack.textContent = numFrames;
-                
-                state.currentFrame = 0;
-                state.currentTrackingFrame = 0;
-                
-                setStatus(false);
-                renderDetectionFrame();
-                renderTrackingFrame();
-            } catch (err) {
-                console.error(err);
-                let detailedMsg = err.message;
-                if (err.message.includes('Failed to fetch')) {
-                    detailedMsg = `Network error / CORS issue. Ensure CORS header is configured if fetching from a remote server, or check that URL matches. URL attempted: ${jsonUrl}`;
-                }
-                setStatus(false, 'Data Loading Failed', detailedMsg);
-            }
+            // アクティブな背景データセットが切り替わった場合、画像キャッシュをリセットして読み込み直す
+            state.imageCache = {};
+            setStatus(true, 'Updating active dataset view...');
+            await loadSelectedDatasetsData();
         }
 
         // 検出フレーム（およびMIP）の描画更新
@@ -1192,50 +1275,57 @@
             const scale = state.meta.scale || [1.0, 1.0, 1.0];
             const traces = [];
 
-            // TP (Green)
-            if (config.showTp && frameData.tp_coords && frameData.tp_coords.length > 0) {
-                traces.push({
-                    x: frameData.tp_coords.map(c => c[2] * scale[2]),
-                    y: frameData.tp_coords.map(c => c[1] * scale[1]),
-                    z: frameData.tp_coords.map(c => c[0] * scale[0]),
-                    mode: 'markers',
-                    name: 'TP (Correct)',
-                    type: 'scatter3d',
-                    marker: { size: config.spotRadius, color: '#10b981', opacity: config.opacity },
-                    customdata: frameData.tp_coords.map(c => ({ id: c[3], track_id: c[4], type: 'TP', z: c[0], y: c[1], x: c[2] })),
-                    hovertemplate: 'ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
-                });
-            }
+            // 選択されたデータセットごとにトレースを作成
+            state.selectedDatasets.forEach(dataset => {
+                const tp = frameData.tp_coords ? frameData.tp_coords.filter(c => c[5] === dataset) : [];
+                const fp = frameData.fp_coords ? frameData.fp_coords.filter(c => c[5] === dataset) : [];
+                const fn = frameData.fn_coords ? frameData.fn_coords.filter(c => c[5] === dataset) : [];
 
-            // FP (Red)
-            if (config.showFp && frameData.fp_coords && frameData.fp_coords.length > 0) {
-                traces.push({
-                    x: frameData.fp_coords.map(c => c[2] * scale[2]),
-                    y: frameData.fp_coords.map(c => c[1] * scale[1]),
-                    z: frameData.fp_coords.map(c => c[0] * scale[0]),
-                    mode: 'markers',
-                    name: 'FP (Extra)',
-                    type: 'scatter3d',
-                    marker: { size: config.spotRadius, color: '#ef4444', opacity: config.opacity, symbol: 'cross' },
-                    customdata: frameData.fp_coords.map(c => ({ id: c[3], track_id: c[4], type: 'FP', z: c[0], y: c[1], x: c[2] })),
-                    hovertemplate: 'ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
-                });
-            }
+                // TP (Green)
+                if (config.showTp && tp.length > 0) {
+                    traces.push({
+                        x: tp.map(c => c[2] * scale[2]),
+                        y: tp.map(c => c[1] * scale[1]),
+                        z: tp.map(c => c[0] * scale[0]),
+                        mode: 'markers',
+                        name: `[${dataset}] TP`,
+                        type: 'scatter3d',
+                        marker: { size: config.spotRadius, color: '#10b981', opacity: config.opacity },
+                        customdata: tp.map(c => ({ id: c[3], track_id: c[4], type: 'TP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                    });
+                }
 
-            // FN (Cyan)
-            if (config.showFn && frameData.fn_coords && frameData.fn_coords.length > 0) {
-                traces.push({
-                    x: frameData.fn_coords.map(c => c[2] * scale[2]),
-                    y: frameData.fn_coords.map(c => c[1] * scale[1]),
-                    z: frameData.fn_coords.map(c => c[0] * scale[0]),
-                    mode: 'markers',
-                    name: 'FN (Missing)',
-                    type: 'scatter3d',
-                    marker: { size: config.spotRadius, color: '#06b6d4', opacity: config.opacity, symbol: 'diamond' },
-                    customdata: frameData.fn_coords.map(c => ({ id: c[3], track_id: null, type: 'FN', z: c[0], y: c[1], x: c[2] })),
-                    hovertemplate: 'ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
-                });
-            }
+                // FP (Red)
+                if (config.showFp && fp.length > 0) {
+                    traces.push({
+                        x: fp.map(c => c[2] * scale[2]),
+                        y: fp.map(c => c[1] * scale[1]),
+                        z: fp.map(c => c[0] * scale[0]),
+                        mode: 'markers',
+                        name: `[${dataset}] FP`,
+                        type: 'scatter3d',
+                        marker: { size: config.spotRadius, color: '#ef4444', opacity: config.opacity, symbol: 'cross' },
+                        customdata: fp.map(c => ({ id: c[3], track_id: c[4], type: 'FP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                    });
+                }
+
+                // FN (Cyan)
+                if (config.showFn && fn.length > 0) {
+                    traces.push({
+                        x: fn.map(c => c[2] * scale[2]),
+                        y: fn.map(c => c[1] * scale[1]),
+                        z: fn.map(c => c[0] * scale[0]),
+                        mode: 'markers',
+                        name: `[${dataset}] FN`,
+                        type: 'scatter3d',
+                        marker: { size: config.spotRadius, color: '#06b6d4', opacity: config.opacity, symbol: 'diamond' },
+                        customdata: fn.map(c => ({ id: c[3], track_id: null, type: 'FN', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                    });
+                }
+            });
 
             // 選択されたセルのハイライト（重ね描きトレース）
             if (state.selectedSpot) {
@@ -1273,7 +1363,7 @@
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 margin: { l: 0, r: 0, b: 0, t: 0 },
                 showlegend: true,
-                legend: { x: 0, y: 1, font: { color: '#94a3b8', size: 10 } },
+                legend: { x: 0, y: 1, font: { color: '#94a3b8', size: 9 } },
                 scene: {
                     xaxis: { title: 'X (Width)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
                     yaxis: { title: 'Y (Height)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
@@ -1303,73 +1393,83 @@
             const scale = state.meta.scale || [1.0, 1.0, 1.0];
             const traces = [];
 
-            // 1. Edge TP (緑・実線)
-            if (config.showTracks && frameData.edge_tp && frameData.edge_tp.length > 0) {
-                frameData.edge_tp.forEach(e => {
-                    traces.push({
-                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                        mode: 'lines',
-                        type: 'scatter3d',
-                        showlegend: false,
-                        line: { color: '#10b981', width: 2 },
-                        hoverinfo: 'none'
+            state.selectedDatasets.forEach(dataset => {
+                const edgeTp = frameData.edge_tp ? frameData.edge_tp.filter(e => e.dataset === dataset) : [];
+                const edgeFp = frameData.edge_fp ? frameData.edge_fp.filter(e => e.dataset === dataset) : [];
+                const edgeFn = frameData.edge_fn ? frameData.edge_fn.filter(e => e.dataset === dataset) : [];
+
+                // 1. Edge TP (緑・実線)
+                if (config.showTracks && edgeTp.length > 0) {
+                    edgeTp.forEach(e => {
+                        traces.push({
+                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                            mode: 'lines',
+                            type: 'scatter3d',
+                            showlegend: false,
+                            line: { color: '#10b981', width: 2 },
+                            hoverinfo: 'none'
+                        });
                     });
-                });
-            }
+                }
 
-            // 2. Edge FP (赤・破線)
-            if (config.showTracks && frameData.edge_fp && frameData.edge_fp.length > 0) {
-                frameData.edge_fp.forEach(e => {
-                    traces.push({
-                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                        mode: 'lines',
-                        type: 'scatter3d',
-                        showlegend: false,
-                        line: { color: '#ef4444', width: 2, dash: 'dash' },
-                        hoverinfo: 'none'
+                // 2. Edge FP (赤・破線)
+                if (config.showTracks && edgeFp.length > 0) {
+                    edgeFp.forEach(e => {
+                        traces.push({
+                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                            mode: 'lines',
+                            type: 'scatter3d',
+                            showlegend: false,
+                            line: { color: '#ef4444', width: 2, dash: 'dash' },
+                            hoverinfo: 'none'
+                        });
                     });
-                });
-            }
+                }
 
-            // 3. Edge FN (シアン・点線)
-            if (config.showTracks && frameData.edge_fn && frameData.edge_fn.length > 0) {
-                frameData.edge_fn.forEach(e => {
-                    traces.push({
-                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                        mode: 'lines',
-                        type: 'scatter3d',
-                        showlegend: false,
-                        line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
-                        hoverinfo: 'none'
+                // 3. Edge FN (シアン・点線)
+                if (config.showTracks && edgeFn.length > 0) {
+                    edgeFn.forEach(e => {
+                        traces.push({
+                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                            mode: 'lines',
+                            type: 'scatter3d',
+                            showlegend: false,
+                            line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                            hoverinfo: 'none'
+                        });
                     });
-                });
-            }
+                }
 
-            // トラッキングプロット上の細胞点群の描画 (customdata / hovertemplate 付き)
-            const addEndPoints = (coords, color, type) => {
-                if (!coords || coords.length === 0) return;
-                
-                traces.push({
-                    x: coords.map(c => c[2] * scale[2]),
-                    y: coords.map(c => c[1] * scale[1]),
-                    z: coords.map(c => c[0] * scale[0]),
-                    mode: 'markers',
-                    type: 'scatter3d',
-                    marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: 0.85 },
-                    customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2] })),
-                    hovertemplate: `ID: %{customdata.id}<br>${type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>'}Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
-                });
-            };
+                // 端点
+                const tp = frameData.tp_coords ? frameData.tp_coords.filter(c => c[5] === dataset) : [];
+                const fp = frameData.fp_coords ? frameData.fp_coords.filter(c => c[5] === dataset) : [];
+                const fn = frameData.fn_coords ? frameData.fn_coords.filter(c => c[5] === dataset) : [];
 
-            if (config.showTp) addEndPoints(frameData.tp_coords, '#10b981', 'TP');
-            if (config.showFp) addEndPoints(frameData.fp_coords, '#ef4444', 'FP');
-            if (config.showFn) addEndPoints(frameData.fn_coords, '#06b6d4', 'FN');
+                const addEndPoints = (coords, color, type) => {
+                    if (!coords || coords.length === 0) return;
+                    traces.push({
+                        x: coords.map(c => c[2] * scale[2]),
+                        y: coords.map(c => c[1] * scale[1]),
+                        z: coords.map(c => c[0] * scale[0]),
+                        mode: 'markers',
+                        type: 'scatter3d',
+                        name: `[${dataset}] ${type} Node`,
+                        marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: 0.85 },
+                        customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: `Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>${type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>'}Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
+                    });
+                };
+
+                if (config.showTp) addEndPoints(tp, '#10b981', 'TP');
+                if (config.showFp) addEndPoints(fp, '#ef4444', 'FP');
+                if (config.showFn) addEndPoints(fn, '#06b6d4', 'FN');
+            });
 
             // ダミー凡例用トレース
             traces.push({
@@ -1471,7 +1571,7 @@
                 img.onerror = () => {
                     reject(new Error(`Failed to load MIP image for frame ${frameIdx} (${axis})`));
                 };
-                img.src = `${state.dataUrl}mips/frame_${String(frameIdx).padStart(3, '0')}_${axis}.png`;
+                img.src = `${state.dataUrl}${state.activeDataset}/mips/frame_${String(frameIdx).padStart(3, '0')}_${axis}.png`;
             });
         }
 
@@ -1792,6 +1892,190 @@
             }, config.playSpeed);
         }
 
+        // マウス位置から最も近い Spot を検索する (Canvas 座標系での比較)
+        function findNearestSpot(x, y, axis, frameData) {
+            const rThreshold = config.spotRadius + 6;
+            let nearest = null;
+            let minDistance = Infinity;
+
+            const searchList = [];
+            if (config.showTp && frameData.tp_coords) frameData.tp_coords.forEach(c => searchList.push({ coord: c, type: 'TP' }));
+            if (config.showFp && frameData.fp_coords) frameData.fp_coords.forEach(c => searchList.push({ coord: c, type: 'FP' }));
+            if (config.showFn && frameData.fn_coords) frameData.fn_coords.forEach(c => searchList.push({ coord: c, type: 'FN' }));
+
+            searchList.forEach(item => {
+                const pos = get2DPos(item.coord, axis);
+                const dist = Math.hypot(x - pos.x, y - pos.y);
+                if (dist < minDistance && dist <= rThreshold) {
+                    minDistance = dist;
+                    nearest = {
+                        id: item.coord[3],
+                        track_id: item.coord[4],
+                        type: item.type,
+                        z: item.coord[0], y: item.coord[1], x: item.coord[2],
+                        dataset: item.coord[5] // マージしたデータセット名
+                    };
+                }
+            });
+
+            return nearest;
+        }
+
+        // CSS transform された Canvas 内のマウスのローカル元画像座標を幾何逆変換で算出する
+        function getCanvasMouseLocalCoords(e, axis) {
+            const canvas = elements.canvases[axis];
+            const g = state.canvasGestures[axis];
+            const container = canvas.parentElement;
+            const cRect = container.getBoundingClientRect();
+            
+            // コンテナ中心を原点としたマウス相対座標
+            const cx = e.clientX - (cRect.left + cRect.width / 2);
+            const cy = e.clientY - (cRect.top + cRect.height / 2);
+            
+            // 1. 逆平行移動
+            let mx = cx - g.translateX;
+            let my = cy - g.translateY;
+            
+            // 2. 逆スケール (回転なし)
+            const sx = mx / g.scale;
+            const sy = my / g.scale;
+            
+            // 3. Canvas 内ローカル元画像座標
+            const mouseX = sx + canvas.width / 2;
+            const mouseY = sy + canvas.height / 2;
+            
+            return { x: mouseX, y: mouseY };
+        }
+
+        // ホバー処理 (ツールチップ表示)
+        function handleCanvasHover(e, axis) {
+            const frameData = state.framesData.frames[state.currentFrame];
+            if (!frameData) return;
+
+            const coords = getCanvasMouseLocalCoords(e, axis);
+            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
+            
+            if (spot) {
+                elements.tooltip.style.display = 'block';
+                elements.tooltip.style.left = `${e.clientX + 10}px`;
+                elements.tooltip.style.top = `${e.clientY + 10}px`;
+                elements.tooltip.innerHTML = `
+                    <strong>${spot.type} Spot</strong><br>
+                    Dataset: ${spot.dataset}<br>
+                    ID: ${spot.id}<br>
+                    ${spot.track_id ? `Track: ${spot.track_id}<br>` : ''}
+                    Z: ${spot.z.toFixed(1)}<br>
+                    Y: ${spot.y.toFixed(1)}<br>
+                    X: ${spot.x.toFixed(1)}
+                `;
+            } else {
+                elements.tooltip.style.display = 'none';
+            }
+        }
+
+        // クリック処理
+        function handleCanvasClick(e, axis) {
+            const frameData = state.framesData.frames[state.currentFrame];
+            if (!frameData) return;
+
+            const coords = getCanvasMouseLocalCoords(e, axis);
+            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
+            selectSpot(spot);
+        }
+
+        // スポットの選択状態更新とインスペクター表示
+        function selectSpot(spot) {
+            if (spot) {
+                state.selectedSpot = spot;
+                state.selectedTrackId = spot.track_id !== undefined ? spot.track_id : (spot.customdata ? spot.customdata.track_id : null);
+                if (state.selectedTrackId === -1 || state.selectedTrackId === undefined) {
+                    state.selectedTrackId = null;
+                }
+                const datasetName = spot.dataset || (spot.customdata ? spot.customdata.dataset : '');
+                
+                elements.inspectorPanel.innerHTML = `
+                    <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
+                        <strong>Dataset:</strong> <span style="color: var(--accent);">${datasetName}</span><br>
+                        <strong>Type:</strong> <span style="color: ${spot.type === 'TP' ? 'var(--color-tp)' : spot.type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">${spot.type}</span><br>
+                        <strong>Spot ID:</strong> ${spot.id}<br>
+                        <strong>Track ID:</strong> ${state.selectedTrackId !== null ? state.selectedTrackId : '<span style="color: var(--text-secondary);">None</span>'}<br>
+                        <strong>Position (Z, Y, X):</strong><br>
+                        &nbsp;&nbsp;(${spot.z.toFixed(2)}, ${spot.y.toFixed(2)}, ${spot.x.toFixed(2)})
+                    </div>
+                `;
+            } else {
+                state.selectedSpot = null;
+                state.selectedTrackId = null;
+                elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
+            }
+            
+            // トラッキング評価プロットのフレームを同期
+            state.currentTrackingFrame = state.currentFrame;
+            
+            // UIスライダーの値を同期
+            elements.currentFrameInputTrack.value = state.currentTrackingFrame;
+            elements.timelineSliderTrack.value = state.currentTrackingFrame;
+
+            setTimeout(() => {
+                renderDetectionFrame();
+                renderTrackingFrame();
+            }, 30);
+        }
+
+        // --- 再生アニメーション制御 (検出・MIP用) ---
+        function togglePlayDet() {
+            if (state.isPlayingDet) {
+                stopPlayDet();
+            } else {
+                startPlayDet();
+            }
+        }
+
+        function startPlayDet() {
+            if (!state.meta) return;
+            state.isPlayingDet = true;
+            elements.playBtnDet.textContent = '⏸';
+            elements.playBtnDet.classList.add('btn-secondary');
+            
+            state.playIntervalDet = setInterval(() => {
+                const nextFrame = (state.currentFrame + 1) % state.meta.num_frames;
+                state.currentFrame = nextFrame;
+                renderDetectionFrame();
+            }, config.playSpeed);
+        }
+
+        function stopPlayDet() {
+            state.isPlayingDet = false;
+            elements.playBtnDet.textContent = '▶';
+            elements.playBtnDet.classList.remove('btn-secondary');
+            if (state.playIntervalDet) {
+                clearInterval(state.playIntervalDet);
+                state.playIntervalDet = null;
+            }
+        }
+
+        // --- 再生アニメーション制御 (トラッキング用) ---
+        function togglePlayTrack() {
+            if (state.isPlayingTrack) {
+                stopPlayTrack();
+            } else {
+                startPlayTrack();
+            }
+        }
+
+        function startPlayTrack() {
+            if (!state.meta) return;
+            state.isPlayingTrack = true;
+            elements.playBtnTrack.textContent = '⏸';
+            elements.playBtnTrack.classList.add('btn-secondary');
+            
+            state.playIntervalTrack = setInterval(() => {
+                const nextFrame = (state.currentTrackingFrame + 1) % state.meta.num_frames;
+                state.currentTrackingFrame = nextFrame;
+                renderTrackingFrame();
+            }, config.playSpeed);
+        }
+
         function stopPlayTrack() {
             state.isPlayingTrack = false;
             elements.playBtnTrack.textContent = '▶';
@@ -1800,6 +2084,315 @@
                 clearInterval(state.playIntervalTrack);
                 state.playIntervalTrack = null;
             }
+        }
+
+        // --- Dataset Explorer 実装 ---
+
+        async function initDatasetExplorer() {
+            setStatus(true, 'Loading datasets manifest...');
+            const manifestUrl = `${state.dataUrl}datasets.json`;
+            try {
+                const response = await fetch(manifestUrl, { mode: 'cors' });
+                if (!response.ok) throw new Error('datasets.json not found');
+                const data = await response.json();
+                
+                // アルファベット昇順ソート
+                state.availableDatasets = (data.datasets || []).sort((a, b) => a.localeCompare(b));
+                
+                if (state.availableDatasets.length > 0) {
+                    document.getElementById('dataset-explorer-group').style.display = 'flex';
+                    
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const datasetsParam = urlParams.get('datasets');
+                    const activeParam = urlParams.get('active');
+                    
+                    if (datasetsParam) {
+                        state.selectedDatasets = datasetsParam.split(',').filter(d => state.availableDatasets.includes(d));
+                    }
+                    if (activeParam && state.availableDatasets.includes(activeParam)) {
+                        state.activeDataset = activeParam;
+                    }
+                    
+                    if (state.selectedDatasets.length === 0) {
+                        state.selectedDatasets = [state.availableDatasets[0]];
+                    }
+                    if (!state.activeDataset || !state.selectedDatasets.includes(state.activeDataset)) {
+                        state.activeDataset = state.selectedDatasets[0];
+                    }
+                    
+                    renderDatasetList();
+                    renderSelectedBadges();
+                    
+                    await loadSelectedDatasetsData();
+                } else {
+                    throw new Error('datasets.json is empty');
+                }
+            } catch (err) {
+                console.error(err);
+                setStatus(false, 'Manifest Loading Failed', `Could not load datasets.json: ${err.message}. Ensure the pipeline loop has been executed.`);
+            }
+        }
+
+        function renderDatasetList() {
+            const container = document.getElementById('dataset-list-container');
+            const searchVal = document.getElementById('dataset-search-input').value.toLowerCase().trim();
+            container.innerHTML = '';
+            
+            state.availableDatasets.forEach((dataset, index) => {
+                if (searchVal && !dataset.toLowerCase().includes(searchVal)) return;
+                
+                const isSelected = state.selectedDatasets.includes(dataset);
+                const isActive = state.activeDataset === dataset;
+                const displayNo = index + 1;
+                
+                const item = document.createElement('div');
+                item.className = `dataset-item ${isActive ? 'active-bg' : ''}`;
+                
+                item.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+                    
+                    if (!state.selectedDatasets.includes(dataset)) {
+                        state.selectedDatasets.push(dataset);
+                        renderSelectedBadges();
+                    }
+                    
+                    state.activeDataset = dataset;
+                    renderDatasetList();
+                    renderSelectedBadges();
+                    updateUrlParams();
+                    
+                    state.currentFrame = 0;
+                    state.currentTrackingFrame = 0;
+                    loadViewerData(); 
+                });
+                
+                const label = document.createElement('span');
+                label.className = 'dataset-item-label';
+                label.innerHTML = `No.${displayNo} ${dataset}`;
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'dataset-item-checkbox';
+                checkbox.checked = isSelected;
+                
+                checkbox.addEventListener('change', async (e) => {
+                    if (e.target.checked) {
+                        if (!state.selectedDatasets.includes(dataset)) {
+                            state.selectedDatasets.push(dataset);
+                        }
+                    } else {
+                        state.selectedDatasets = state.selectedDatasets.filter(d => d !== dataset);
+                        if (state.activeDataset === dataset) {
+                            state.activeDataset = state.selectedDatasets.length > 0 ? state.selectedDatasets[0] : null;
+                        }
+                    }
+                    
+                    renderSelectedBadges();
+                    updateUrlParams();
+                    
+                    setStatus(true, 'Updating dataset view...');
+                    await loadSelectedDatasetsData();
+                });
+                
+                item.appendChild(label);
+                item.appendChild(checkbox);
+                container.appendChild(item);
+            });
+            
+            if (container.children.length === 0) {
+                container.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.75rem; text-align: center; padding: 0.5rem;">No matches found</span>';
+            }
+        }
+
+        function renderSelectedBadges() {
+            const box = document.getElementById('selected-datasets-box');
+            box.innerHTML = '';
+            
+            if (state.selectedDatasets.length === 0) {
+                box.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; line-height: 30px;">None selected</span>';
+                return;
+            }
+            
+            state.selectedDatasets.forEach(dataset => {
+                const isActive = state.activeDataset === dataset;
+                const badge = document.createElement('span');
+                badge.className = `dataset-badge ${isActive ? 'active-bg' : ''}`;
+                badge.innerHTML = `${dataset}`;
+                
+                badge.addEventListener('click', (e) => {
+                    if (e.target.className === 'btn-remove-badge') return;
+                    state.activeDataset = dataset;
+                    renderDatasetList();
+                    renderSelectedBadges();
+                    updateUrlParams();
+                    loadViewerData();
+                });
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.className = 'btn-remove-badge';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    state.selectedDatasets = state.selectedDatasets.filter(d => d !== dataset);
+                    if (state.activeDataset === dataset) {
+                        state.activeDataset = state.selectedDatasets.length > 0 ? state.selectedDatasets[0] : null;
+                    }
+                    renderDatasetList();
+                    renderSelectedBadges();
+                    updateUrlParams();
+                    
+                    setStatus(true, 'Removing dataset...');
+                    await loadSelectedDatasetsData();
+                });
+                
+                badge.appendChild(removeBtn);
+                box.appendChild(badge);
+            });
+        }
+
+        function updateUrlParams() {
+            const newUrl = new URL(window.location.href);
+            newUrl.searchParams.set('datasets', state.selectedDatasets.join(','));
+            if (state.activeDataset) {
+                newUrl.searchParams.set('active', state.activeDataset);
+            } else {
+                newUrl.searchParams.delete('active');
+            }
+            window.history.replaceState({}, '', newUrl.toString());
+        }
+
+        async function loadSelectedDatasetsData() {
+            if (state.selectedDatasets.length === 0) {
+                state.framesData = { metadata: { num_frames: 1, scale: [1,1,1], shape: [100, 100, 100] }, frames: {} };
+                state.meta = state.framesData.metadata;
+                setStatus(false);
+                renderDetectionFrame();
+                renderTrackingFrame();
+                return;
+            }
+            
+            setStatus(true, 'Fetching selected datasets...');
+            
+            const newLoaded = {};
+            for (const dataset of state.selectedDatasets) {
+                if (state.loadedDatasets[dataset]) {
+                    newLoaded[dataset] = state.loadedDatasets[dataset];
+                    continue;
+                }
+                
+                const jsonUrl = `${state.dataUrl}${dataset}/viewer_data.json`;
+                try {
+                    const response = await fetch(jsonUrl, { mode: 'cors' });
+                    if (!response.ok) {
+                        throw new Error(`Failed to load dataset: ${dataset} (${response.status})`);
+                    }
+                    const data = await response.json();
+                    newLoaded[dataset] = data;
+                } catch (e) {
+                    console.error(e);
+                    setStatus(false, 'Data Load Error', `Error fetching data for dataset ${dataset}: ${e.message}`);
+                    return;
+                }
+            }
+            
+            state.loadedDatasets = newLoaded;
+            
+            if (!state.activeDataset || !state.loadedDatasets[state.activeDataset]) {
+                state.activeDataset = state.selectedDatasets[0];
+            }
+            
+            const activeData = state.loadedDatasets[state.activeDataset];
+            state.meta = activeData.metadata;
+            
+            const numFrames = state.meta.num_frames;
+            const mergedFrames = [];
+            
+            for (let f = 0; f < numFrames; f++) {
+                const mergedFrame = {
+                    tp_coords: [],
+                    fp_coords: [],
+                    fn_coords: [],
+                    tracks: [],
+                    edge_tp: [],
+                    edge_fp: [],
+                    edge_fn: [],
+                    summary: {
+                        precision: 0, recall: 0, f1: 0,
+                        edge_tp: 0, edge_fp: 0, edge_fn: 0
+                    }
+                };
+                
+                let totalTp = 0, totalFp = 0, totalFn = 0;
+                let totalEdgeTp = 0, totalEdgeFp = 0, totalEdgeFn = 0;
+                
+                state.selectedDatasets.forEach(dataset => {
+                    const dData = state.loadedDatasets[dataset];
+                    if (!dData || !dData.frames || !dData.frames[f]) return;
+                    
+                    const frame = dData.frames[f];
+                    
+                    const addDatasetLabel = (coords) => {
+                        if (!coords) return [];
+                        return coords.map(c => {
+                            const newC = [...c];
+                            newC[5] = dataset; // 6番目にデータセット名を設定
+                            return newC;
+                        });
+                    };
+                    
+                    mergedFrame.tp_coords.push(...addDatasetLabel(frame.tp_coords));
+                    mergedFrame.fp_coords.push(...addDatasetLabel(frame.fp_coords));
+                    mergedFrame.fn_coords.push(...addDatasetLabel(frame.fn_coords));
+                    
+                    const addDatasetLabelToEdges = (edges) => {
+                        if (!edges) return [];
+                        return edges.map(e => ({...e, dataset: dataset}));
+                    };
+                    
+                    mergedFrame.edge_tp.push(...addDatasetLabelToEdges(frame.edge_tp));
+                    mergedFrame.edge_fp.push(...addDatasetLabelToEdges(frame.edge_fp));
+                    mergedFrame.edge_fn.push(...addDatasetLabelToEdges(frame.edge_fn));
+                    
+                    if (frame.tracks) {
+                        mergedFrame.tracks.push(...frame.tracks.map(t => ({...t, dataset: dataset})));
+                    }
+                    
+                    totalTp += frame.tp_coords ? frame.tp_coords.length : 0;
+                    totalFp += frame.fp_coords ? frame.fp_coords.length : 0;
+                    totalFn += frame.fn_coords ? frame.fn_coords.length : 0;
+                    
+                    const s = frame.summary || {};
+                    totalEdgeTp += s.edge_tp || 0;
+                    totalEdgeFp += s.edge_fp || 0;
+                    totalEdgeFn += s.edge_fn || 0;
+                });
+                
+                mergedFrame.summary.precision = totalTp / (totalTp + totalFp) || 0;
+                mergedFrame.summary.recall = totalTp / (totalTp + totalFn) || 0;
+                mergedFrame.summary.f1 = (2 * mergedFrame.summary.precision * mergedFrame.summary.recall) / (mergedFrame.summary.precision + mergedFrame.summary.recall) || 0;
+                
+                mergedFrame.summary.edge_tp = totalEdgeTp;
+                mergedFrame.summary.edge_fp = totalEdgeFp;
+                mergedFrame.summary.edge_fn = totalEdgeFn;
+                
+                mergedFrames.push(mergedFrame);
+            }
+            
+            state.framesData = {
+                metadata: state.meta,
+                frames: mergedFrames
+            };
+            
+            elements.timelineSliderDet.max = numFrames - 1;
+            elements.currentFrameInputDet.max = numFrames - 1;
+            elements.totalFramesLblDet.textContent = numFrames;
+            elements.timelineSliderTrack.max = numFrames - 1;
+            elements.currentFrameInputTrack.max = numFrames - 1;
+            elements.totalFramesLblTrack.textContent = numFrames;
+            
+            setStatus(false);
+            renderDetectionFrame();
+            renderTrackingFrame();
         }
     </script>
 </body>
