@@ -92,7 +92,7 @@
             flex: 1;
             padding: 1.5rem;
             gap: 1.5rem;
-            height: calc(100vh - 70px);
+            height: calc(100vh - 250px);
         }
 
         /* Sidebar Control Panel */
@@ -245,6 +245,14 @@
             overflow-y: auto;
         }
 
+        .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            height: 100%;
+            overflow-y: auto;
+        }
+
         .view-card {
             background: var(--bg-surface);
             border: 1px solid var(--border-color);
@@ -278,11 +286,16 @@
             min-height: 220px;
         }
 
-        .mips-grid {
+        .mips-outer-container {
+            padding: 1rem 1.5rem 0 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .mips-horizontal-grid {
             display: grid;
-            grid-template-rows: repeat(3, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 0.75rem;
-            height: 100%;
+            height: 130px;
         }
 
         .mip-container {
@@ -434,7 +447,7 @@
             padding: 0.8rem;
             font-size: 0.85rem;
             min-height: 80px;
-            max-height: 120px;
+            flex: 1;
             overflow-y: auto;
         }
 
@@ -639,22 +652,73 @@
         </div>
     </header>
 
+    <div class="mips-outer-container">
+        <div class="view-card">
+            <div class="view-card-header" style="margin-bottom: 0.2rem; padding-bottom: 0.2rem;">
+                <div class="view-title">3D MIP Overlays (2D Projections - 検出フレーム連動)</div>
+            </div>
+            <div class="mips-horizontal-grid">
+                <!-- XY Projection -->
+                <div class="mip-container">
+                    <span class="mip-label">XY Projection</span>
+                    <div class="plane-gizmo" id="gizmo-xy">
+                        <svg width="34" height="34" viewBox="0 0 50 50">
+                            <!-- Top Face (XY) - Highlight Yellow -->
+                            <polygon points="25,10 38,17 25,25 12,17" fill="#eab308" stroke="#fef08a" stroke-width="1.2"/>
+                            <text x="25" y="19" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XY</text>
+                            <!-- Left Face (XZ) - Semitransparent Gray -->
+                            <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            <!-- Right Face (YZ) - Semitransparent Gray -->
+                            <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                        </svg>
+                    </div>
+                    <canvas id="canvas-xy" class="mip-canvas"></canvas>
+                </div>
+                <!-- XZ Projection -->
+                <div class="mip-container">
+                    <span class="mip-label">XZ Projection</span>
+                    <div class="plane-gizmo" id="gizmo-xz">
+                        <svg width="34" height="34" viewBox="0 0 50 50">
+                            <!-- Top Face (XY) - Semitransparent Gray -->
+                            <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            <!-- Left Face (XZ) - Highlight Magenta -->
+                            <polygon points="12,17 25,25 25,40 12,32" fill="#ec4899" stroke="#fbcfe8" stroke-width="1.2"/>
+                            <text x="18" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XZ</text>
+                            <!-- Right Face (YZ) - Semitransparent Gray -->
+                            <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                        </svg>
+                    </div>
+                    <canvas id="canvas-xz" class="mip-canvas"></canvas>
+                </div>
+                <!-- YZ Projection -->
+                <div class="mip-container">
+                    <span class="mip-label">YZ Projection</span>
+                    <div class="plane-gizmo" id="gizmo-yz">
+                        <svg width="34" height="34" viewBox="0 0 50 50">
+                            <!-- Top Face (XY) - Semitransparent Gray -->
+                            <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            <!-- Left Face (XZ) - Semitransparent Gray -->
+                            <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                            <!-- Right Face (YZ) - Highlight Cyan -->
+                            <polygon points="25,25 38,17 38,32 25,40" fill="#06b6d4" stroke="#cffafe" stroke-width="1.2"/>
+                            <text x="32" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">YZ</text>
+                        </svg>
+                    </div>
+                    <canvas id="canvas-yz" class="mip-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <!-- Sidebar Controls -->
         <div class="sidebar">
-            <div class="control-group">
-                <div class="card-title">Data Loading</div>
-                <label class="control-label">Data Directory URL</label>
-                <input type="text" id="data-url-input" class="input-text" placeholder="https://.../viewer_data/">
-                <button id="load-data-btn" class="btn" style="margin-top: 0.5rem;">Load Data</button>
-            </div>
-
             <div class="control-group" id="dataset-explorer-group" style="display: none;">
                 <div class="card-title">Dataset Explorer</div>
                 <div class="dataset-explorer">
                     <input type="text" id="dataset-search-input" class="input-text" placeholder="Search datasets..." style="font-family: var(--font-inter); font-size: 0.8rem; padding: 0.4rem 0.6rem;">
                     
-                    <div class="control-label" style="font-size: 0.7rem; margin-top: 0.2rem;">Selected (Merge View)</div>
+                    <div class="control-label" style="font-size: 0.7rem; margin-top: 0.2rem;">Selected Dataset</div>
                     <div class="selected-datasets-box" id="selected-datasets-box">
                         <span style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; line-height: 30px;">None selected</span>
                     </div>
@@ -695,65 +759,6 @@
                 
                 <label class="control-label" style="margin-top: 0.5rem;">Overlay Opacity: <span id="opacity-val" class="slider-value">0.7</span></label>
                 <input type="range" id="opacity-slider" class="range-slider" min="0" max="1" step="0.05" value="0.7">
-            </div>
-
-            <div class="control-group">
-                <div class="card-title">Frame Evaluation Stats</div>
-                
-                <div class="stats-section-title">Detection (Active Frame)</div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div id="stat-tp" class="stat-val" style="color: var(--color-tp);">-</div>
-                        <div class="stat-label">TP</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-fp" class="stat-val" style="color: var(--color-fp);">-</div>
-                        <div class="stat-label">FP</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-fn" class="stat-val" style="color: var(--color-fn);">-</div>
-                        <div class="stat-label">FN</div>
-                    </div>
-                </div>
-                
-                <div class="stats-section-title">Tracking (Active Frame)</div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div id="stat-edge-tp" class="stat-val" style="color: var(--color-tp);">-</div>
-                        <div class="stat-label">Edge TP</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-edge-fp" class="stat-val" style="color: var(--color-fp);">-</div>
-                        <div class="stat-label">Edge FP</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-edge-fn" class="stat-val" style="color: var(--color-fn);">-</div>
-                        <div class="stat-label">Edge FN</div>
-                    </div>
-                </div>
-
-                <div class="stats-section-title" style="margin-top:0.6rem;">Metrics Summary</div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div id="stat-precision" class="stat-val" style="font-size:0.85rem;">-</div>
-                        <div class="stat-label">Det Prec</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-recall" class="stat-val" style="font-size:0.85rem;">-</div>
-                        <div class="stat-label">Det Rec</div>
-                    </div>
-                    <div class="stat-box">
-                        <div id="stat-f1" class="stat-val" style="font-size:0.85rem;">-</div>
-                        <div class="stat-label">Det F1</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="control-group" style="margin-top: auto;">
-                <div class="card-title">Inspector</div>
-                <div id="inspector-panel" class="info-panel">
-                    Click a spot in the MIP panels or 3D view to inspect cell details here.
-                </div>
             </div>
         </div>
 
@@ -808,59 +813,68 @@
                 </div>
             </div>
 
-            <!-- Right Column: 3D MIP Overlays -->
-            <div class="view-card">
-                <div class="view-card-header">
-                    <div class="view-title">3D MIP Overlays (2D Projections - 検出フレーム連動)</div>
+            <!-- Right Column: Frame Evaluation Stats & Inspector -->
+            <div class="right-column">
+                <div class="view-card" style="flex-shrink: 0;">
+                    <div class="view-card-header">
+                        <div class="view-title">Frame Evaluation Stats</div>
+                    </div>
+                    
+                    <div class="stats-section-title">Detection (Active Frame)</div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div id="stat-tp" class="stat-val" style="color: var(--color-tp);">-</div>
+                            <div class="stat-label">TP</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-fp" class="stat-val" style="color: var(--color-fp);">-</div>
+                            <div class="stat-label">FP</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-fn" class="stat-val" style="color: var(--color-fn);">-</div>
+                            <div class="stat-label">FN</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-section-title">Tracking (Active Frame)</div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div id="stat-edge-tp" class="stat-val" style="color: var(--color-tp);">-</div>
+                            <div class="stat-label">Edge TP</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-edge-fp" class="stat-val" style="color: var(--color-fp);">-</div>
+                            <div class="stat-label">Edge FP</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-edge-fn" class="stat-val" style="color: var(--color-fn);">-</div>
+                            <div class="stat-label">Edge FN</div>
+                        </div>
+                    </div>
+
+                    <div class="stats-section-title" style="margin-top:0.6rem;">Metrics Summary</div>
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <div id="stat-precision" class="stat-val" style="font-size:0.85rem;">-</div>
+                            <div class="stat-label">Det Prec</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-recall" class="stat-val" style="font-size:0.85rem;">-</div>
+                            <div class="stat-label">Det Rec</div>
+                        </div>
+                        <div class="stat-box">
+                            <div id="stat-f1" class="stat-val" style="font-size:0.85rem;">-</div>
+                            <div class="stat-label">Det F1</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="mips-grid">
-                    <!-- XY Projection -->
-                    <div class="mip-container">
-                        <span class="mip-label">XY Projection</span>
-                        <div class="plane-gizmo" id="gizmo-xy">
-                            <svg width="34" height="34" viewBox="0 0 50 50">
-                                <!-- Top Face (XY) - Highlight Yellow -->
-                                <polygon points="25,10 38,17 25,25 12,17" fill="#eab308" stroke="#fef08a" stroke-width="1.2"/>
-                                <text x="25" y="19" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XY</text>
-                                <!-- Left Face (XZ) - Semitransparent Gray -->
-                                <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                                <!-- Right Face (YZ) - Semitransparent Gray -->
-                                <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                            </svg>
-                        </div>
-                        <canvas id="canvas-xy" class="mip-canvas"></canvas>
+
+                <div class="view-card" style="flex: 1; display: flex; flex-direction: column;">
+                    <div class="view-card-header">
+                        <div class="view-title">Inspector</div>
                     </div>
-                    <!-- XZ Projection -->
-                    <div class="mip-container">
-                        <span class="mip-label">XZ Projection</span>
-                        <div class="plane-gizmo" id="gizmo-xz">
-                            <svg width="34" height="34" viewBox="0 0 50 50">
-                                <!-- Top Face (XY) - Semitransparent Gray -->
-                                <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                                <!-- Left Face (XZ) - Highlight Magenta -->
-                                <polygon points="12,17 25,25 25,40 12,32" fill="#ec4899" stroke="#fbcfe8" stroke-width="1.2"/>
-                                <text x="18" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">XZ</text>
-                                <!-- Right Face (YZ) - Semitransparent Gray -->
-                                <polygon points="25,25 38,17 38,32 25,40" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                            </svg>
-                        </div>
-                        <canvas id="canvas-xz" class="mip-canvas"></canvas>
-                    </div>
-                    <!-- YZ Projection -->
-                    <div class="mip-container">
-                        <span class="mip-label">YZ Projection</span>
-                        <div class="plane-gizmo" id="gizmo-yz">
-                            <svg width="34" height="34" viewBox="0 0 50 50">
-                                <!-- Top Face (XY) - Semitransparent Gray -->
-                                <polygon points="25,10 38,17 25,25 12,17" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                                <!-- Left Face (XZ) - Semitransparent Gray -->
-                                <polygon points="12,17 25,25 25,40 12,32" fill="rgba(100,116,139,0.3)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                                <!-- Right Face (YZ) - Highlight Cyan -->
-                                <polygon points="25,25 38,17 38,32 25,40" fill="#06b6d4" stroke="#cffafe" stroke-width="1.2"/>
-                                <text x="32" y="30" font-size="7.5" fill="#0f172a" font-weight="bold" text-anchor="middle" font-family="sans-serif">YZ</text>
-                            </svg>
-                        </div>
-                        <canvas id="canvas-yz" class="mip-canvas"></canvas>
+                    <div id="inspector-panel" class="info-panel">
+                        Click a spot in the MIP panels or 3D view to inspect cell details here.
                     </div>
                 </div>
             </div>
@@ -924,8 +938,6 @@
 
         // --- DOM Elements ---
         const elements = {
-            dataUrlInput: document.getElementById('data-url-input'),
-            loadDataBtn: document.getElementById('load-data-btn'),
             dataSourceBadge: document.getElementById('data-source-badge'),
             showTp: document.getElementById('show-tp'),
             showFp: document.getElementById('show-fp'),
@@ -974,35 +986,16 @@
 
         // URLパラメータ、または同一階層からデータのURLを特定
         function resolveDataUrl() {
-            const urlParams = new URLSearchParams(window.location.search);
-            let dataParam = urlParams.get('data');
-            
-            if (dataParam) {
-                if (!dataParam.endsWith('/')) dataParam += '/';
-                state.dataUrl = dataParam;
-            } else {
-                const loc = window.location;
-                const pathParts = loc.pathname.split('/');
-                pathParts.pop();
-                const baseDir = pathParts.join('/');
-                state.dataUrl = `${loc.protocol}//${loc.host}${baseDir}/viewer_data/`;
-            }
-            elements.dataUrlInput.value = state.dataUrl;
+            const loc = window.location;
+            const pathParts = loc.pathname.split('/');
+            pathParts.pop();
+            const baseDir = pathParts.join('/');
+            state.dataUrl = `${loc.protocol}//${loc.host}${baseDir}/viewer_data/`;
             elements.dataSourceBadge.textContent = state.dataUrl;
         }
 
         // イベントハンドラ登録
         function setupEventListeners() {
-            elements.loadDataBtn.addEventListener('click', () => {
-                let inputUrl = elements.dataUrlInput.value.trim();
-                if (!inputUrl) return;
-                if (!inputUrl.endsWith('/')) inputUrl += '/';
-                
-                const newUrl = new URL(window.location.href);
-                newUrl.searchParams.set('data', inputUrl);
-                window.location.href = newUrl.toString();
-            });
-
             elements.overlayRetryBtn.addEventListener('click', () => {
                 loadViewerData();
             });
@@ -1392,83 +1385,149 @@
         function renderTrackingPlot(frameData) {
             const scale = state.meta.scale || [1.0, 1.0, 1.0];
             const traces = [];
+            const t = state.currentTrackingFrame;
 
             state.selectedDatasets.forEach(dataset => {
-                const edgeTp = frameData.edge_tp ? frameData.edge_tp.filter(e => e.dataset === dataset) : [];
-                const edgeFp = frameData.edge_fp ? frameData.edge_fp.filter(e => e.dataset === dataset) : [];
-                const edgeFn = frameData.edge_fn ? frameData.edge_fn.filter(e => e.dataset === dataset) : [];
+                // 1. エッジの描画 (t-1 -> t)
+                const fDataT = state.framesData.frames[t];
+                if (fDataT) {
+                    const edgeTp = fDataT.edge_tp ? fDataT.edge_tp.filter(e => e.dataset === dataset) : [];
+                    const edgeFp = fDataT.edge_fp ? fDataT.edge_fp.filter(e => e.dataset === dataset) : [];
+                    const edgeFn = fDataT.edge_fn ? fDataT.edge_fn.filter(e => e.dataset === dataset) : [];
 
-                // 1. Edge TP (緑・実線)
-                if (config.showTracks && edgeTp.length > 0) {
-                    edgeTp.forEach(e => {
-                        traces.push({
-                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                            mode: 'lines',
-                            type: 'scatter3d',
-                            showlegend: false,
-                            line: { color: '#10b981', width: 2 },
-                            hoverinfo: 'none'
+                    if (config.showTracks && config.showTp && edgeTp.length > 0) {
+                        edgeTp.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#10b981', width: 2 },
+                                hoverinfo: 'none'
+                            });
                         });
-                    });
+                    }
+
+                    if (config.showTracks && config.showFp && edgeFp.length > 0) {
+                        edgeFp.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                                hoverinfo: 'none'
+                            });
+                        });
+                    }
+
+                    if (config.showTracks && config.showFn && edgeFn.length > 0) {
+                        edgeFn.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                                hoverinfo: 'none'
+                            });
+                        });
+                    }
                 }
 
-                // 2. Edge FP (赤・破線)
-                if (config.showTracks && edgeFp.length > 0) {
-                    edgeFp.forEach(e => {
-                        traces.push({
-                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                            mode: 'lines',
-                            type: 'scatter3d',
-                            showlegend: false,
-                            line: { color: '#ef4444', width: 2, dash: 'dash' },
-                            hoverinfo: 'none'
+                // 2. エッジの描画 (t -> t+1)
+                const fDataTplus1 = state.framesData.frames[t + 1];
+                if (fDataTplus1) {
+                    const edgeTp = fDataTplus1.edge_tp ? fDataTplus1.edge_tp.filter(e => e.dataset === dataset) : [];
+                    const edgeFp = fDataTplus1.edge_fp ? fDataTplus1.edge_fp.filter(e => e.dataset === dataset) : [];
+                    const edgeFn = fDataTplus1.edge_fn ? fDataTplus1.edge_fn.filter(e => e.dataset === dataset) : [];
+
+                    if (config.showTracks && config.showTp && edgeTp.length > 0) {
+                        edgeTp.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#10b981', width: 2 },
+                                hoverinfo: 'none'
+                            });
                         });
-                    });
+                    }
+
+                    if (config.showTracks && config.showFp && edgeFp.length > 0) {
+                        edgeFp.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                                hoverinfo: 'none'
+                            });
+                        });
+                    }
+
+                    if (config.showTracks && config.showFn && edgeFn.length > 0) {
+                        edgeFn.forEach(e => {
+                            traces.push({
+                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                                hoverinfo: 'none'
+                            });
+                        });
+                    }
                 }
 
-                // 3. Edge FN (シアン・点線)
-                if (config.showTracks && edgeFn.length > 0) {
-                    edgeFn.forEach(e => {
+                // 3. 端点（ノード）の描画 (t-1, t, t+1)
+                const framesToRender = [
+                    { fIdx: t - 1, symbol: 'square', label: 't-1', opacity: 0.5 },
+                    { fIdx: t, symbol: 'circle', label: 't', opacity: 0.95 },
+                    { fIdx: t + 1, symbol: 'diamond', label: 't+1', opacity: 0.5 }
+                ];
+
+                framesToRender.forEach(({ fIdx, symbol, label, opacity }) => {
+                    const fData = state.framesData.frames[fIdx];
+                    if (!fData) return;
+
+                    const tp = fData.tp_coords ? fData.tp_coords.filter(c => c[5] === dataset) : [];
+                    const fp = fData.fp_coords ? fData.fp_coords.filter(c => c[5] === dataset) : [];
+                    const fn = fData.fn_coords ? fData.fn_coords.filter(c => c[5] === dataset) : [];
+
+                    const addEndPoints = (coords, color, type) => {
+                        if (!coords || coords.length === 0) return;
                         traces.push({
-                            x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                            y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                            z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                            mode: 'lines',
+                            x: coords.map(c => c[2] * scale[2]),
+                            y: coords.map(c => c[1] * scale[1]),
+                            z: coords.map(c => c[0] * scale[0]),
+                            mode: 'markers',
                             type: 'scatter3d',
-                            showlegend: false,
-                            line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
-                            hoverinfo: 'none'
+                            name: `[${dataset}] ${type} Node (${label})`,
+                            marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: opacity, symbol: symbol },
+                            customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
+                            hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>` + (type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>') + `Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                         });
-                    });
-                }
+                    };
 
-                // 端点
-                const tp = frameData.tp_coords ? frameData.tp_coords.filter(c => c[5] === dataset) : [];
-                const fp = frameData.fp_coords ? frameData.fp_coords.filter(c => c[5] === dataset) : [];
-                const fn = frameData.fn_coords ? frameData.fn_coords.filter(c => c[5] === dataset) : [];
-
-                const addEndPoints = (coords, color, type) => {
-                    if (!coords || coords.length === 0) return;
-                    traces.push({
-                        x: coords.map(c => c[2] * scale[2]),
-                        y: coords.map(c => c[1] * scale[1]),
-                        z: coords.map(c => c[0] * scale[0]),
-                        mode: 'markers',
-                        type: 'scatter3d',
-                        name: `[${dataset}] ${type} Node`,
-                        marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: 0.85 },
-                        customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: `Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>${type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>'}Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
-                    });
-                };
-
-                if (config.showTp) addEndPoints(tp, '#10b981', 'TP');
-                if (config.showFp) addEndPoints(fp, '#ef4444', 'FP');
-                if (config.showFn) addEndPoints(fn, '#06b6d4', 'FN');
+                    if (config.showTp) addEndPoints(tp, '#10b981', 'TP');
+                    if (config.showFp) addEndPoints(fp, '#ef4444', 'FP');
+                    if (config.showFn) addEndPoints(fn, '#06b6d4', 'FN');
+                });
             });
 
             // ダミー凡例用トレース
@@ -1491,6 +1550,29 @@
                 mode: 'lines',
                 name: 'Edge FN (Missing Connection)',
                 line: { color: '#06b6d4', width: 2, dash: 'dot' },
+                type: 'scatter3d'
+            });
+
+            // 形状によるフレーム識別のダミー凡例
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'markers',
+                name: 'Node Frame t-1',
+                marker: { color: '#cccccc', symbol: 'square', size: 6 },
+                type: 'scatter3d'
+            });
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'markers',
+                name: 'Node Frame t (Active)',
+                marker: { color: '#cccccc', symbol: 'circle', size: 6 },
+                type: 'scatter3d'
+            });
+            traces.push({
+                x: [null], y: [null], z: [null],
+                mode: 'markers',
+                name: 'Node Frame t+1',
+                marker: { color: '#cccccc', symbol: 'diamond', size: 6 },
                 type: 'scatter3d'
             });
 
@@ -2106,19 +2188,19 @@
                     const datasetsParam = urlParams.get('datasets');
                     const activeParam = urlParams.get('active');
                     
-                    if (datasetsParam) {
-                        state.selectedDatasets = datasetsParam.split(',').filter(d => state.availableDatasets.includes(d));
-                    }
                     if (activeParam && state.availableDatasets.includes(activeParam)) {
                         state.activeDataset = activeParam;
+                    } else if (datasetsParam) {
+                        const firstDet = datasetsParam.split(',')[0];
+                        if (state.availableDatasets.includes(firstDet)) {
+                            state.activeDataset = firstDet;
+                        }
                     }
                     
-                    if (state.selectedDatasets.length === 0) {
-                        state.selectedDatasets = [state.availableDatasets[0]];
+                    if (!state.activeDataset) {
+                        state.activeDataset = state.availableDatasets[0];
                     }
-                    if (!state.activeDataset || !state.selectedDatasets.includes(state.activeDataset)) {
-                        state.activeDataset = state.selectedDatasets[0];
-                    }
+                    state.selectedDatasets = [state.activeDataset];
                     
                     renderDatasetList();
                     renderSelectedBadges();
@@ -2141,7 +2223,6 @@
             state.availableDatasets.forEach((dataset, index) => {
                 if (searchVal && !dataset.toLowerCase().includes(searchVal)) return;
                 
-                const isSelected = state.selectedDatasets.includes(dataset);
                 const isActive = state.activeDataset === dataset;
                 const displayNo = index + 1;
                 
@@ -2149,14 +2230,8 @@
                 item.className = `dataset-item ${isActive ? 'active-bg' : ''}`;
                 
                 item.addEventListener('click', (e) => {
-                    if (e.target.tagName === 'INPUT') return;
-                    
-                    if (!state.selectedDatasets.includes(dataset)) {
-                        state.selectedDatasets.push(dataset);
-                        renderSelectedBadges();
-                    }
-                    
                     state.activeDataset = dataset;
+                    state.selectedDatasets = [dataset];
                     renderDatasetList();
                     renderSelectedBadges();
                     updateUrlParams();
@@ -2170,32 +2245,7 @@
                 label.className = 'dataset-item-label';
                 label.innerHTML = `No.${displayNo} ${dataset}`;
                 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.className = 'dataset-item-checkbox';
-                checkbox.checked = isSelected;
-                
-                checkbox.addEventListener('change', async (e) => {
-                    if (e.target.checked) {
-                        if (!state.selectedDatasets.includes(dataset)) {
-                            state.selectedDatasets.push(dataset);
-                        }
-                    } else {
-                        state.selectedDatasets = state.selectedDatasets.filter(d => d !== dataset);
-                        if (state.activeDataset === dataset) {
-                            state.activeDataset = state.selectedDatasets.length > 0 ? state.selectedDatasets[0] : null;
-                        }
-                    }
-                    
-                    renderSelectedBadges();
-                    updateUrlParams();
-                    
-                    setStatus(true, 'Updating dataset view...');
-                    await loadSelectedDatasetsData();
-                });
-                
                 item.appendChild(label);
-                item.appendChild(checkbox);
                 container.appendChild(item);
             });
             
@@ -2208,51 +2258,20 @@
             const box = document.getElementById('selected-datasets-box');
             box.innerHTML = '';
             
-            if (state.selectedDatasets.length === 0) {
+            if (!state.activeDataset) {
                 box.innerHTML = '<span style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; line-height: 30px;">None selected</span>';
                 return;
             }
             
-            state.selectedDatasets.forEach(dataset => {
-                const isActive = state.activeDataset === dataset;
-                const badge = document.createElement('span');
-                badge.className = `dataset-badge ${isActive ? 'active-bg' : ''}`;
-                badge.innerHTML = `${dataset}`;
-                
-                badge.addEventListener('click', (e) => {
-                    if (e.target.className === 'btn-remove-badge') return;
-                    state.activeDataset = dataset;
-                    renderDatasetList();
-                    renderSelectedBadges();
-                    updateUrlParams();
-                    loadViewerData();
-                });
-                
-                const removeBtn = document.createElement('span');
-                removeBtn.className = 'btn-remove-badge';
-                removeBtn.innerHTML = '&times;';
-                removeBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    state.selectedDatasets = state.selectedDatasets.filter(d => d !== dataset);
-                    if (state.activeDataset === dataset) {
-                        state.activeDataset = state.selectedDatasets.length > 0 ? state.selectedDatasets[0] : null;
-                    }
-                    renderDatasetList();
-                    renderSelectedBadges();
-                    updateUrlParams();
-                    
-                    setStatus(true, 'Removing dataset...');
-                    await loadSelectedDatasetsData();
-                });
-                
-                badge.appendChild(removeBtn);
-                box.appendChild(badge);
-            });
+            const badge = document.createElement('span');
+            badge.className = `dataset-badge active-bg`;
+            badge.innerHTML = `${state.activeDataset}`;
+            box.appendChild(badge);
         }
 
         function updateUrlParams() {
             const newUrl = new URL(window.location.href);
-            newUrl.searchParams.set('datasets', state.selectedDatasets.join(','));
+            newUrl.searchParams.set('datasets', state.activeDataset);
             if (state.activeDataset) {
                 newUrl.searchParams.set('active', state.activeDataset);
             } else {
