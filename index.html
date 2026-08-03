@@ -92,7 +92,7 @@
             flex: 1;
             padding: 1.5rem;
             gap: 1.5rem;
-            height: calc(100vh - 250px);
+            height: calc(100vh - 370px);
         }
 
         /* Sidebar Control Panel */
@@ -295,7 +295,7 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 0.75rem;
-            height: 130px;
+            height: 250px;
         }
 
         .mip-container {
@@ -1001,9 +1001,9 @@
             });
 
             // 表示フィルターのトグルイベント
-            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; renderDetectionFrame(); });
-            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; renderDetectionFrame(); });
-            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; renderDetectionFrame(); });
+            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
+            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
+            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
             elements.showTracks.addEventListener('change', (e) => { 
                 config.showTracks = e.target.checked; 
                 renderDetectionFrame(); 
@@ -1397,14 +1397,27 @@
 
                     if (config.showTracks && config.showTp && edgeTp.length > 0) {
                         edgeTp.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid): 明るい
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#10b981', width: 2 },
+                                line: { color: '#10b981', width: 3.5 },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end): 薄い
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(16, 185, 129, 0.25)', width: 3.5 },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1412,14 +1425,27 @@
 
                     if (config.showTracks && config.showFp && edgeFp.length > 0) {
                         edgeFp.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid)
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                                line: { color: '#ef4444', width: 3.5, dash: 'dash' },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end)
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(239, 68, 68, 0.25)', width: 3.5, dash: 'dash' },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1427,14 +1453,27 @@
 
                     if (config.showTracks && config.showFn && edgeFn.length > 0) {
                         edgeFn.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid)
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                                line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end)
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(6, 182, 212, 0.25)', width: 2.5, dash: 'dot' },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1450,14 +1489,27 @@
 
                     if (config.showTracks && config.showTp && edgeTp.length > 0) {
                         edgeTp.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid)
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#10b981', width: 2 },
+                                line: { color: '#10b981', width: 3.5 },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end)
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(16, 185, 129, 0.25)', width: 3.5 },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1465,14 +1517,27 @@
 
                     if (config.showTracks && config.showFp && edgeFp.length > 0) {
                         edgeFp.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid)
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                                line: { color: '#ef4444', width: 3.5, dash: 'dash' },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end)
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(239, 68, 68, 0.25)', width: 3.5, dash: 'dash' },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1480,14 +1545,27 @@
 
                     if (config.showTracks && config.showFn && edgeFn.length > 0) {
                         edgeFn.forEach(e => {
+                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
+                            // 過去側 (start -> mid)
                             traces.push({
-                                x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
+                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
+                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
                                 mode: 'lines',
                                 type: 'scatter3d',
                                 showlegend: false,
-                                line: { color: '#06b6d4', width: 1.5, dash: 'dot' },
+                                line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
+                                hoverinfo: 'none'
+                            });
+                            // 未来側 (mid -> end)
+                            traces.push({
+                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
+                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
+                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
+                                mode: 'lines',
+                                type: 'scatter3d',
+                                showlegend: false,
+                                line: { color: 'rgba(6, 182, 212, 0.25)', width: 2.5, dash: 'dot' },
                                 hoverinfo: 'none'
                             });
                         });
@@ -1496,12 +1574,12 @@
 
                 // 3. 端点（ノード）の描画 (t-1, t, t+1)
                 const framesToRender = [
-                    { fIdx: t - 1, symbol: 'square', label: 't-1', opacity: 0.5 },
-                    { fIdx: t, symbol: 'circle', label: 't', opacity: 0.95 },
-                    { fIdx: t + 1, symbol: 'diamond', label: 't+1', opacity: 0.5 }
+                    { fIdx: t - 1, size: Math.max(1.5, config.spotRadius * 0.8), label: 't-1', opacity: 0.5 },
+                    { fIdx: t, size: Math.max(1.5, config.spotRadius * 0.5), label: 't', opacity: 0.95 },
+                    { fIdx: t + 1, size: Math.max(1.5, config.spotRadius * 0.3), label: 't+1', opacity: 0.5 }
                 ];
 
-                framesToRender.forEach(({ fIdx, symbol, label, opacity }) => {
+                framesToRender.forEach(({ fIdx, size, label, opacity }) => {
                     const fData = state.framesData.frames[fIdx];
                     if (!fData) return;
 
@@ -1518,7 +1596,7 @@
                             mode: 'markers',
                             type: 'scatter3d',
                             name: `[${dataset}] ${type} Node (${label})`,
-                            marker: { size: Math.max(3, config.spotRadius - 0.5), color: color, opacity: opacity, symbol: symbol },
+                            marker: { size: size, color: color, opacity: opacity, symbol: 'circle' },
                             customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
                             hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>` + (type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>') + `Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                         });
@@ -1534,22 +1612,22 @@
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge TP (Correct Connection)',
-                line: { color: '#10b981', width: 2 },
+                name: 'Edge TP (Bright -> Thin)',
+                line: { color: '#10b981', width: 3.5 },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge FP (Extra Connection)',
-                line: { color: '#ef4444', width: 2, dash: 'dash' },
+                name: 'Edge FP (Bright -> Thin)',
+                line: { color: '#ef4444', width: 3.5, dash: 'dash' },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge FN (Missing Connection)',
-                line: { color: '#06b6d4', width: 2, dash: 'dot' },
+                name: 'Edge FN (Bright -> Thin)',
+                line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
                 type: 'scatter3d'
             });
 
@@ -1557,22 +1635,22 @@
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'markers',
-                name: 'Node Frame t-1',
-                marker: { color: '#cccccc', symbol: 'square', size: 6 },
+                name: 'Node Frame t-1 (Large)',
+                marker: { color: '#cccccc', symbol: 'circle', size: 6.4 },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'markers',
-                name: 'Node Frame t (Active)',
-                marker: { color: '#cccccc', symbol: 'circle', size: 6 },
+                name: 'Node Frame t (Active, Medium)',
+                marker: { color: '#cccccc', symbol: 'circle', size: 4.0 },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'markers',
-                name: 'Node Frame t+1',
-                marker: { color: '#cccccc', symbol: 'diamond', size: 6 },
+                name: 'Node Frame t+1 (Small)',
+                marker: { color: '#cccccc', symbol: 'circle', size: 2.4 },
                 type: 'scatter3d'
             });
 
