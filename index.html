@@ -67,26 +67,6 @@
             letter-spacing: -0.025em;
         }
 
-        .header-meta {
-            display: flex;
-            gap: 1.5rem;
-            align-items: center;
-        }
-
-        .data-source-badge {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            padding: 0.4rem 0.8rem;
-            border-radius: 9999px;
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            font-family: var(--font-mono);
-            max-width: 300px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
         .container {
             display: flex;
             flex: 1;
@@ -647,9 +627,6 @@
 
     <header>
         <h1>Biohub Cell Tracking Result Viewer</h1>
-        <div class="header-meta">
-            <div id="data-source-badge" class="data-source-badge">Loading data source...</div>
-        </div>
     </header>
 
     <div class="mips-outer-container">
@@ -938,7 +915,6 @@
 
         // --- DOM Elements ---
         const elements = {
-            dataSourceBadge: document.getElementById('data-source-badge'),
             showTp: document.getElementById('show-tp'),
             showFp: document.getElementById('show-fp'),
             showFn: document.getElementById('show-fn'),
