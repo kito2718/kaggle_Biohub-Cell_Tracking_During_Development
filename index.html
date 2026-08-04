@@ -1029,11 +1029,7 @@
                 if (isNaN(val)) val = 0;
                 val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
                 state.currentFrame = val;
-                let val = parseInt(e.target.value);
-                if (isNaN(val)) val = 0;
-                val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
-                state.currentTrackingFrame = val;
-                renderTrackingFrame();
+                renderBothFrames();
             });
 
             // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
@@ -1983,6 +1979,43 @@
                 renderDetectionFrame();
                 renderTrackingFrame();
             }, 30);
+        }
+
+        // --- 再生アニメーション制御 (グローバル) ---
+        function togglePlay() {
+            if (state.isPlayingDet) {
+                stopPlay();
+            } else {
+                startPlay();
+            }
+        }
+
+        function startPlay() {
+            if (!state.meta) return;
+            state.isPlayingDet = true;
+            elements.playBtn.textContent = '⏸';
+            elements.playBtn.classList.add('btn-secondary');
+            
+            state.playIntervalDet = setInterval(() => {
+                const nextFrame = (state.currentFrame + 1) % state.meta.num_frames;
+                state.currentFrame = nextFrame;
+                renderBothFrames();
+            }, config.playSpeed);
+        }
+
+        function stopPlay() {
+            state.isPlayingDet = false;
+            elements.playBtn.textContent = '▶';
+            elements.playBtn.classList.remove('btn-secondary');
+            if (state.playIntervalDet) {
+                clearInterval(state.playIntervalDet);
+                state.playIntervalDet = null;
+            }
+        }
+
+        function renderBothFrames() {
+            renderDetectionFrame();
+            renderTrackingFrame();
         }
 
 
