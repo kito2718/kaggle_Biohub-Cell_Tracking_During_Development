@@ -1790,7 +1790,8 @@
                         id: item.coord[3],
                         track_id: item.coord[4],
                         type: item.type,
-                        z: item.coord[0], y: item.coord[1], x: item.coord[2]
+                        z: item.coord[0], y: item.coord[1], x: item.coord[2],
+                        dataset: item.coord[5]
                     };
                 }
             });
@@ -1818,93 +1819,6 @@
             const sy = my / g.scale;
             
             // 3. Canvas 内ローカル元画像座標
-            const mouseX = sx + canvas.width / 2;
-            const mouseY = sy + canvas.height / 2;
-            
-            return { x: mouseX, y: mouseY };
-        }
-
-        // ホバー処理 (ツールチップ表示)
-        function handleCanvasHover(e, axis) {
-            const frameData = state.framesData.frames[state.currentFrame];
-            if (!frameData) return;
-
-            const coords = getCanvasMouseLocalCoords(e, axis);
-            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
-            
-            if (spot) {
-                elements.tooltip.style.display = 'block';
-                elements.tooltip.style.left = `${e.clientX + 10}px`;
-                elements.tooltip.style.top = `${e.clientY + 10}px`;
-                elements.tooltip.innerHTML = `
-                    <strong>${spot.type} Spot</strong><br>
-                    ID: ${spot.id}<br>
-                    ${spot.track_id ? `Track: ${spot.track_id}<br>` : ''}
-                    Z: ${spot.z.toFixed(1)}<br>
-                    Y: ${spot.y.toFixed(1)}<br>
-                    X: ${spot.x.toFixed(1)}
-                `;
-            } else {
-                elements.tooltip.style.display = 'none';
-            }
-        }
-
-        // クリック処理
-        function handleCanvasClick(e, axis) {
-            const frameData = state.framesData.frames[state.currentFrame];
-            if (!frameData) return;
-
-            const coords = getCanvasMouseLocalCoords(e, axis);
-            const spot = findNearestSpot(coords.x, coords.y, axis, frameData);
-            selectSpot(spot);
-        }
-
-        // スポットの選択状態更新とインスペクター表示
-        function selectSpot(spot) {
-            if (spot) {
-                state.selectedSpot = spot;
-                state.selectedTrackId = spot.track_id !== undefined ? spot.track_id : (spot.customdata ? spot.customdata.track_id : null);
-                if (state.selectedTrackId === -1 || state.selectedTrackId === undefined) {
-                    state.selectedTrackId = null;
-                }
-                
-                elements.inspectorPanel.innerHTML = `
-                    <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
-                        <strong>Type:</strong> <span style="color: ${spot.type === 'TP' ? 'var(--color-tp)' : spot.type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">${spot.type}</span><br>
-                        <strong>Spot ID:</strong> ${spot.id}<br>
-                        <strong>Track ID:</strong> ${state.selectedTrackId !== null ? state.selectedTrackId : '<span style="color: var(--text-secondary);">None</span>'}<br>
-                        <strong>Position (Z, Y, X):</strong><br>
-                        &nbsp;&nbsp;(${spot.z.toFixed(2)}, ${spot.y.toFixed(2)}, ${spot.x.toFixed(2)})
-                    </div>
-                `;
-            } else {
-                state.selectedSpot = null;
-                state.selectedTrackId = null;
-                        z: item.coord[0], y: item.coord[1], x: item.coord[2],
-                        dataset: item.coord[5]
-                    };
-                }
-            });
-
-            return nearest;
-        }
-
-        // CSS transform された Canvas 内のマウスのローカル元画像座標を幾何逆変換で算出する
-        function getCanvasMouseLocalCoords(e, axis) {
-            const canvas = elements.canvases[axis];
-            const g = state.canvasGestures[axis];
-            const container = canvas.parentElement;
-            const cRect = container.getBoundingClientRect();
-            
-            const cx = e.clientX - (cRect.left + cRect.width / 2);
-            const cy = e.clientY - (cRect.top + cRect.height / 2);
-            
-            let mx = cx - g.translateX;
-            let my = cy - g.translateY;
-            
-            const sx = mx / g.scale;
-            const sy = my / g.scale;
-            
             const mouseX = sx + canvas.width / 2;
             const mouseY = sy + canvas.height / 2;
             
