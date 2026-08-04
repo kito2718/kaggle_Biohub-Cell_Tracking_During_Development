@@ -726,6 +726,19 @@
                         <span><span class="legend-color" style="background-color: #a5b4fc; border-radius: 0;"></span>Tracks (Connections)</span>
                         <input type="checkbox" id="show-tracks" class="toggle-checkbox" checked>
                     </label>
+                    <div style="border-top: 1px solid rgba(255,255,255,0.05); margin: 0.3rem 0; padding-top: 0.3rem;"></div>
+                    <label class="toggle-item">
+                        <span><span class="legend-color" style="background-color: #cccccc;"></span>Node t-1</span>
+                        <input type="checkbox" id="show-node-t-prev" class="toggle-checkbox" checked>
+                    </label>
+                    <label class="toggle-item">
+                        <span><span class="legend-color" style="background-color: #ffffff;"></span>Node t</span>
+                        <input type="checkbox" id="show-node-t" class="toggle-checkbox" checked>
+                    </label>
+                    <label class="toggle-item">
+                        <span><span class="legend-color" style="background-color: #888888;"></span>Node t+1</span>
+                        <input type="checkbox" id="show-node-t-next" class="toggle-checkbox" checked>
+                    </label>
                 </div>
             </div>
 
@@ -744,49 +757,19 @@
             <!-- Left Column: Cell Detection plot, timeline, and Tracking plot, timeline -->
             <div class="left-column">
                 <!-- 3D Point Cloud View (Cell Detection) -->
-                <div class="view-card" style="flex-shrink: 0; margin-bottom: 1.5rem;">
+                <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
                 </div>
 
-                <!-- Timeline Controller (Detection & MIPs) -->
-                <div class="timeline-bar" style="margin-bottom: 1.5rem;">
-                    <button id="play-btn-det" class="btn play-btn">▶</button>
-                    <div class="timeline-slider-container">
-                        <div class="timeline-info">
-                            <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                Detection Frame: 
-                                <input type="number" id="current-frame-input-det" class="frame-input-spinner" value="0" min="0">
-                            </span>
-                            <span>Total: <span id="total-frames-lbl-det">0</span></span>
-                        </div>
-                        <input type="range" id="timeline-slider-det" class="range-slider" min="0" max="0" value="0">
-                    </div>
-                </div>
-
                 <!-- 3D Tracking Plot (Tracking Evaluation) -->
-                <div class="view-card" style="flex-shrink: 0; margin-bottom: 1.5rem;">
+                <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
-                </div>
-
-                <!-- Timeline Controller (Tracking) -->
-                <div class="timeline-bar">
-                    <button id="play-btn-track" class="btn play-btn">▶</button>
-                    <div class="timeline-slider-container">
-                        <div class="timeline-info">
-                            <span style="display: flex; align-items: center; gap: 0.5rem;">
-                                Tracking Frame: 
-                                <input type="number" id="current-frame-input-track" class="frame-input-spinner" value="0" min="0">
-                            </span>
-                            <span>Total: <span id="total-frames-lbl-track">0</span></span>
-                        </div>
-                        <input type="range" id="timeline-slider-track" class="range-slider" min="0" max="0" value="0">
-                    </div>
                 </div>
             </div>
 
@@ -844,6 +827,31 @@
                             <div class="stat-label">Det F1</div>
                         </div>
                     </div>
+
+                    <div class="stats-section-title" style="margin-top:0.6rem;">Dataset Info</div>
+                    <div class="stats-grid" style="grid-template-columns: 1fr;">
+                        <div class="stat-box" style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.8rem;">
+                            <div class="stat-label" style="font-size: 0.7rem;">Estimated Total Nodes (T_true)</div>
+                            <div id="stat-estimated-nodes" class="stat-val" style="font-size: 0.85rem;">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Timeline Controller (Integrated & Synchronized) -->
+                <div class="timeline-bar" style="flex-shrink: 0;">
+                    <button id="play-btn-global" class="btn play-btn">▶</button>
+                    <div class="timeline-slider-container">
+                        <div class="timeline-info">
+                            <span style="display: flex; align-items: center; gap: 0.3rem;">
+                                <button id="prev-frame-btn" class="btn btn-secondary" style="padding: 0px 4px; font-size: 0.65rem; height: 20px; width: 20px; min-width: 20px; display: flex; align-items: center; justify-content: center;">◀</button>
+                                Frame: 
+                                <input type="number" id="current-frame-input-global" class="frame-input-spinner" value="0" min="0" style="width: 50px; height: 20px; font-size: 0.75rem; padding: 0;">
+                                <button id="next-frame-btn" class="btn btn-secondary" style="padding: 0px 4px; font-size: 0.65rem; height: 20px; width: 20px; min-width: 20px; display: flex; align-items: center; justify-content: center;">▶</button>
+                            </span>
+                            <span>Total: <span id="total-frames-lbl-global">0</span></span>
+                        </div>
+                        <input type="range" id="timeline-slider-global" class="range-slider" min="0" max="0" value="0" style="margin-top: 0.2rem;">
+                    </div>
                 </div>
 
                 <div class="view-card" style="flex: 1; display: flex; flex-direction: column;">
@@ -875,12 +883,9 @@
             dataUrl: '',
             meta: null,
             framesData: {},      // viewer_data.json の中身
-            currentFrame: 0,     // 検出用（MIPと連動）
-            currentTrackingFrame: 0, // トラッキング確認用（独立）
-            isPlayingDet: false,
-            isPlayingTrack: false,
+            currentFrame: 0,     // 検出・トラッキング共通の現在フレーム
+            isPlayingDet: false, // グローバル再生用
             playIntervalDet: null,
-            playIntervalTrack: null,
             selectedSpot: null,
             selectedTrackId: null,
             imageCache: {},      // ロード済みのMIP画像キャッシュ
@@ -899,7 +904,9 @@
             availableDatasets: [],    // マニフェストから読み込んだデータセット名配列
             selectedDatasets: [],     // 現在マージ表示するデータセット名の配列
             activeDataset: null,       // 背景MIP画像として使用するデータセット名（1つのみ）
-            loadedDatasets: {}        // { datasetName: { metadata, frames } }
+            loadedDatasets: {},       // { datasetName: { metadata, frames } }
+            resetCamera3d: false,     // 3D Point Cloudカメラリセット検知
+            resetCameraTracking: false // 3D Trackingカメラリセット検知
         };
 
         // --- 設定値 ---
@@ -910,6 +917,9 @@
             showFp: true,
             showFn: true,
             showTracks: true,
+            showNodeTprev: true,  // t-1 表示
+            showNodeT: true,      // t 表示
+            showNodeTnext: true,  // t+1 表示
             playSpeed: 500 // ms per frame
         };
 
@@ -919,6 +929,9 @@
             showFp: document.getElementById('show-fp'),
             showFn: document.getElementById('show-fn'),
             showTracks: document.getElementById('show-tracks'),
+            showNodeTprev: document.getElementById('show-node-t-prev'),
+            showNodeT: document.getElementById('show-node-t'),
+            showNodeTnext: document.getElementById('show-node-t-next'),
             spotRadiusSlider: document.getElementById('spot-radius-slider'),
             spotRadiusVal: document.getElementById('spot-radius-val'),
             opacitySlider: document.getElementById('opacity-slider'),
@@ -933,14 +946,12 @@
             statRecall: document.getElementById('stat-recall'),
             statF1: document.getElementById('stat-f1'),
             inspectorPanel: document.getElementById('inspector-panel'),
-            playBtnDet: document.getElementById('play-btn-det'),
-            timelineSliderDet: document.getElementById('timeline-slider-det'),
-            currentFrameInputDet: document.getElementById('current-frame-input-det'),
-            totalFramesLblDet: document.getElementById('total-frames-lbl-det'),
-            playBtnTrack: document.getElementById('play-btn-track'),
-            timelineSliderTrack: document.getElementById('timeline-slider-track'),
-            currentFrameInputTrack: document.getElementById('current-frame-input-track'),
-            totalFramesLblTrack: document.getElementById('total-frames-lbl-track'),
+            playBtn: document.getElementById('play-btn-global'),
+            timelineSlider: document.getElementById('timeline-slider-global'),
+            currentFrameInput: document.getElementById('current-frame-input-global'),
+            totalFramesLbl: document.getElementById('total-frames-lbl-global'),
+            prevFrameBtn: document.getElementById('prev-frame-btn'),
+            nextFrameBtn: document.getElementById('next-frame-btn'),
             statusOverlay: document.getElementById('status-overlay'),
             statusTitle: document.getElementById('status-title'),
             statusMsg: document.getElementById('status-msg'),
@@ -975,15 +986,18 @@
                 loadViewerData();
             });
 
-            // 表示フィルターのトグルイベント
-            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
-            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
-            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; renderDetectionFrame(); renderTrackingFrame(); });
-            elements.showTracks.addEventListener('change', (e) => { 
-                config.showTracks = e.target.checked; 
-                renderDetectionFrame(); 
+            // 表示フィルターのトグルイベント (and表示対応)
+            const onFilterChange = () => {
+                renderDetectionFrame();
                 renderTrackingFrame();
-            });
+            };
+            elements.showTp.addEventListener('change', (e) => { config.showTp = e.target.checked; onFilterChange(); });
+            elements.showFp.addEventListener('change', (e) => { config.showFp = e.target.checked; onFilterChange(); });
+            elements.showFn.addEventListener('change', (e) => { config.showFn = e.target.checked; onFilterChange(); });
+            elements.showTracks.addEventListener('change', (e) => { config.showTracks = e.target.checked; onFilterChange(); });
+            elements.showNodeTprev.addEventListener('change', (e) => { config.showNodeTprev = e.target.checked; onFilterChange(); });
+            elements.showNodeT.addEventListener('change', (e) => { config.showNodeT = e.target.checked; onFilterChange(); });
+            elements.showNodeTnext.addEventListener('change', (e) => { config.showNodeTnext = e.target.checked; onFilterChange(); });
 
             // スライダー・描画オプション
             elements.spotRadiusSlider.addEventListener('input', (e) => {
@@ -1000,35 +1014,21 @@
                 renderTrackingFrame();
             });
 
-            // --- 検出用タイムライン (スライダー & 数値入力 & 再生) ---
-            elements.playBtnDet.addEventListener('click', togglePlayDet);
+            // --- 統合グローバルタイムライン (スライダー & 数値入力 & 再生 & コマ戻し・コマ送り) ---
+            elements.playBtn.addEventListener('click', togglePlay);
             
-            elements.timelineSliderDet.addEventListener('input', (e) => {
-                stopPlayDet();
+            elements.timelineSlider.addEventListener('input', (e) => {
+                stopPlay();
                 state.currentFrame = parseInt(e.target.value);
-                renderDetectionFrame();
+                renderBothFrames();
             });
 
-            elements.currentFrameInputDet.addEventListener('change', (e) => {
-                stopPlayDet();
+            elements.currentFrameInput.addEventListener('change', (e) => {
+                stopPlay();
                 let val = parseInt(e.target.value);
                 if (isNaN(val)) val = 0;
                 val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
                 state.currentFrame = val;
-                renderDetectionFrame();
-            });
-
-            // --- トラッキング用タイムライン (スライダー & 数値入力 & 再生) ---
-            elements.playBtnTrack.addEventListener('click', togglePlayTrack);
-            
-            elements.timelineSliderTrack.addEventListener('input', (e) => {
-                stopPlayTrack();
-                state.currentTrackingFrame = parseInt(e.target.value);
-                renderTrackingFrame();
-            });
-
-            elements.currentFrameInputTrack.addEventListener('change', (e) => {
-                stopPlayTrack();
                 let val = parseInt(e.target.value);
                 if (isNaN(val)) val = 0;
                 val = Math.max(0, Math.min(state.meta.num_frames - 1, val));
@@ -1322,8 +1322,10 @@
             // 現在のカメラアングル・ズーム・平行移動を _fullLayout から完全に維持
             const gd = document.getElementById('plotly-3d');
             let currentCamera = null;
-            if (gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
+            if (!state.resetCamera3d && gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
                 currentCamera = JSON.parse(JSON.stringify(gd._fullLayout.scene.camera));
+            } else {
+                state.resetCamera3d = false; // フラグをクリア
             }
 
             const layout = {
@@ -1353,6 +1355,13 @@
                         selectSpot(info);
                     }
                 });
+
+                // ダブルクリックでリセット
+                gd.removeAllListeners('plotly_doubleclick');
+                gd.on('plotly_doubleclick', () => {
+                    state.resetCamera3d = true;
+                    renderDetectionFrame();
+                });
             });
         }
 
@@ -1360,201 +1369,76 @@
         function renderTrackingPlot(frameData) {
             const scale = state.meta.scale || [1.0, 1.0, 1.0];
             const traces = [];
-            const t = state.currentTrackingFrame;
+            const t = state.currentFrame;
 
             state.selectedDatasets.forEach(dataset => {
                 // 1. エッジの描画 (t-1 -> t)
+                if (t > 0) {
+                    const fDataTminus1 = state.framesData.frames[t - 1];
+                    if (fDataTminus1) {
+                        const edgeTp = fDataTminus1.edge_tp ? fDataTminus1.edge_tp.filter(e => e.dataset === dataset) : [];
+                        const edgeFp = fDataTminus1.edge_fp ? fDataTminus1.edge_fp.filter(e => e.dataset === dataset) : [];
+                        const edgeFn = fDataTminus1.edge_fn ? fDataTminus1.edge_fn.filter(e => e.dataset === dataset) : [];
+
+                        const addEdgesTprev = (edges, color, showFilter) => {
+                            if (config.showTracks && showFilter && edges.length > 0) {
+                                edges.forEach(e => {
+                                    traces.push({
+                                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                        mode: 'lines',
+                                        type: 'scatter3d',
+                                        showlegend: false,
+                                        line: { color: color, width: 3.5 }, // 実線
+                                        hoverinfo: 'none'
+                                    });
+                                });
+                            }
+                        };
+                        addEdgesTprev(edgeTp, '#10b981', config.showTp);
+                        addEdgesTprev(edgeFp, '#ef4444', config.showFp);
+                        addEdgesTprev(edgeFn, '#06b6d4', config.showFn);
+                    }
+                }
+
+                // 2. エッジの描画 (t -> t+1)
                 const fDataT = state.framesData.frames[t];
                 if (fDataT) {
                     const edgeTp = fDataT.edge_tp ? fDataT.edge_tp.filter(e => e.dataset === dataset) : [];
                     const edgeFp = fDataT.edge_fp ? fDataT.edge_fp.filter(e => e.dataset === dataset) : [];
                     const edgeFn = fDataT.edge_fn ? fDataT.edge_fn.filter(e => e.dataset === dataset) : [];
 
-                    if (config.showTracks && config.showTp && edgeTp.length > 0) {
-                        edgeTp.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid): 明るい
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#10b981', width: 3.5 },
-                                hoverinfo: 'none'
+                    const addEdgesTnext = (edges, color, showFilter) => {
+                        if (config.showTracks && showFilter && edges.length > 0) {
+                            edges.forEach(e => {
+                                traces.push({
+                                    x: [e.start[2] * scale[2], e.end[2] * scale[2]],
+                                    y: [e.start[1] * scale[1], e.end[1] * scale[1]],
+                                    z: [e.start[0] * scale[0], e.end[0] * scale[0]],
+                                    mode: 'lines',
+                                    type: 'scatter3d',
+                                    showlegend: false,
+                                    line: { color: color, width: 3.5, dash: 'dash' }, // 点線
+                                    hoverinfo: 'none'
+                                });
                             });
-                            // 未来側 (mid -> end): 薄い
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(16, 185, 129, 0.25)', width: 3.5 },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
-
-                    if (config.showTracks && config.showFp && edgeFp.length > 0) {
-                        edgeFp.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid)
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#ef4444', width: 3.5, dash: 'dash' },
-                                hoverinfo: 'none'
-                            });
-                            // 未来側 (mid -> end)
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(239, 68, 68, 0.25)', width: 3.5, dash: 'dash' },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
-
-                    if (config.showTracks && config.showFn && edgeFn.length > 0) {
-                        edgeFn.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid)
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
-                                hoverinfo: 'none'
-                            });
-                            // 未来側 (mid -> end)
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(6, 182, 212, 0.25)', width: 2.5, dash: 'dot' },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
-                }
-
-                // 2. エッジの描画 (t -> t+1)
-                const fDataTplus1 = state.framesData.frames[t + 1];
-                if (fDataTplus1) {
-                    const edgeTp = fDataTplus1.edge_tp ? fDataTplus1.edge_tp.filter(e => e.dataset === dataset) : [];
-                    const edgeFp = fDataTplus1.edge_fp ? fDataTplus1.edge_fp.filter(e => e.dataset === dataset) : [];
-                    const edgeFn = fDataTplus1.edge_fn ? fDataTplus1.edge_fn.filter(e => e.dataset === dataset) : [];
-
-                    if (config.showTracks && config.showTp && edgeTp.length > 0) {
-                        edgeTp.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid)
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#10b981', width: 3.5 },
-                                hoverinfo: 'none'
-                            });
-                            // 未来側 (mid -> end)
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(16, 185, 129, 0.25)', width: 3.5 },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
-
-                    if (config.showTracks && config.showFp && edgeFp.length > 0) {
-                        edgeFp.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid)
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#ef4444', width: 3.5, dash: 'dash' },
-                                hoverinfo: 'none'
-                            });
-                            // 未来側 (mid -> end)
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(239, 68, 68, 0.25)', width: 3.5, dash: 'dash' },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
-
-                    if (config.showTracks && config.showFn && edgeFn.length > 0) {
-                        edgeFn.forEach(e => {
-                            const mid = [(e.start[0] + e.end[0]) / 2, (e.start[1] + e.end[1]) / 2, (e.start[2] + e.end[2]) / 2];
-                            // 過去側 (start -> mid)
-                            traces.push({
-                                x: [e.start[2] * scale[2], mid[2] * scale[2]],
-                                y: [e.start[1] * scale[1], mid[1] * scale[1]],
-                                z: [e.start[0] * scale[0], mid[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
-                                hoverinfo: 'none'
-                            });
-                            // 未来側 (mid -> end)
-                            traces.push({
-                                x: [mid[2] * scale[2], e.end[2] * scale[2]],
-                                y: [mid[1] * scale[1], e.end[1] * scale[1]],
-                                z: [mid[0] * scale[0], e.end[0] * scale[0]],
-                                mode: 'lines',
-                                type: 'scatter3d',
-                                showlegend: false,
-                                line: { color: 'rgba(6, 182, 212, 0.25)', width: 2.5, dash: 'dot' },
-                                hoverinfo: 'none'
-                            });
-                        });
-                    }
+                        }
+                    };
+                    addEdgesTnext(edgeTp, 'rgba(16, 185, 129, 0.6)', config.showTp);
+                    addEdgesTnext(edgeFp, 'rgba(239, 68, 68, 0.6)', config.showFp);
+                    addEdgesTnext(edgeFn, 'rgba(6, 182, 212, 0.6)', config.showFn);
                 }
 
                 // 3. 端点（ノード）の描画 (t-1, t, t+1)
                 const framesToRender = [
-                    { fIdx: t - 1, size: Math.max(1.5, config.spotRadius * 0.8), label: 't-1', opacity: 0.5 },
-                    { fIdx: t, size: Math.max(1.5, config.spotRadius * 0.5), label: 't', opacity: 0.95 },
-                    { fIdx: t + 1, size: Math.max(1.5, config.spotRadius * 0.3), label: 't+1', opacity: 0.5 }
+                    { fIdx: t - 1, size: Math.max(1.5, config.spotRadius * 0.8), label: 't-1', opacity: 0.5, visible: config.showNodeTprev },
+                    { fIdx: t, size: Math.max(1.5, config.spotRadius * 0.5), label: 't', opacity: 0.95, visible: config.showNodeT },
+                    { fIdx: t + 1, size: Math.max(1.5, config.spotRadius * 0.3), label: 't+1', opacity: 0.5, visible: config.showNodeTnext }
                 ];
 
-                framesToRender.forEach(({ fIdx, size, label, opacity }) => {
+                framesToRender.forEach(({ fIdx, size, label, opacity, visible }) => {
+                    if (!visible) return;
                     const fData = state.framesData.frames[fIdx];
                     if (!fData) return;
 
@@ -1587,21 +1471,21 @@
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge TP (Bright -> Thin)',
+                name: 'Edge TP (Solid: t-1->t, Dash: t->t+1)',
                 line: { color: '#10b981', width: 3.5 },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge FP (Bright -> Thin)',
+                name: 'Edge FP (Solid: t-1->t, Dash: t->t+1)',
                 line: { color: '#ef4444', width: 3.5, dash: 'dash' },
                 type: 'scatter3d'
             });
             traces.push({
                 x: [null], y: [null], z: [null],
                 mode: 'lines',
-                name: 'Edge FN (Bright -> Thin)',
+                name: 'Edge FN (Solid: t-1->t, Dash: t->t+1)',
                 line: { color: '#06b6d4', width: 2.5, dash: 'dot' },
                 type: 'scatter3d'
             });
@@ -1656,8 +1540,10 @@
             // 現在のカメラアングル・ズーム・平行移動を _fullLayout から完全に維持
             const gd = document.getElementById('plotly-tracking');
             let currentCamera = null;
-            if (gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
+            if (!state.resetCameraTracking && gd && gd._fullLayout && gd._fullLayout.scene && gd._fullLayout.scene.camera) {
                 currentCamera = JSON.parse(JSON.stringify(gd._fullLayout.scene.camera));
+            } else {
+                state.resetCameraTracking = false; // フラグをクリア
             }
 
             const layout = {
@@ -1686,6 +1572,13 @@
                         const info = data.points[0].customdata;
                         selectSpot(info);
                     }
+                });
+
+                // ダブルクリックでリセット
+                gd.removeAllListeners('plotly_doubleclick');
+                gd.on('plotly_doubleclick', () => {
+                    state.resetCameraTracking = true;
+                    renderTrackingFrame();
                 });
             });
         }
@@ -1780,19 +1673,55 @@
             const opacity = config.opacity;
 
             // 1. トラッキング線描画
-            if (config.showTracks && frameData.tracks && frameData.tracks.length > 0) {
-                frameData.tracks.forEach(t => {
-                    const pStart = get2DPos(t.start, axis);
-                    const pEnd = get2DPos(t.end, axis);
-                    
-                    const isSelected = state.selectedTrackId !== null && t.track_id === state.selectedTrackId;
+            if (config.showTracks) {
+                const f = state.currentFrame;
+
+                const drawMIPEdge = (e, color, isDashed) => {
+                    const pStart = get2DPos(e.start, axis);
+                    const pEnd = get2DPos(e.end, axis);
+                    const isSelected = state.selectedTrackId !== null && e.track_id === state.selectedTrackId;
+
                     ctx.beginPath();
                     ctx.moveTo(pStart.x, pStart.y);
                     ctx.lineTo(pEnd.x, pEnd.y);
-                    ctx.strokeStyle = isSelected ? 'rgba(165, 180, 252, 0.9)' : 'rgba(165, 180, 252, 0.25)';
-                    ctx.lineWidth = isSelected ? 3 : 1;
+                    
+                    if (isDashed) {
+                        ctx.setLineDash([4, 4]);
+                    } else {
+                        ctx.setLineDash([]);
+                    }
+
+                    ctx.strokeStyle = isSelected ? 'rgba(245, 158, 11, 0.9)' : color;
+                    ctx.lineWidth = isSelected ? 3 : 1.5;
                     ctx.stroke();
-                });
+                    ctx.setLineDash([]); // 元に戻す
+                };
+
+                // f-1 のエッジ（実線、過去）
+                if (f > 0) {
+                    const fDataTminus1 = state.framesData.frames[f - 1];
+                    if (fDataTminus1) {
+                        const edgeTp = fDataTminus1.edge_tp || [];
+                        const edgeFp = fDataTminus1.edge_fp || [];
+                        const edgeFn = fDataTminus1.edge_fn || [];
+
+                        if (config.showTp) edgeTp.forEach(e => drawMIPEdge(e, 'rgba(16, 185, 129, 0.7)', false));
+                        if (config.showFp) edgeFp.forEach(e => drawMIPEdge(e, 'rgba(239, 68, 68, 0.7)', false));
+                        if (config.showFn) edgeFn.forEach(e => drawMIPEdge(e, 'rgba(6, 182, 212, 0.7)', false));
+                    }
+                }
+
+                // f のエッジ（点線、未来）
+                const fDataT = state.framesData.frames[f];
+                if (fDataT) {
+                    const edgeTp = fDataT.edge_tp || [];
+                    const edgeFp = fDataT.edge_fp || [];
+                    const edgeFn = fDataT.edge_fn || [];
+
+                    if (config.showTp) edgeTp.forEach(e => drawMIPEdge(e, 'rgba(16, 185, 129, 0.45)', true));
+                    if (config.showFp) edgeFp.forEach(e => drawMIPEdge(e, 'rgba(239, 68, 68, 0.45)', true));
+                    if (config.showFn) edgeFn.forEach(e => drawMIPEdge(e, 'rgba(6, 182, 212, 0.45)', true));
+                }
             }
 
             // 2. 細胞スポット描画
@@ -1955,100 +1884,8 @@
             } else {
                 state.selectedSpot = null;
                 state.selectedTrackId = null;
-                elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
-            }
-            
-            // トラッキング評価プロットのフレームを同期
-            state.currentTrackingFrame = state.currentFrame;
-            
-            // UIスライダーの値を同期
-            elements.currentFrameInputTrack.value = state.currentTrackingFrame;
-            elements.timelineSliderTrack.value = state.currentTrackingFrame;
-
-            // Plotlyのクリック直後の再描画によるWebGLドラッグハングを防ぐため、
-            // レンダリング処理を一瞬だけ遅延（setTimeout）させて非同期実行する。
-            setTimeout(() => {
-                renderDetectionFrame();
-                renderTrackingFrame();
-            }, 30);
-        }
-
-        // --- 再生アニメーション制御 (検出・MIP用) ---
-        function togglePlayDet() {
-            if (state.isPlayingDet) {
-                stopPlayDet();
-            } else {
-                startPlayDet();
-            }
-        }
-
-        function startPlayDet() {
-            if (!state.meta) return;
-            state.isPlayingDet = true;
-            elements.playBtnDet.textContent = '⏸';
-            elements.playBtnDet.classList.add('btn-secondary');
-            
-            state.playIntervalDet = setInterval(() => {
-                const nextFrame = (state.currentFrame + 1) % state.meta.num_frames;
-                state.currentFrame = nextFrame;
-                renderDetectionFrame();
-            }, config.playSpeed);
-        }
-
-        function stopPlayDet() {
-            state.isPlayingDet = false;
-            elements.playBtnDet.textContent = '▶';
-            elements.playBtnDet.classList.remove('btn-secondary');
-            if (state.playIntervalDet) {
-                clearInterval(state.playIntervalDet);
-                state.playIntervalDet = null;
-            }
-        }
-
-        // --- 再生アニメーション制御 (トラッキング用) ---
-        function togglePlayTrack() {
-            if (state.isPlayingTrack) {
-                stopPlayTrack();
-            } else {
-                startPlayTrack();
-            }
-        }
-
-        function startPlayTrack() {
-            if (!state.meta) return;
-            state.isPlayingTrack = true;
-            elements.playBtnTrack.textContent = '⏸';
-            elements.playBtnTrack.classList.add('btn-secondary');
-            
-            state.playIntervalTrack = setInterval(() => {
-                const nextFrame = (state.currentTrackingFrame + 1) % state.meta.num_frames;
-                state.currentTrackingFrame = nextFrame;
-                renderTrackingFrame();
-            }, config.playSpeed);
-        }
-
-        // マウス位置から最も近い Spot を検索する (Canvas 座標系での比較)
-        function findNearestSpot(x, y, axis, frameData) {
-            const rThreshold = config.spotRadius + 6;
-            let nearest = null;
-            let minDistance = Infinity;
-
-            const searchList = [];
-            if (config.showTp && frameData.tp_coords) frameData.tp_coords.forEach(c => searchList.push({ coord: c, type: 'TP' }));
-            if (config.showFp && frameData.fp_coords) frameData.fp_coords.forEach(c => searchList.push({ coord: c, type: 'FP' }));
-            if (config.showFn && frameData.fn_coords) frameData.fn_coords.forEach(c => searchList.push({ coord: c, type: 'FN' }));
-
-            searchList.forEach(item => {
-                const pos = get2DPos(item.coord, axis);
-                const dist = Math.hypot(x - pos.x, y - pos.y);
-                if (dist < minDistance && dist <= rThreshold) {
-                    minDistance = dist;
-                    nearest = {
-                        id: item.coord[3],
-                        track_id: item.coord[4],
-                        type: item.type,
                         z: item.coord[0], y: item.coord[1], x: item.coord[2],
-                        dataset: item.coord[5] // マージしたデータセット名
+                        dataset: item.coord[5]
                     };
                 }
             });
@@ -2063,19 +1900,15 @@
             const container = canvas.parentElement;
             const cRect = container.getBoundingClientRect();
             
-            // コンテナ中心を原点としたマウス相対座標
             const cx = e.clientX - (cRect.left + cRect.width / 2);
             const cy = e.clientY - (cRect.top + cRect.height / 2);
             
-            // 1. 逆平行移動
             let mx = cx - g.translateX;
             let my = cy - g.translateY;
             
-            // 2. 逆スケール (回転なし)
             const sx = mx / g.scale;
             const sy = my / g.scale;
             
-            // 3. Canvas 内ローカル元画像座標
             const mouseX = sx + canvas.width / 2;
             const mouseY = sy + canvas.height / 2;
             
@@ -2144,11 +1977,6 @@
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
             }
             
-            // トラッキング評価プロットのフレームを同期
-            state.currentTrackingFrame = state.currentFrame;
-            
-            // UIスライダーの値を同期
-            elements.currentFrameInputTrack.value = state.currentTrackingFrame;
             elements.timelineSliderTrack.value = state.currentTrackingFrame;
 
             setTimeout(() => {
@@ -2157,69 +1985,7 @@
             }, 30);
         }
 
-        // --- 再生アニメーション制御 (検出・MIP用) ---
-        function togglePlayDet() {
-            if (state.isPlayingDet) {
-                stopPlayDet();
-            } else {
-                startPlayDet();
-            }
-        }
 
-        function startPlayDet() {
-            if (!state.meta) return;
-            state.isPlayingDet = true;
-            elements.playBtnDet.textContent = '⏸';
-            elements.playBtnDet.classList.add('btn-secondary');
-            
-            state.playIntervalDet = setInterval(() => {
-                const nextFrame = (state.currentFrame + 1) % state.meta.num_frames;
-                state.currentFrame = nextFrame;
-                renderDetectionFrame();
-            }, config.playSpeed);
-        }
-
-        function stopPlayDet() {
-            state.isPlayingDet = false;
-            elements.playBtnDet.textContent = '▶';
-            elements.playBtnDet.classList.remove('btn-secondary');
-            if (state.playIntervalDet) {
-                clearInterval(state.playIntervalDet);
-                state.playIntervalDet = null;
-            }
-        }
-
-        // --- 再生アニメーション制御 (トラッキング用) ---
-        function togglePlayTrack() {
-            if (state.isPlayingTrack) {
-                stopPlayTrack();
-            } else {
-                startPlayTrack();
-            }
-        }
-
-        function startPlayTrack() {
-            if (!state.meta) return;
-            state.isPlayingTrack = true;
-            elements.playBtnTrack.textContent = '⏸';
-            elements.playBtnTrack.classList.add('btn-secondary');
-            
-            state.playIntervalTrack = setInterval(() => {
-                const nextFrame = (state.currentTrackingFrame + 1) % state.meta.num_frames;
-                state.currentTrackingFrame = nextFrame;
-                renderTrackingFrame();
-            }, config.playSpeed);
-        }
-
-        function stopPlayTrack() {
-            state.isPlayingTrack = false;
-            elements.playBtnTrack.textContent = '▶';
-            elements.playBtnTrack.classList.remove('btn-secondary');
-            if (state.playIntervalTrack) {
-                clearInterval(state.playIntervalTrack);
-                state.playIntervalTrack = null;
-            }
-        }
 
         // --- Dataset Explorer 実装 ---
 
@@ -2455,12 +2221,17 @@
                 frames: mergedFrames
             };
             
-            elements.timelineSliderDet.max = numFrames - 1;
-            elements.currentFrameInputDet.max = numFrames - 1;
-            elements.totalFramesLblDet.textContent = numFrames;
-            elements.timelineSliderTrack.max = numFrames - 1;
-            elements.currentFrameInputTrack.max = numFrames - 1;
-            elements.totalFramesLblTrack.textContent = numFrames;
+
+            if (elements.timelineSlider) elements.timelineSlider.max = numFrames - 1;
+            if (elements.currentFrameInput) elements.currentFrameInput.max = numFrames - 1;
+            if (elements.totalFramesLbl) elements.totalFramesLbl.textContent = numFrames;
+
+            // estimated_number_of_nodes の表示更新
+            const estNodes = state.meta ? state.meta.estimated_number_of_nodes : undefined;
+            const estNodesEl = document.getElementById('stat-estimated-nodes');
+            if (estNodesEl) {
+                estNodesEl.textContent = (estNodes !== undefined && estNodes !== null) ? estNodes.toFixed(1) : '-';
+            }
             
             setStatus(false);
             renderDetectionFrame();
