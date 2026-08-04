@@ -1176,8 +1176,8 @@
         // 検出フレーム（およびMIP）の描画更新
         function renderDetectionFrame() {
             const f = state.currentFrame;
-            elements.currentFrameInputDet.value = f;
-            elements.timelineSliderDet.value = f;
+            if (elements.currentFrameInput) elements.currentFrameInput.value = f;
+            if (elements.timelineSlider) elements.timelineSlider.value = f;
 
             const frameData = state.framesData.frames[f];
             if (!frameData) {
@@ -1195,11 +1195,9 @@
             renderMips(f, frameData);
         }
 
-        // トラッキングフレームの描画更新 (独立)
+        // トラッキングフレームの描画更新
         function renderTrackingFrame() {
-            const f = state.currentTrackingFrame;
-            elements.currentFrameInputTrack.value = f;
-            elements.timelineSliderTrack.value = f;
+            const f = state.currentFrame;
 
             const frameData = state.framesData.frames[f];
             if (!frameData) {
@@ -1887,7 +1885,8 @@
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
             }
             
-            elements.timelineSliderTrack.value = state.currentTrackingFrame;
+            if (elements.currentFrameInput) elements.currentFrameInput.value = state.currentFrame;
+            if (elements.timelineSlider) elements.timelineSlider.value = state.currentFrame;
 
             setTimeout(() => {
                 renderDetectionFrame();
