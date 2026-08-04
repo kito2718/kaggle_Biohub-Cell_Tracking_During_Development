@@ -1032,6 +1032,22 @@
                 renderBothFrames();
             });
 
+            // コマ戻し・コマ送りボタン
+            elements.prevFrameBtn.addEventListener('click', () => {
+                stopPlay();
+                const nextFrame = Math.max(0, state.currentFrame - 1);
+                state.currentFrame = nextFrame;
+                renderBothFrames();
+            });
+
+            elements.nextFrameBtn.addEventListener('click', () => {
+                stopPlay();
+                if (!state.meta) return;
+                const nextFrame = Math.min(state.meta.num_frames - 1, state.currentFrame + 1);
+                state.currentFrame = nextFrame;
+                renderBothFrames();
+            });
+
             // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
             Object.keys(elements.canvases).forEach(axis => {
                 const canvas = elements.canvases[axis];
