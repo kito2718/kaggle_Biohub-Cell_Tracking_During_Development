@@ -762,7 +762,7 @@
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera2 🔄
+                            Sync Camera3 🔄
                         </label>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
@@ -774,7 +774,7 @@
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera2 🔄
+                            Sync Camera3 🔄
                         </label>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
@@ -1263,19 +1263,27 @@
                 const sourceGd = document.getElementById(sourceId);
                 const targetGd = document.getElementById(targetId);
                 
-                if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene && sourceGd._fullLayout.scene.camera) {
-                    const sourceCam = sourceGd._fullLayout.scene.camera;
+                if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene) {
+                    const sourceScene = sourceGd._fullLayout.scene;
+                    const sourceCam = (typeof sourceScene.getCamera === 'function') 
+                        ? sourceScene.getCamera() 
+                        : sourceScene.camera;
                     
-                    // 前回の同期値と比較して、変化があれば同期
-                    if (!lastSyncedCamera || !isCameraEqual(sourceCam, lastSyncedCamera)) {
-                        let targetCam = null;
-                        if (targetGd._fullLayout && targetGd._fullLayout.scene && targetGd._fullLayout.scene.camera) {
-                            targetCam = targetGd._fullLayout.scene.camera;
-                        }
-                        
-                        if (!targetCam || !isCameraEqual(sourceCam, targetCam)) {
-                            lastSyncedCamera = JSON.parse(JSON.stringify(sourceCam));
-                            Plotly.relayout(targetId, { 'scene.camera': lastSyncedCamera });
+                    if (sourceCam) {
+                        // 前回の同期値と比較して、変化があれば同期
+                        if (!lastSyncedCamera || !isCameraEqual(sourceCam, lastSyncedCamera)) {
+                            let targetCam = null;
+                            const targetScene = targetGd._fullLayout.scene;
+                            if (targetScene) {
+                                targetCam = (typeof targetScene.getCamera === 'function')
+                                    ? targetScene.getCamera()
+                                    : targetScene.camera;
+                            }
+                            
+                            if (!targetCam || !isCameraEqual(sourceCam, targetCam)) {
+                                lastSyncedCamera = JSON.parse(JSON.stringify(sourceCam));
+                                Plotly.relayout(targetId, { 'scene.camera': lastSyncedCamera });
+                            }
                         }
                     }
                 }
@@ -1300,22 +1308,28 @@
             const sourceGd = document.getElementById(sourceId);
             const targetGd = document.getElementById(targetId);
             
-            if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene && sourceGd._fullLayout.scene.camera) {
-                const sourceCam = sourceGd._fullLayout.scene.camera;
+            if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene) {
+                const sourceScene = sourceGd._fullLayout.scene;
+                const sourceCam = (typeof sourceScene.getCamera === 'function') 
+                    ? sourceScene.getCamera() 
+                    : sourceScene.camera;
                 
-                // 相手の現在のカメラを取得
-                let targetCam = null;
-                if (targetGd._fullLayout && targetGd._fullLayout.scene && targetGd._fullLayout.scene.camera) {
-                    targetCam = targetGd._fullLayout.scene.camera;
+                if (sourceCam) {
+                    let targetCam = null;
+                    const targetScene = targetGd._fullLayout.scene;
+                    if (targetScene) {
+                        targetCam = (typeof targetScene.getCamera === 'function')
+                            ? targetScene.getCamera()
+                            : targetScene.camera;
+                    }
+                    
+                    if (targetCam && isCameraEqual(sourceCam, targetCam)) {
+                        return;
+                    }
+                    
+                    const camCopy = JSON.parse(JSON.stringify(sourceCam));
+                    Plotly.relayout(targetId, { 'scene.camera': camCopy });
                 }
-                
-                // すでにアングルが一致している場合は同期をスキップ (無限ループ防止)
-                if (targetCam && isCameraEqual(sourceCam, targetCam)) {
-                    return;
-                }
-                
-                const camCopy = JSON.parse(JSON.stringify(sourceCam));
-                Plotly.relayout(targetId, { 'scene.camera': camCopy });
             }
         }
 
