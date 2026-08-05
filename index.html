@@ -1076,6 +1076,9 @@
             syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
 
             // 3Dプロットのマウスドラッグリアルタイム同期検知 (useCapture = true で伝播阻止を回避)
+            const gd3d = document.getElementById('plotly-3d');
+            const gdTrack = document.getElementById('plotly-tracking');
+
             gd3d.addEventListener('mousedown', () => {
                 if (state.syncCamera) {
                     activeSyncSource = 'plotly-3d';
