@@ -760,9 +760,10 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
-                        <button id="sync-cam-to-tracking" class="btn btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; font-family: var(--font-outfit);">
-                            Sync to Tracking 📸
-                        </button>
+                        <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
+                            <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
+                            Sync Camera 🔄
+                        </label>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
                 </div>
@@ -771,9 +772,10 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
-                        <button id="sync-cam-to-detection" class="btn btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; font-family: var(--font-outfit);">
-                            Sync to Detection 📸
-                        </button>
+                        <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
+                            <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
+                            Sync Camera 🔄
+                        </label>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
                 </div>
@@ -890,6 +892,7 @@
             meta: null,
             framesData: {},      // viewer_data.json の中身
             currentFrame: 0,     // 検出・トラッキング共通の現在フレーム
+            syncCamera: false,   // カメラ同期の有効フラグ
             isPlayingDet: false, // グローバル再生用
             playIntervalDet: null,
             selectedSpot: null,
@@ -1054,22 +1057,24 @@
                 renderBothFrames();
             });
 
-            // 3Dカメラ同期ボタンイベント
-            document.getElementById('sync-cam-to-tracking').addEventListener('click', () => {
-                const gd3d = document.getElementById('plotly-3d');
-                if (gd3d && gd3d._fullLayout && gd3d._fullLayout.scene && gd3d._fullLayout.scene.camera) {
-                    const cam = gd3d._fullLayout.scene.camera;
-                    Plotly.relayout('plotly-tracking', { 'scene.camera': cam });
-                }
-            });
+            // 3Dカメラ同期チェックボックスイベント
+            const syncCbDet = document.getElementById('sync-camera-checkbox-det');
+            const syncCbTrack = document.getElementById('sync-camera-checkbox-track');
 
-            document.getElementById('sync-cam-to-detection').addEventListener('click', () => {
-                const gdTrack = document.getElementById('plotly-tracking');
-                if (gdTrack && gdTrack._fullLayout && gdTrack._fullLayout.scene && gdTrack._fullLayout.scene.camera) {
-                    const cam = gdTrack._fullLayout.scene.camera;
-                    Plotly.relayout('plotly-3d', { 'scene.camera': cam });
+            const handleSyncCheckboxChange = (e) => {
+                state.syncCamera = e.target.checked;
+                syncCbDet.checked = state.syncCamera;
+                syncCbTrack.checked = state.syncCamera;
+
+                // チェックを入れた瞬間に、現在の3D Point Cloudのカメラアングルを同期する
+                if (state.syncCamera) {
+                    isSyncingCamera = false; // ガードリセット
+                    syncCamera('plotly-3d', 'plotly-tracking');
                 }
-            });
+            };
+
+            syncCbDet.addEventListener('change', handleSyncCheckboxChange);
+            syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
 
             // ESCキーでSelected cell ofを選択解除
             window.addEventListener('keydown', (e) => {
@@ -1189,6 +1194,26 @@
                     }, 220);
                 });
             });
+        }
+
+        // カメラ視点リアルタイム同期用ヘルパー関数
+        let isSyncingCamera = false;
+        function syncCamera(sourceId, targetId) {
+            if (!state.syncCamera || isSyncingCamera) return;
+            
+            const sourceGd = document.getElementById(sourceId);
+            const targetGd = document.getElementById(targetId);
+            
+            if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene && sourceGd._fullLayout.scene.camera) {
+                const cam = JSON.parse(JSON.stringify(sourceGd._fullLayout.scene.camera));
+                
+                isSyncingCamera = true;
+                Plotly.relayout(targetId, { 'scene.camera': cam }).then(() => {
+                    isSyncingCamera = false;
+                }).catch(() => {
+                    isSyncingCamera = false;
+                });
+            }
         }
 
         // 表示の更新 (スピナー/エラーメッセージ表示)
@@ -1404,6 +1429,14 @@
                     if (data.points && data.points[0] && data.points[0].customdata) {
                         const info = data.points[0].customdata;
                         selectSpot(info);
+                    }
+                });
+
+                // カメラドラッグ時の同期リスナー
+                gd.removeAllListeners('plotly_relayout');
+                gd.on('plotly_relayout', (eventData) => {
+                    if (eventData && (eventData['scene.camera'] || eventData.scene)) {
+                        syncCamera('plotly-3d', 'plotly-tracking');
                     }
                 });
 
@@ -1633,6 +1666,14 @@
                     if (data.points && data.points[0] && data.points[0].customdata) {
                         const info = data.points[0].customdata;
                         selectSpot(info);
+                    }
+                });
+
+                // カメラドラッグ時の同期リスナー
+                gd.removeAllListeners('plotly_relayout');
+                gd.on('plotly_relayout', (eventData) => {
+                    if (eventData && (eventData['scene.camera'] || eventData.scene)) {
+                        syncCamera('plotly-tracking', 'plotly-3d');
                     }
                 });
 
