@@ -1075,26 +1075,32 @@
             syncCbDet.addEventListener('change', handleSyncCheckboxChange);
             syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
 
-            // 3Dプロットのマウスドラッグリアルタイム同期検知 (useCapture = true で伝播阻止を回避)
+            // 3Dプロットのマウスドラッグリアルタイム同期検知 (ホバー判定＋左ドラッグ検出方式)
             const gd3d = document.getElementById('plotly-3d');
             const gdTrack = document.getElementById('plotly-tracking');
+            let activeHoverSource = null;
 
-            gd3d.addEventListener('mousedown', () => {
-                if (state.syncCamera) {
-                    activeSyncSource = 'plotly-3d';
-                    startCameraSyncLoop('plotly-3d', 'plotly-tracking');
-                }
-            }, true);
+            const handleHoverEnter = (sourceId) => {
+                activeHoverSource = sourceId;
+            };
 
-            gdTrack.addEventListener('mousedown', () => {
-                if (state.syncCamera) {
-                    activeSyncSource = 'plotly-tracking';
-                    startCameraSyncLoop('plotly-tracking', 'plotly-3d');
-                }
-            }, true);
+            const handleHoverLeave = () => {
+                activeHoverSource = null;
+            };
 
-            window.addEventListener('mouseup', () => {
-                stopCameraSyncLoop();
+            gd3d.addEventListener('mouseenter', () => handleHoverEnter('plotly-3d'), true);
+            gd3d.addEventListener('mouseleave', handleHoverLeave, true);
+            
+            gdTrack.addEventListener('mouseenter', () => handleHoverEnter('plotly-tracking'), true);
+            gdTrack.addEventListener('mouseleave', handleHoverLeave, true);
+
+            // document全体でのマウス移動を監視 (左ドラッグ中のみ同期実行)
+            document.addEventListener('mousemove', (e) => {
+                if (!state.syncCamera || !activeHoverSource) return;
+                if (e.buttons !== 1) return; // 左ドラッグ中でなければ無視
+                
+                const targetId = (activeHoverSource === 'plotly-3d') ? 'plotly-tracking' : 'plotly-3d';
+                syncCamera(activeHoverSource, targetId);
             }, true);
 
             // ホイールズームのリアルタイム同期検知
