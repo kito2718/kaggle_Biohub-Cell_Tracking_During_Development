@@ -1068,13 +1068,34 @@
 
                 // チェックを入れた瞬間に、現在の3D Point Cloudのカメラアングルを同期する
                 if (state.syncCamera) {
-                    isSyncingCamera = false; // ガードリセット
                     syncCamera('plotly-3d', 'plotly-tracking');
                 }
             };
 
             syncCbDet.addEventListener('change', handleSyncCheckboxChange);
             syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
+
+            // 3Dプロットのマウスドラッグリアルタイム同期検知
+            const gd3d = document.getElementById('plotly-3d');
+            const gdTrack = document.getElementById('plotly-tracking');
+
+            gd3d.addEventListener('mousedown', () => {
+                if (state.syncCamera) {
+                    activeSyncSource = 'plotly-3d';
+                    startCameraSyncLoop('plotly-3d', 'plotly-tracking');
+                }
+            });
+
+            gdTrack.addEventListener('mousedown', () => {
+                if (state.syncCamera) {
+                    activeSyncSource = 'plotly-tracking';
+                    startCameraSyncLoop('plotly-tracking', 'plotly-3d');
+                }
+            });
+
+            window.addEventListener('mouseup', () => {
+                stopCameraSyncLoop();
+            });
 
             // ESCキーでSelected cell ofを選択解除
             window.addEventListener('keydown', (e) => {
@@ -1196,23 +1217,93 @@
             });
         }
 
-        // カメラ視点リアルタイム同期用ヘルパー関数
-        let isSyncingCamera = false;
+        // カメラ視点オブジェクトの類似比較
+        function isCameraEqual(cam1, cam2) {
+            if (!cam1 || !cam2) return false;
+            const eps = 1e-4;
+            const keys = ['up', 'center', 'eye'];
+            const axes = ['x', 'y', 'z'];
+            
+            for (const key of keys) {
+                if (!cam1[key] || !cam2[key]) return false;
+                for (const axis of axes) {
+                    if (Math.abs((cam1[key][axis] || 0) - (cam2[key][axis] || 0)) > eps) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        let activeSyncSource = null;
+        let syncLoopId = null;
+        let lastSyncedCamera = null;
+
+        function startCameraSyncLoop(sourceId, targetId) {
+            if (syncLoopId) return;
+            
+            function loop() {
+                if (activeSyncSource !== sourceId || !state.syncCamera) {
+                    stopCameraSyncLoop();
+                    return;
+                }
+                
+                const sourceGd = document.getElementById(sourceId);
+                const targetGd = document.getElementById(targetId);
+                
+                if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene && sourceGd._fullLayout.scene.camera) {
+                    const sourceCam = sourceGd._fullLayout.scene.camera;
+                    
+                    // 前回の同期値と比較して、変化があれば同期
+                    if (!lastSyncedCamera || !isCameraEqual(sourceCam, lastSyncedCamera)) {
+                        let targetCam = null;
+                        if (targetGd._fullLayout && targetGd._fullLayout.scene && targetGd._fullLayout.scene.camera) {
+                            targetCam = targetGd._fullLayout.scene.camera;
+                        }
+                        
+                        if (!targetCam || !isCameraEqual(sourceCam, targetCam)) {
+                            lastSyncedCamera = JSON.parse(JSON.stringify(sourceCam));
+                            Plotly.relayout(targetId, { 'scene.camera': lastSyncedCamera });
+                        }
+                    }
+                }
+                syncLoopId = requestAnimationFrame(loop);
+            }
+            syncLoopId = requestAnimationFrame(loop);
+        }
+
+        function stopCameraSyncLoop() {
+            if (syncLoopId) {
+                cancelAnimationFrame(syncLoopId);
+                syncLoopId = null;
+            }
+            activeSyncSource = null;
+            lastSyncedCamera = null;
+        }
+
+        // カメラ視点リアルタイム同期用ヘルパー関数 (初期同期・チェックON時用)
         function syncCamera(sourceId, targetId) {
-            if (!state.syncCamera || isSyncingCamera) return;
+            if (!state.syncCamera) return;
             
             const sourceGd = document.getElementById(sourceId);
             const targetGd = document.getElementById(targetId);
             
             if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene && sourceGd._fullLayout.scene.camera) {
-                const cam = JSON.parse(JSON.stringify(sourceGd._fullLayout.scene.camera));
+                const sourceCam = sourceGd._fullLayout.scene.camera;
                 
-                isSyncingCamera = true;
-                Plotly.relayout(targetId, { 'scene.camera': cam }).then(() => {
-                    isSyncingCamera = false;
-                }).catch(() => {
-                    isSyncingCamera = false;
-                });
+                // 相手の現在のカメラを取得
+                let targetCam = null;
+                if (targetGd._fullLayout && targetGd._fullLayout.scene && targetGd._fullLayout.scene.camera) {
+                    targetCam = targetGd._fullLayout.scene.camera;
+                }
+                
+                // すでにアングルが一致している場合は同期をスキップ (無限ループ防止)
+                if (targetCam && isCameraEqual(sourceCam, targetCam)) {
+                    return;
+                }
+                
+                const camCopy = JSON.parse(JSON.stringify(sourceCam));
+                Plotly.relayout(targetId, { 'scene.camera': camCopy });
             }
         }
 
