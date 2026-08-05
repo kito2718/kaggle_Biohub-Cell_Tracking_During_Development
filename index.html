@@ -760,6 +760,9 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
+                        <button id="sync-cam-to-tracking" class="btn btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; font-family: var(--font-outfit);">
+                            Sync to Tracking 📸
+                        </button>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
                 </div>
@@ -768,6 +771,9 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
+                        <button id="sync-cam-to-detection" class="btn btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; font-family: var(--font-outfit);">
+                            Sync to Detection 📸
+                        </button>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
                 </div>
@@ -1048,6 +1054,30 @@
                 renderBothFrames();
             });
 
+            // 3Dカメラ同期ボタンイベント
+            document.getElementById('sync-cam-to-tracking').addEventListener('click', () => {
+                const gd3d = document.getElementById('plotly-3d');
+                if (gd3d && gd3d._fullLayout && gd3d._fullLayout.scene && gd3d._fullLayout.scene.camera) {
+                    const cam = gd3d._fullLayout.scene.camera;
+                    Plotly.relayout('plotly-tracking', { 'scene.camera': cam });
+                }
+            });
+
+            document.getElementById('sync-cam-to-detection').addEventListener('click', () => {
+                const gdTrack = document.getElementById('plotly-tracking');
+                if (gdTrack && gdTrack._fullLayout && gdTrack._fullLayout.scene && gdTrack._fullLayout.scene.camera) {
+                    const cam = gdTrack._fullLayout.scene.camera;
+                    Plotly.relayout('plotly-3d', { 'scene.camera': cam });
+                }
+            });
+
+            // ESCキーでSelected cell ofを選択解除
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' || e.key === 'Esc') {
+                    selectSpot(null);
+                }
+            });
+
             // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
             Object.keys(elements.canvases).forEach(axis => {
                 const canvas = elements.canvases[axis];
@@ -1269,8 +1299,8 @@
                         name: `[${dataset}] TP`,
                         type: 'scatter3d',
                         marker: { size: config.spotRadius, color: '#10b981', opacity: config.opacity },
-                        customdata: tp.map(c => ({ id: c[3], track_id: c[4], type: 'TP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: tp.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: 'TP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
 
@@ -1284,8 +1314,8 @@
                         name: `[${dataset}] FP`,
                         type: 'scatter3d',
                         marker: { size: config.spotRadius, color: '#ef4444', opacity: config.opacity, symbol: 'cross' },
-                        customdata: fp.map(c => ({ id: c[3], track_id: c[4], type: 'FP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: fp.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: 'FP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
 
@@ -1299,8 +1329,8 @@
                         name: `[${dataset}] FN`,
                         type: 'scatter3d',
                         marker: { size: config.spotRadius, color: '#06b6d4', opacity: config.opacity, symbol: 'diamond' },
-                        customdata: fn.map(c => ({ id: c[3], track_id: null, type: 'FN', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: fn.map(c => ({ id: c[3], track_id: null, track_id_str: '-', type: 'FN', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
             });
@@ -1338,16 +1368,27 @@
                 state.resetCamera3d = false; // フラグをクリア
             }
 
+            const shape = state.meta ? state.meta.shape : [100, 100, 100];
+            const xRange = [0, shape[2] * scale[2]];
+            const yRange = [0, shape[1] * scale[1]];
+            const zRange = [0, shape[0] * scale[0]];
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 margin: { l: 0, r: 0, b: 0, t: 0 },
                 showlegend: true,
-                legend: { x: 0, y: 1, font: { color: '#94a3b8', size: 9 } },
+                legend: { 
+                    x: 0, 
+                    y: 1, 
+                    font: { color: '#94a3b8', size: 9 },
+                    itemclick: false,
+                    itemdoubleclick: false
+                },
                 scene: {
-                    xaxis: { title: 'X (Width)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
-                    yaxis: { title: 'Y (Height)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
-                    zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
+                    xaxis: { title: 'X (Width)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: xRange },
+                    yaxis: { title: 'Y (Height)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: yRange },
+                    zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: zRange },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
                     camera: currentCamera || {
@@ -1466,8 +1507,8 @@
                             type: 'scatter3d',
                             name: `[${dataset}] ${type} Node (${label})`,
                             marker: { size: size, color: color, opacity: opacity, symbol: 'circle' },
-                            customdata: coords.map(c => ({ id: c[3], track_id: c[4], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
-                            hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>` + (type === 'FN' ? '' : 'Track: %{customdata.track_id}<br>') + `Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
+                            customdata: coords.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
+                            hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                         });
                     };
 
@@ -1556,16 +1597,27 @@
                 state.resetCameraTracking = false; // フラグをクリア
             }
 
+            const shape = state.meta ? state.meta.shape : [100, 100, 100];
+            const xRange = [0, shape[2] * scale[2]];
+            const yRange = [0, shape[1] * scale[1]];
+            const zRange = [0, shape[0] * scale[0]];
+
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 margin: { l: 0, r: 0, b: 0, t: 0 },
                 showlegend: true,
-                legend: { x: 0, y: 1, font: { color: '#94a3b8', size: 9 } },
+                legend: { 
+                    x: 0, 
+                    y: 1, 
+                    font: { color: '#94a3b8', size: 9 },
+                    itemclick: false,
+                    itemdoubleclick: false
+                },
                 scene: {
-                    xaxis: { title: 'X', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
-                    yaxis: { title: 'Y', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
-                    zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)' },
+                    xaxis: { title: 'X', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: xRange },
+                    yaxis: { title: 'Y', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: yRange },
+                    zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: zRange },
                     aspectmode: 'manual',
                     aspectratio: { x: 1, y: 1, z: 0.6 },
                     camera: currentCamera || {
@@ -1682,57 +1734,6 @@
             const r = config.spotRadius;
             const opacity = config.opacity;
 
-            // 1. トラッキング線描画
-            if (config.showTracks) {
-                const f = state.currentFrame;
-
-                const drawMIPEdge = (e, color, isDashed) => {
-                    const pStart = get2DPos(e.start, axis);
-                    const pEnd = get2DPos(e.end, axis);
-                    const isSelected = state.selectedTrackId !== null && e.track_id === state.selectedTrackId;
-
-                    ctx.beginPath();
-                    ctx.moveTo(pStart.x, pStart.y);
-                    ctx.lineTo(pEnd.x, pEnd.y);
-                    
-                    if (isDashed) {
-                        ctx.setLineDash([4, 4]);
-                    } else {
-                        ctx.setLineDash([]);
-                    }
-
-                    ctx.strokeStyle = isSelected ? 'rgba(245, 158, 11, 0.9)' : color;
-                    ctx.lineWidth = isSelected ? 3 : 1.5;
-                    ctx.stroke();
-                    ctx.setLineDash([]); // 元に戻す
-                };
-
-                // f-1 のエッジ（実線、過去）
-                if (f > 0) {
-                    const fDataTminus1 = state.framesData.frames[f - 1];
-                    if (fDataTminus1) {
-                        const edgeTp = fDataTminus1.edge_tp || [];
-                        const edgeFp = fDataTminus1.edge_fp || [];
-                        const edgeFn = fDataTminus1.edge_fn || [];
-
-                        if (config.showTp) edgeTp.forEach(e => drawMIPEdge(e, 'rgba(16, 185, 129, 0.7)', false));
-                        if (config.showFp) edgeFp.forEach(e => drawMIPEdge(e, 'rgba(239, 68, 68, 0.7)', false));
-                        if (config.showFn) edgeFn.forEach(e => drawMIPEdge(e, 'rgba(6, 182, 212, 0.7)', false));
-                    }
-                }
-
-                // f のエッジ（点線、未来）
-                const fDataT = state.framesData.frames[f];
-                if (fDataT) {
-                    const edgeTp = fDataT.edge_tp || [];
-                    const edgeFp = fDataT.edge_fp || [];
-                    const edgeFn = fDataT.edge_fn || [];
-
-                    if (config.showTp) edgeTp.forEach(e => drawMIPEdge(e, 'rgba(16, 185, 129, 0.45)', true));
-                    if (config.showFp) edgeFp.forEach(e => drawMIPEdge(e, 'rgba(239, 68, 68, 0.45)', true));
-                    if (config.showFn) edgeFn.forEach(e => drawMIPEdge(e, 'rgba(6, 182, 212, 0.45)', true));
-                }
-            }
 
             // 2. 細胞スポット描画
             const drawSpot = (coord, type) => {
@@ -1855,7 +1856,7 @@
                     <strong>${spot.type} Spot</strong><br>
                     Dataset: ${spot.dataset}<br>
                     ID: ${spot.id}<br>
-                    ${spot.track_id ? `Track: ${spot.track_id}<br>` : ''}
+                    Track: ${spot.track_id !== undefined && spot.track_id !== null && spot.track_id !== -1 ? spot.track_id : '-'}<br>
                     Z: ${spot.z.toFixed(1)}<br>
                     Y: ${spot.y.toFixed(1)}<br>
                     X: ${spot.x.toFixed(1)}
