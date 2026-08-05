@@ -762,7 +762,7 @@
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera 🔄
+                            Sync Camera2 🔄
                         </label>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
@@ -774,7 +774,7 @@
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera 🔄
+                            Sync Camera2 🔄
                         </label>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
@@ -1075,27 +1075,36 @@
             syncCbDet.addEventListener('change', handleSyncCheckboxChange);
             syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
 
-            // 3Dプロットのマウスドラッグリアルタイム同期検知
-            const gd3d = document.getElementById('plotly-3d');
-            const gdTrack = document.getElementById('plotly-tracking');
-
+            // 3Dプロットのマウスドラッグリアルタイム同期検知 (useCapture = true で伝播阻止を回避)
             gd3d.addEventListener('mousedown', () => {
                 if (state.syncCamera) {
                     activeSyncSource = 'plotly-3d';
                     startCameraSyncLoop('plotly-3d', 'plotly-tracking');
                 }
-            });
+            }, true);
 
             gdTrack.addEventListener('mousedown', () => {
                 if (state.syncCamera) {
                     activeSyncSource = 'plotly-tracking';
                     startCameraSyncLoop('plotly-tracking', 'plotly-3d');
                 }
-            });
+            }, true);
 
             window.addEventListener('mouseup', () => {
                 stopCameraSyncLoop();
-            });
+            }, true);
+
+            // ホイールズームのリアルタイム同期検知
+            const handleWheelSync = (sourceId, targetId) => {
+                if (state.syncCamera) {
+                    setTimeout(() => {
+                        syncCamera(sourceId, targetId);
+                    }, 50);
+                }
+            };
+
+            gd3d.addEventListener('wheel', () => handleWheelSync('plotly-3d', 'plotly-tracking'), true);
+            gdTrack.addEventListener('wheel', () => handleWheelSync('plotly-tracking', 'plotly-3d'), true);
 
             // ESCキーでSelected cell ofを選択解除
             window.addEventListener('keydown', (e) => {
