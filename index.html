@@ -762,7 +762,7 @@
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera3 🔄
+                            Sync Camera5 🔄
                         </label>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
@@ -774,7 +774,7 @@
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera3 🔄
+                            Sync Camera5 🔄
                         </label>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
@@ -1068,52 +1068,14 @@
 
                 // チェックを入れた瞬間に、現在の3D Point Cloudのカメラアングルを同期する
                 if (state.syncCamera) {
-                    syncCamera('plotly-3d', 'plotly-tracking');
+                    const camera = document.getElementById('plotly-3d')?._fullLayout?.scene?.camera;
+                    if(camera)
+                        syncCamera(camera, 'plotly-tracking');
                 }
             };
 
             syncCbDet.addEventListener('change', handleSyncCheckboxChange);
             syncCbTrack.addEventListener('change', handleSyncCheckboxChange);
-
-            // 3Dプロットのマウスドラッグリアルタイム同期検知 (ホバー判定＋左ドラッグ検出方式)
-            const gd3d = document.getElementById('plotly-3d');
-            const gdTrack = document.getElementById('plotly-tracking');
-            let activeHoverSource = null;
-
-            const handleHoverEnter = (sourceId) => {
-                activeHoverSource = sourceId;
-            };
-
-            const handleHoverLeave = () => {
-                activeHoverSource = null;
-            };
-
-            gd3d.addEventListener('mouseenter', () => handleHoverEnter('plotly-3d'), true);
-            gd3d.addEventListener('mouseleave', handleHoverLeave, true);
-            
-            gdTrack.addEventListener('mouseenter', () => handleHoverEnter('plotly-tracking'), true);
-            gdTrack.addEventListener('mouseleave', handleHoverLeave, true);
-
-            // document全体でのマウス移動を監視 (左ドラッグ中のみ同期実行)
-            document.addEventListener('mousemove', (e) => {
-                if (!state.syncCamera || !activeHoverSource) return;
-                if (e.buttons !== 1) return; // 左ドラッグ中でなければ無視
-                
-                const targetId = (activeHoverSource === 'plotly-3d') ? 'plotly-tracking' : 'plotly-3d';
-                syncCamera(activeHoverSource, targetId);
-            }, true);
-
-            // ホイールズームのリアルタイム同期検知
-            const handleWheelSync = (sourceId, targetId) => {
-                if (state.syncCamera) {
-                    setTimeout(() => {
-                        syncCamera(sourceId, targetId);
-                    }, 50);
-                }
-            };
-
-            gd3d.addEventListener('wheel', () => handleWheelSync('plotly-3d', 'plotly-tracking'), true);
-            gdTrack.addEventListener('wheel', () => handleWheelSync('plotly-tracking', 'plotly-3d'), true);
 
             // ESCキーでSelected cell ofを選択解除
             window.addEventListener('keydown', (e) => {
@@ -1191,6 +1153,7 @@
                     isDragging = false;
                 };
                 canvas.addEventListener('mouseup', stopDrag);
+                window.addEventListener('mouseup', stopDrag);
                 canvas.addEventListener('mouseleave', () => {
                     stopDrag();
                     elements.tooltip.style.display = 'none';
@@ -1253,90 +1216,16 @@
             return true;
         }
 
-        let activeSyncSource = null;
-        let syncLoopId = null;
-        let lastSyncedCamera = null;
-
-        function startCameraSyncLoop(sourceId, targetId) {
-            if (syncLoopId) return;
-            
-            function loop() {
-                if (activeSyncSource !== sourceId || !state.syncCamera) {
-                    stopCameraSyncLoop();
-                    return;
-                }
-                
-                const sourceGd = document.getElementById(sourceId);
-                const targetGd = document.getElementById(targetId);
-                
-                if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene) {
-                    const sourceScene = sourceGd._fullLayout.scene;
-                    const sourceCam = (typeof sourceScene.getCamera === 'function') 
-                        ? sourceScene.getCamera() 
-                        : sourceScene.camera;
-                    
-                    if (sourceCam) {
-                        // 前回の同期値と比較して、変化があれば同期
-                        if (!lastSyncedCamera || !isCameraEqual(sourceCam, lastSyncedCamera)) {
-                            let targetCam = null;
-                            const targetScene = targetGd._fullLayout.scene;
-                            if (targetScene) {
-                                targetCam = (typeof targetScene.getCamera === 'function')
-                                    ? targetScene.getCamera()
-                                    : targetScene.camera;
-                            }
-                            
-                            if (!targetCam || !isCameraEqual(sourceCam, targetCam)) {
-                                lastSyncedCamera = JSON.parse(JSON.stringify(sourceCam));
-                                Plotly.relayout(targetId, { 'scene.camera': lastSyncedCamera });
-                            }
-                        }
-                    }
-                }
-                syncLoopId = requestAnimationFrame(loop);
-            }
-            syncLoopId = requestAnimationFrame(loop);
-        }
-
-        function stopCameraSyncLoop() {
-            if (syncLoopId) {
-                cancelAnimationFrame(syncLoopId);
-                syncLoopId = null;
-            }
-            activeSyncSource = null;
-            lastSyncedCamera = null;
-        }
-
         // カメラ視点リアルタイム同期用ヘルパー関数 (初期同期・チェックON時用)
-        function syncCamera(sourceId, targetId) {
-            if (!state.syncCamera) return;
+        let syncingCamera = false;  // カメラ同期フラグ
+        function syncCamera(sourceCamera, targetId) {
+            if(!state.syncCamera) return;
+            if(syncingCamera) return;
+
+            syncingCamera = true;
             
-            const sourceGd = document.getElementById(sourceId);
-            const targetGd = document.getElementById(targetId);
-            
-            if (sourceGd && targetGd && sourceGd._fullLayout && sourceGd._fullLayout.scene) {
-                const sourceScene = sourceGd._fullLayout.scene;
-                const sourceCam = (typeof sourceScene.getCamera === 'function') 
-                    ? sourceScene.getCamera() 
-                    : sourceScene.camera;
-                
-                if (sourceCam) {
-                    let targetCam = null;
-                    const targetScene = targetGd._fullLayout.scene;
-                    if (targetScene) {
-                        targetCam = (typeof targetScene.getCamera === 'function')
-                            ? targetScene.getCamera()
-                            : targetScene.camera;
-                    }
-                    
-                    if (targetCam && isCameraEqual(sourceCam, targetCam)) {
-                        return;
-                    }
-                    
-                    const camCopy = JSON.parse(JSON.stringify(sourceCam));
-                    Plotly.relayout(targetId, { 'scene.camera': camCopy });
-                }
-            }
+            Plotly.relayout(targetId, { 'scene.camera': JSON.parse(JSON.stringify(sourceCamera)) })
+            .finally(() => { syncingCamera = false; });
         }
 
         // 表示の更新 (スピナー/エラーメッセージ表示)
@@ -1547,6 +1436,7 @@
 
             Plotly.react('plotly-3d', traces, layout).then(() => {
                 const gd = document.getElementById('plotly-3d');
+                // セル選択
                 gd.removeAllListeners('plotly_click');
                 gd.on('plotly_click', (data) => {
                     if (data.points && data.points[0] && data.points[0].customdata) {
@@ -1555,19 +1445,10 @@
                     }
                 });
 
-                // カメラドラッグ時の同期リスナー
+                // カメラ同期
                 gd.removeAllListeners('plotly_relayout');
                 gd.on('plotly_relayout', (eventData) => {
-                    if (eventData && (eventData['scene.camera'] || eventData.scene)) {
-                        syncCamera('plotly-3d', 'plotly-tracking');
-                    }
-                });
-
-                // ダブルクリックでリセット
-                gd.removeAllListeners('plotly_doubleclick');
-                gd.on('plotly_doubleclick', () => {
-                    state.resetCamera3d = true;
-                    renderDetectionFrame();
+                    syncCamera(eventData['scene.camera'], 'plotly-tracking');
                 });
             });
         }
@@ -1784,6 +1665,7 @@
 
             Plotly.react('plotly-tracking', traces, layout).then(() => {
                 const gd = document.getElementById('plotly-tracking');
+                // Cell選択
                 gd.removeAllListeners('plotly_click');
                 gd.on('plotly_click', (data) => {
                     if (data.points && data.points[0] && data.points[0].customdata) {
@@ -1792,19 +1674,10 @@
                     }
                 });
 
-                // カメラドラッグ時の同期リスナー
+                // カメラ同期
                 gd.removeAllListeners('plotly_relayout');
                 gd.on('plotly_relayout', (eventData) => {
-                    if (eventData && (eventData['scene.camera'] || eventData.scene)) {
-                        syncCamera('plotly-tracking', 'plotly-3d');
-                    }
-                });
-
-                // ダブルクリックでリセット
-                gd.removeAllListeners('plotly_doubleclick');
-                gd.on('plotly_doubleclick', () => {
-                    state.resetCameraTracking = true;
-                    renderTrackingFrame();
+                    syncCamera(eventData['scene.camera'], 'plotly-3d');
                 });
             });
         }
