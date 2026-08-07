@@ -1458,9 +1458,9 @@
             }
 
             const shape = state.meta ? state.meta.shape : [64, 256, 256];
-            const xRange = [0, shape[2] * scale[2]];
+            const xRange = [shape[2] * scale[2], 0]; // 反転
             const yRange = [0, shape[1] * scale[1]];
-            const zRange = [0, shape[0] * scale[0]];
+            const zRange = [shape[0] * scale[0], 0]; // 反転
 
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
@@ -1733,9 +1733,9 @@
             }
 
             const shape = state.meta ? state.meta.shape : [64, 256, 256];
-            const xRange = [0, shape[2] * scale[2]];
+            const xRange = [shape[2] * scale[2], 0]; // 反転
             const yRange = [0, shape[1] * scale[1]];
-            const zRange = [0, shape[0] * scale[0]];
+            const zRange = [shape[0] * scale[0], 0]; // 反転
 
             const layout = {
                 paper_bgcolor: 'rgba(0,0,0,0)',
