@@ -762,7 +762,7 @@
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera5 🔄
+                            Sync Camera6 🔄
                         </label>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
@@ -774,7 +774,7 @@
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
                         <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
                             <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera5 🔄
+                            Sync Camera6 🔄
                         </label>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
@@ -1343,7 +1343,8 @@
 
         // Plotly 3D点群描画 (細胞検出)
         function render3DPlot(frameData) {
-            const scale = state.meta.scale || [1.0, 1.0, 1.0];
+            // ボクセル座標をそのまま表示するため、 scale は [1.0, 1.0, 1.0] に固定
+            const scale = [1.0, 1.0, 1.0];
             const traces = [];
 
             // 選択されたデータセットごとにトレースを作成
@@ -1456,7 +1457,7 @@
                 state.resetCamera3d = false; // フラグをクリア
             }
 
-            const shape = state.meta ? state.meta.shape : [100, 100, 100];
+            const shape = state.meta ? state.meta.shape : [64, 256, 256];
             const xRange = [0, shape[2] * scale[2]];
             const yRange = [0, shape[1] * scale[1]];
             const zRange = [0, shape[0] * scale[0]];
@@ -1478,7 +1479,8 @@
                     yaxis: { title: 'Y (Height)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: yRange },
                     zaxis: { title: 'Z (Depth)', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: zRange },
                     aspectmode: 'manual',
-                    aspectratio: { x: 1, y: 1, z: 0.6 },
+                    // Z軸を4倍に引き伸ばすため、アスペクト比を1:1:1に設定
+                    aspectratio: { x: 1, y: 1, z: 1 },
                     camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
@@ -1507,7 +1509,8 @@
 
         // Plotly 3Dトラッキング確認プロットの描画
         function renderTrackingPlot(frameData) {
-            const scale = state.meta.scale || [1.0, 1.0, 1.0];
+            // ボクセル座標をそのまま表示するため、 scale は [1.0, 1.0, 1.0] に固定
+            const scale = [1.0, 1.0, 1.0];
             const traces = [];
             const t = state.currentFrame;
 
@@ -1729,7 +1732,7 @@
                 state.resetCameraTracking = false; // フラグをクリア
             }
 
-            const shape = state.meta ? state.meta.shape : [100, 100, 100];
+            const shape = state.meta ? state.meta.shape : [64, 256, 256];
             const xRange = [0, shape[2] * scale[2]];
             const yRange = [0, shape[1] * scale[1]];
             const zRange = [0, shape[0] * scale[0]];
@@ -1751,7 +1754,8 @@
                     yaxis: { title: 'Y', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: yRange },
                     zaxis: { title: 'Z', color: '#94a3b8', gridcolor: 'rgba(255,255,255,0.05)', range: zRange },
                     aspectmode: 'manual',
-                    aspectratio: { x: 1, y: 1, z: 0.6 },
+                    // Z軸を4倍に引き伸ばすため、アスペクト比を1:1:1に設定
+                    aspectratio: { x: 1, y: 1, z: 1 },
                     camera: currentCamera || {
                         eye: { x: 0.9, y: 0.9, z: 0.7 } // 初期表示ズーム
                     }
