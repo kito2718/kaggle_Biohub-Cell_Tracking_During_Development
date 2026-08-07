@@ -1499,6 +1499,7 @@
                 // カメラ同期
                 gd.removeAllListeners('plotly_relayout');
                 gd.on('plotly_relayout', (eventData) => {
+                    if( !eventData['scene.camera']) return;
                     syncCamera(eventData['scene.camera'], 'plotly-tracking');
                 });
             });
@@ -1771,6 +1772,7 @@
                 // カメラ同期
                 gd.removeAllListeners('plotly_relayout');
                 gd.on('plotly_relayout', (eventData) => {
+                    if( !eventData['scene.camera']) return;
                     syncCamera(eventData['scene.camera'], 'plotly-3d');
                 });
             });
