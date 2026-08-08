@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:,">
     <!-- Plotly.js -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
     <style>
@@ -1504,6 +1505,11 @@
                 });
             });
         }
+
+        function renderTrackingPlot(frameData) {
+            const t = state.currentFrame;
+            const scale = [1.0, 1.0, 1.0];
+            const traces = [];
 
             // ノードID ➔ 座標 のルックアップ辞書を作成するヘルパー
             const getNodeCoordsMap = (frameData) => {
