@@ -1323,9 +1323,9 @@
 
         // 検出統計パネルの更新
         function updateDetectionStats(frameData) {
-            elements.statTp.textContent = frameData.tp_coords ? frameData.tp_coords.length : 0;
-            elements.statFp.textContent = frameData.fp_coords ? frameData.fp_coords.length : 0;
-            elements.statFn.textContent = frameData.fn_coords ? frameData.fn_coords.length : 0;
+            elements.statTp.textContent = frameData.node_tp ? frameData.node_tp.length : 0;
+            elements.statFp.textContent = frameData.node_fp ? frameData.node_fp.length : 0;
+            elements.statFn.textContent = frameData.node_fn ? frameData.node_fn.length : 0;
 
             const summary = frameData.summary || {};
             elements.statPrecision.textContent = summary.precision !== undefined ? summary.precision.toFixed(4) : '-';
@@ -1349,9 +1349,9 @@
 
             // 選択されたデータセットごとにトレースを作成
             state.selectedDatasets.forEach(dataset => {
-                const tp = frameData.tp_coords ? frameData.tp_coords.filter(c => c[5] === dataset) : [];
-                const fp = frameData.fp_coords ? frameData.fp_coords.filter(c => c[5] === dataset) : [];
-                const fn = frameData.fn_coords ? frameData.fn_coords.filter(c => c[5] === dataset) : [];
+                const tp = frameData.node_tp ? frameData.node_tp.filter(c => c[4] === dataset) : [];
+                const fp = frameData.node_fp ? frameData.node_fp.filter(c => c[4] === dataset) : [];
+                const fn = frameData.node_fn ? frameData.node_fn.filter(c => c[4] === dataset) : [];
 
                 // TP (Green)
                 if (config.showTp && tp.length > 0) {
@@ -1367,12 +1367,11 @@
                             color: '#10b981', 
                             opacity: tp.map(c => {
                                 const isSelectedSpot = state.selectedSpot && state.selectedSpot.id === c[3];
-                                const isSelectedTrack = state.selectedTrackId !== null && c[4] !== undefined && c[4] !== null && c[4] === state.selectedTrackId;
-                                return state.selectedSpot ? ((isSelectedSpot || isSelectedTrack) ? config.opacity : config.opacity * 0.4) : config.opacity;
+                                return state.selectedSpot ? (isSelectedSpot ? config.opacity : config.opacity * 0.4) : config.opacity;
                             })
                         },
-                        customdata: tp.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: 'TP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: tp.map(c => ({ id: c[3], type: 'TP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
 
@@ -1391,12 +1390,11 @@
                             symbol: 'cross',
                             opacity: fp.map(c => {
                                 const isSelectedSpot = state.selectedSpot && state.selectedSpot.id === c[3];
-                                const isSelectedTrack = state.selectedTrackId !== null && c[4] !== undefined && c[4] !== null && c[4] === state.selectedTrackId;
-                                return state.selectedSpot ? ((isSelectedSpot || isSelectedTrack) ? config.opacity : config.opacity * 0.4) : config.opacity;
+                                return state.selectedSpot ? (isSelectedSpot ? config.opacity : config.opacity * 0.4) : config.opacity;
                             })
                         },
-                        customdata: fp.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: 'FP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: fp.map(c => ({ id: c[3], type: 'FP', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
 
@@ -1418,8 +1416,8 @@
                                 return state.selectedSpot ? (isSelectedSpot ? config.opacity : config.opacity * 0.4) : config.opacity;
                             })
                         },
-                        customdata: fn.map(c => ({ id: c[3], track_id: null, track_id_str: '-', type: 'FN', z: c[0], y: c[1], x: c[2], dataset: dataset })),
-                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
+                        customdata: fn.map(c => ({ id: c[3], type: 'FN', z: c[0], y: c[1], x: c[2], dataset: dataset })),
+                        hovertemplate: 'Dataset: %{customdata.dataset}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>'
                     });
                 }
             });
@@ -1507,12 +1505,25 @@
             });
         }
 
-        // Plotly 3Dトラッキング確認プロットの描画
-        function renderTrackingPlot(frameData) {
-            // ボクセル座標をそのまま表示するため、 scale は [1.0, 1.0, 1.0] に固定
-            const scale = [1.0, 1.0, 1.0];
-            const traces = [];
-            const t = state.currentFrame;
+            // ノードID ➔ 座標 のルックアップ辞書を作成するヘルパー
+            const getNodeCoordsMap = (frameData) => {
+                const map = {};
+                if (!frameData) return map;
+                ['node_tp', 'node_fp', 'node_fn'].forEach(type => {
+                    const nodes = frameData[type];
+                    if (nodes) {
+                        nodes.forEach(node => {
+                            // node = [z, y, x, node_id, dataset]
+                            map[node[3]] = [node[0], node[1], node[2]];
+                        });
+                    }
+                });
+                return map;
+            };
+
+            const coordsMapT = getNodeCoordsMap(state.framesData.frames[t]);
+            const coordsMapTminus1 = t > 0 ? getNodeCoordsMap(state.framesData.frames[t - 1]) : {};
+            const coordsMapTplus1 = getNodeCoordsMap(state.framesData.frames[t + 1]);
 
             state.selectedDatasets.forEach(dataset => {
                 // 1. エッジの描画 (t-1 -> t)
@@ -1523,37 +1534,39 @@
                         const edgeFp = fDataTminus1.edge_fp ? fDataTminus1.edge_fp.filter(e => e.dataset === dataset) : [];
                         const edgeFn = fDataTminus1.edge_fn ? fDataTminus1.edge_fn.filter(e => e.dataset === dataset) : [];
 
-                        const addEdgesTprev = (edges, color, showFilter) => {
+                        const addEdgesTprev = (edges, color, showFilter, type) => {
                             if (config.showTracks && showFilter && edges.length > 0) {
                                 const hasSelection = state.selectedSpot !== null;
                                 edges.forEach(e => {
-                                    const sourceTrackId = state.spotIdToTrackId[e.source_id];
-                                    const targetTrackId = state.spotIdToTrackId[e.target_id];
-                                    const isSelectedTrack = state.selectedTrackId !== null && 
-                                        (sourceTrackId === state.selectedTrackId || targetTrackId === state.selectedTrackId);
-                                    const isSelectedSpot = state.selectedSpot && 
-                                        (e.source_id === state.selectedSpot.id || e.target_id === state.selectedSpot.id);
-                                    
-                                    const isHighlight = isSelectedTrack || isSelectedSpot;
-                                    const edgeColor = hasSelection && !isHighlight ? convertColorToTransparent(color, 0.4) : color;
-                                    const edgeWidth = hasSelection && !isHighlight ? 1.5 : 3.5;
+                                    const start = coordsMapTminus1[e.source_nodeid];
+                                    const end = coordsMapT[e.target_nodeid];
+                                    if (start && end) {
+                                        const isHighlight = state.selectedSpot && 
+                                            (e.source_nodeid === state.selectedSpot.id || e.target_nodeid === state.selectedSpot.id);
+                                        const edgeColor = hasSelection && !isHighlight ? convertColorToTransparent(color, 0.4) : color;
+                                        const edgeWidth = hasSelection && !isHighlight ? 1.5 : 3.5;
 
-                                    traces.push({
-                                        x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                        y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                        z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                                        mode: 'lines',
-                                        type: 'scatter3d',
-                                        showlegend: false,
-                                        line: { color: edgeColor, width: edgeWidth }, // 実線
-                                        hoverinfo: 'none'
-                                    });
+                                        traces.push({
+                                            x: [start[2] * scale[2], end[2] * scale[2]],
+                                            y: [start[1] * scale[1], end[1] * scale[1]],
+                                            z: [start[0] * scale[0], end[0] * scale[0]],
+                                            mode: 'lines',
+                                            type: 'scatter3d',
+                                            showlegend: false,
+                                            line: { color: edgeColor, width: edgeWidth },
+                                            customdata: [
+                                                { source_nodeid: e.source_nodeid, target_nodeid: e.target_nodeid, type: type, dataset: dataset },
+                                                { source_nodeid: e.source_nodeid, target_nodeid: e.target_nodeid, type: type, dataset: dataset }
+                                            ],
+                                            hovertemplate: `Dataset: %{customdata.dataset}<br>Start Node ID: %{customdata.source_nodeid}<br>End Node ID: %{customdata.target_nodeid}<br>Type: %{customdata.type}<extra></extra>`
+                                        });
+                                    }
                                 });
                             }
                         };
-                        addEdgesTprev(edgeTp, '#10b981', config.showTp);
-                        addEdgesTprev(edgeFp, '#ef4444', config.showFp);
-                        addEdgesTprev(edgeFn, '#06b6d4', config.showFn);
+                        addEdgesTprev(edgeTp, '#10b981', config.showTp, 'TP');
+                        addEdgesTprev(edgeFp, '#ef4444', config.showFp, 'FP');
+                        addEdgesTprev(edgeFn, '#06b6d4', config.showFn, 'FN');
                     }
                 }
 
@@ -1564,37 +1577,39 @@
                     const edgeFp = fDataT.edge_fp ? fDataT.edge_fp.filter(e => e.dataset === dataset) : [];
                     const edgeFn = fDataT.edge_fn ? fDataT.edge_fn.filter(e => e.dataset === dataset) : [];
 
-                    const addEdgesTnext = (edges, color, showFilter) => {
+                    const addEdgesTnext = (edges, color, showFilter, type) => {
                         if (config.showTracks && showFilter && edges.length > 0) {
                             const hasSelection = state.selectedSpot !== null;
                             edges.forEach(e => {
-                                const sourceTrackId = state.spotIdToTrackId[e.source_id];
-                                const targetTrackId = state.spotIdToTrackId[e.target_id];
-                                const isSelectedTrack = state.selectedTrackId !== null && 
-                                    (sourceTrackId === state.selectedTrackId || targetTrackId === state.selectedTrackId);
-                                const isSelectedSpot = state.selectedSpot && 
-                                    (e.source_id === state.selectedSpot.id || e.target_id === state.selectedSpot.id);
-                                
-                                const isHighlight = isSelectedTrack || isSelectedSpot;
-                                const edgeColor = hasSelection && !isHighlight ? convertColorToTransparent(color, 0.4) : color;
-                                const edgeWidth = hasSelection && !isHighlight ? 1.5 : 3.5;
+                                const start = coordsMapT[e.source_nodeid];
+                                const end = coordsMapTplus1[e.target_nodeid];
+                                if (start && end) {
+                                    const isHighlight = state.selectedSpot && 
+                                        (e.source_nodeid === state.selectedSpot.id || e.target_nodeid === state.selectedSpot.id);
+                                    const edgeColor = hasSelection && !isHighlight ? convertColorToTransparent(color, 0.4) : color;
+                                    const edgeWidth = hasSelection && !isHighlight ? 1.5 : 3.5;
 
-                                traces.push({
-                                    x: [e.start[2] * scale[2], e.end[2] * scale[2]],
-                                    y: [e.start[1] * scale[1], e.end[1] * scale[1]],
-                                    z: [e.start[0] * scale[0], e.end[0] * scale[0]],
-                                    mode: 'lines',
-                                    type: 'scatter3d',
-                                    showlegend: false,
-                                    line: { color: edgeColor, width: edgeWidth, dash: 'dash' }, // 点線
-                                    hoverinfo: 'none'
-                                });
+                                    traces.push({
+                                        x: [start[2] * scale[2], end[2] * scale[2]],
+                                        y: [start[1] * scale[1], end[1] * scale[1]],
+                                        z: [start[0] * scale[0], end[0] * scale[0]],
+                                        mode: 'lines',
+                                        type: 'scatter3d',
+                                        showlegend: false,
+                                        line: { color: edgeColor, width: edgeWidth, dash: 'dash' },
+                                        customdata: [
+                                            { source_nodeid: e.source_nodeid, target_nodeid: e.target_nodeid, type: type, dataset: dataset },
+                                            { source_nodeid: e.source_nodeid, target_nodeid: e.target_nodeid, type: type, dataset: dataset }
+                                        ],
+                                        hovertemplate: `Dataset: %{customdata.dataset}<br>Start Node ID: %{customdata.source_nodeid}<br>End Node ID: %{customdata.target_nodeid}<br>Type: %{customdata.type} (t➔t+1)<extra></extra>`
+                                    });
+                                }
                             });
                         }
                     };
-                    addEdgesTnext(edgeTp, 'rgba(16, 185, 129, 0.6)', config.showTp);
-                    addEdgesTnext(edgeFp, 'rgba(239, 68, 68, 0.6)', config.showFp);
-                    addEdgesTnext(edgeFn, 'rgba(6, 182, 212, 0.6)', config.showFn);
+                    addEdgesTnext(edgeTp, 'rgba(16, 185, 129, 0.6)', config.showTp, 'TP');
+                    addEdgesTnext(edgeFp, 'rgba(239, 68, 68, 0.6)', config.showFp, 'FP');
+                    addEdgesTnext(edgeFn, 'rgba(6, 182, 212, 0.6)', config.showFn, 'FN');
                 }
 
                 // 3. 端点（ノード）の描画 (t-1, t, t+1)
@@ -1609,9 +1624,9 @@
                     const fData = state.framesData.frames[fIdx];
                     if (!fData) return;
 
-                    const tp = fData.tp_coords ? fData.tp_coords.filter(c => c[5] === dataset) : [];
-                    const fp = fData.fp_coords ? fData.fp_coords.filter(c => c[5] === dataset) : [];
-                    const fn = fData.fn_coords ? fData.fn_coords.filter(c => c[5] === dataset) : [];
+                    const tp = fData.node_tp ? fData.node_tp.filter(c => c[4] === dataset) : [];
+                    const fp = fData.node_fp ? fData.node_fp.filter(c => c[4] === dataset) : [];
+                    const fn = fData.node_fn ? fData.node_fn.filter(c => c[4] === dataset) : [];
 
                     const addEndPoints = (coords, color, type) => {
                         if (!coords || coords.length === 0) return;
@@ -1627,29 +1642,25 @@
                                 size: size, 
                                 color: color, 
                                 opacity: coords.map(c => {
-                                    const nodeTrackId = c[4];
-                                    const isSelectedTrack = state.selectedTrackId !== null && nodeTrackId !== undefined && nodeTrackId !== null && nodeTrackId === state.selectedTrackId;
                                     const isSelectedSpot = state.selectedSpot && state.selectedSpot.id === c[3];
-                                    
                                     if (hasSelection) {
-                                        if (isSelectedTrack || isSelectedSpot) {
+                                        if (isSelectedSpot) {
                                             return opacity;
                                         } else {
-                                            return opacity * 0.4; // 60%透過
+                                            return opacity * 0.4;
                                         }
                                     }
                                     return opacity;
                                 }), 
                                 symbol: 'circle' 
                             },
-                            customdata: coords.map(c => ({ id: c[3], track_id: c[4], track_id_str: (c[4] !== null && c[4] !== undefined && c[4] !== -1) ? c[4] : '-', type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
-                            hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>Track: %{customdata.track_id_str}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
+                            customdata: coords.map(c => ({ id: c[3], type: type, z: c[0], y: c[1], x: c[2], dataset: dataset, frame: fIdx })),
+                            hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                         });
                     };
-
-                    if (config.showTp) addEndPoints(tp, '#10b981', 'TP');
-                    if (config.showFp) addEndPoints(fp, '#ef4444', 'FP');
-                    if (config.showFn) addEndPoints(fn, '#06b6d4', 'FN');
+                    addEndPoints(tp, '#10b981', 'TP');
+                    addEndPoints(fp, '#ef4444', 'FP');
+                    addEndPoints(fn, '#06b6d4', 'FN');
                 });
             });
 
@@ -1917,23 +1928,21 @@
                 ctx.globalAlpha = 1.0;
             };
 
-            if (config.showFn && frameData.fn_coords) frameData.fn_coords.forEach(c => drawSpot(c, 'FN'));
-            if (config.showFp && frameData.fp_coords) frameData.fp_coords.forEach(c => drawSpot(c, 'FP'));
-            if (config.showTp && frameData.tp_coords) frameData.tp_coords.forEach(c => drawSpot(c, 'TP'));
+            if (config.showFn && frameData.node_fn) frameData.node_fn.forEach(c => drawSpot(c, 'FN'));
+            if (config.showFp && frameData.node_fp) frameData.node_fp.forEach(c => drawSpot(c, 'FP'));
+            if (config.showTp && frameData.node_tp) frameData.node_tp.forEach(c => drawSpot(c, 'TP'));
         }
 
-        // --- Canvasとのインタラクション処理 ---
-
-        // マウス位置から最も近い Spot を検索する (Canvas 座標系での比較)
+        // 2D画像上でのクリック対象となる最も近いスポットを検索する
         function findNearestSpot(x, y, axis, frameData) {
             const rThreshold = config.spotRadius + 6;
             let nearest = null;
             let minDistance = Infinity;
 
             const searchList = [];
-            if (config.showTp && frameData.tp_coords) frameData.tp_coords.forEach(c => searchList.push({ coord: c, type: 'TP' }));
-            if (config.showFp && frameData.fp_coords) frameData.fp_coords.forEach(c => searchList.push({ coord: c, type: 'FP' }));
-            if (config.showFn && frameData.fn_coords) frameData.fn_coords.forEach(c => searchList.push({ coord: c, type: 'FN' }));
+            if (config.showTp && frameData.node_tp) frameData.node_tp.forEach(c => searchList.push({ coord: c, type: 'TP' }));
+            if (config.showFp && frameData.node_fp) frameData.node_fp.forEach(c => searchList.push({ coord: c, type: 'FP' }));
+            if (config.showFn && frameData.node_fn) frameData.node_fn.forEach(c => searchList.push({ coord: c, type: 'FN' }));
 
             searchList.forEach(item => {
                 const pos = get2DPos(item.coord, axis);
@@ -1942,10 +1951,9 @@
                     minDistance = dist;
                     nearest = {
                         id: item.coord[3],
-                        track_id: item.coord[4],
                         type: item.type,
                         z: item.coord[0], y: item.coord[1], x: item.coord[2],
-                        dataset: item.coord[5]
+                        dataset: item.coord[4]
                     };
                 }
             });
@@ -1995,7 +2003,6 @@
                     <strong>${spot.type} Spot</strong><br>
                     Dataset: ${spot.dataset}<br>
                     ID: ${spot.id}<br>
-                    Track: ${spot.track_id !== undefined && spot.track_id !== null && spot.track_id !== -1 ? spot.track_id : '-'}<br>
                     Z: ${spot.z.toFixed(1)}<br>
                     Y: ${spot.y.toFixed(1)}<br>
                     X: ${spot.x.toFixed(1)}
@@ -2019,25 +2026,41 @@
         function selectSpot(spot) {
             if (spot) {
                 state.selectedSpot = spot;
-                state.selectedTrackId = spot.track_id !== undefined ? spot.track_id : (spot.customdata ? spot.customdata.track_id : null);
-                if (state.selectedTrackId === -1 || state.selectedTrackId === undefined) {
-                    state.selectedTrackId = null;
-                }
                 const datasetName = spot.dataset || (spot.customdata ? spot.customdata.dataset : '');
+                const type = spot.type || (spot.customdata ? spot.customdata.type : '');
                 
-                elements.inspectorPanel.innerHTML = `
-                    <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
-                        <strong>Dataset:</strong> <span style="color: var(--accent);">${datasetName}</span><br>
-                        <strong>Type:</strong> <span style="color: ${spot.type === 'TP' ? 'var(--color-tp)' : spot.type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">${spot.type}</span><br>
-                        <strong>Spot ID:</strong> ${spot.id}<br>
-                        <strong>Track ID:</strong> ${state.selectedTrackId !== null ? state.selectedTrackId : '<span style="color: var(--text-secondary);">None</span>'}<br>
-                        <strong>Position (Z, Y, X):</strong><br>
-                        &nbsp;&nbsp;(${spot.z.toFixed(2)}, ${spot.y.toFixed(2)}, ${spot.x.toFixed(2)})
-                    </div>
-                `;
+                // エッジ（接続線）がクリックされた場合
+                if (spot.source_nodeid !== undefined || (spot.customdata && spot.customdata.source_nodeid !== undefined)) {
+                    const srcId = spot.source_nodeid !== undefined ? spot.source_nodeid : spot.customdata.source_nodeid;
+                    const tgtId = spot.target_nodeid !== undefined ? spot.target_nodeid : spot.customdata.target_nodeid;
+                    
+                    elements.inspectorPanel.innerHTML = `
+                        <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
+                            <strong>Dataset:</strong> <span style="color: var(--accent);">${datasetName}</span><br>
+                            <strong>Type:</strong> <span style="color: ${type === 'TP' ? 'var(--color-tp)' : type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">Edge (${type})</span><br>
+                            <strong>Start Node ID:</strong> ${srcId}<br>
+                            <strong>End Node ID:</strong> ${tgtId}
+                        </div>
+                    `;
+                } else {
+                    // 通常のノード（点）がクリックされた場合
+                    const spotId = spot.id !== undefined ? spot.id : (spot.customdata ? spot.customdata.id : '');
+                    const sz = spot.z !== undefined ? spot.z : (spot.customdata ? spot.customdata.z : 0);
+                    const sy = spot.y !== undefined ? spot.y : (spot.customdata ? spot.customdata.y : 0);
+                    const sx = spot.x !== undefined ? spot.x : (spot.customdata ? spot.customdata.x : 0);
+                    
+                    elements.inspectorPanel.innerHTML = `
+                        <div style="font-family: var(--font-mono); font-size: 0.8rem; line-height: 1.4;">
+                            <strong>Dataset:</strong> <span style="color: var(--accent);">${datasetName}</span><br>
+                            <strong>Type:</strong> <span style="color: ${type === 'TP' ? 'var(--color-tp)' : type === 'FP' ? 'var(--color-fp)' : 'var(--color-fn)'}">Node (${type})</span><br>
+                            <strong>Spot ID:</strong> ${spotId}<br>
+                            <strong>Position (Z, Y, X):</strong><br>
+                            &nbsp;&nbsp;(${sz.toFixed(2)}, ${sy.toFixed(2)}, ${sx.toFixed(2)})
+                        </div>
+                    `;
+                }
             } else {
                 state.selectedSpot = null;
-                state.selectedTrackId = null;
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
             }
             
@@ -2249,10 +2272,9 @@
             
             for (let f = 0; f < numFrames; f++) {
                 const mergedFrame = {
-                    tp_coords: [],
-                    fp_coords: [],
-                    fn_coords: [],
-                    tracks: [],
+                    node_tp: [],
+                    node_fp: [],
+                    node_fn: [],
                     edge_tp: [],
                     edge_fp: [],
                     edge_fn: [],
@@ -2275,14 +2297,14 @@
                         if (!coords) return [];
                         return coords.map(c => {
                             const newC = [...c];
-                            newC[5] = dataset; // 6番目にデータセット名を設定
+                            newC[4] = dataset; // 5番目にデータセット名を設定 (track_id廃止のため)
                             return newC;
                         });
                     };
                     
-                    mergedFrame.tp_coords.push(...addDatasetLabel(frame.tp_coords));
-                    mergedFrame.fp_coords.push(...addDatasetLabel(frame.fp_coords));
-                    mergedFrame.fn_coords.push(...addDatasetLabel(frame.fn_coords));
+                    mergedFrame.node_tp.push(...addDatasetLabel(frame.node_tp));
+                    mergedFrame.node_fp.push(...addDatasetLabel(frame.node_fp));
+                    mergedFrame.node_fn.push(...addDatasetLabel(frame.node_fn));
                     
                     const addDatasetLabelToEdges = (edges) => {
                         if (!edges) return [];
@@ -2293,13 +2315,9 @@
                     mergedFrame.edge_fp.push(...addDatasetLabelToEdges(frame.edge_fp));
                     mergedFrame.edge_fn.push(...addDatasetLabelToEdges(frame.edge_fn));
                     
-                    if (frame.tracks) {
-                        mergedFrame.tracks.push(...frame.tracks.map(t => ({...t, dataset: dataset})));
-                    }
-                    
-                    totalTp += frame.tp_coords ? frame.tp_coords.length : 0;
-                    totalFp += frame.fp_coords ? frame.fp_coords.length : 0;
-                    totalFn += frame.fn_coords ? frame.fn_coords.length : 0;
+                    totalTp += frame.node_tp ? frame.node_tp.length : 0;
+                    totalFp += frame.node_fp ? frame.node_fp.length : 0;
+                    totalFn += frame.node_fn ? frame.node_fn.length : 0;
                     
                     const s = frame.summary || {};
                     totalEdgeTp += s.edge_tp || 0;
@@ -2322,25 +2340,6 @@
                 metadata: state.meta,
                 frames: mergedFrames
             };
-
-            // spotId から track_id へのマップを構築
-            state.spotIdToTrackId = {};
-            mergedFrames.forEach(frame => {
-                if (frame.tp_coords) {
-                    frame.tp_coords.forEach(c => {
-                        if (c[3] !== undefined && c[3] !== null && c[4] !== undefined && c[4] !== null) {
-                            state.spotIdToTrackId[c[3]] = c[4];
-                        }
-                    });
-                }
-                if (frame.fp_coords) {
-                    frame.fp_coords.forEach(c => {
-                        if (c[3] !== undefined && c[3] !== null && c[4] !== undefined && c[4] !== null) {
-                            state.spotIdToTrackId[c[3]] = c[4];
-                        }
-                    });
-                }
-            });
             
 
             if (elements.timelineSlider) elements.timelineSlider.max = numFrames - 1;
