@@ -26,7 +26,7 @@
 │       └── s1_02_tuning_and_ablation.ipynb      <- アブレーション実験・チューニング用
 ```
 
-## 🗺️ 科学的に正しい優先順位（Priority 1 〜 Priority 5）
+## 🗺️ 開発アプローチ（Priority 1 〜 Priority 5）
 - **【Priority 1: 最優先開発基盤】**: 3D可視化・エラー解析 (`visualize.py`) ＋ ランクS基本前処理 (`contrast.py`, `anisotropy.py`)
 - **【Priority 2: S1 土台の再構築 (CV 0.45 ➔ 0.90+)】**: 3D StarDist 検出器 ＋ btrack (ベイズ推論 + ILP) 大域トラッキング ＋ 基本特徴量
 - **【Priority 3: S2 精密後処理 & 構造強化 (CV 0.90 ➔ 0.96+)】**: 1フレーム抜けの幾何線形補間 ＋ 非合理エッジカット ＋ Top-Hat アブレーション
