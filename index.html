@@ -1724,9 +1724,9 @@
                             hovertemplate: `Dataset: %{customdata.dataset}<br>Frame: %{customdata.frame}<br>ID: %{customdata.id}<br>Z: %{customdata.z:.1f}<br>Y: %{customdata.y:.1f}<br>X: %{customdata.x:.1f}<extra></extra>`
                         });
                     };
-                    addEndPoints(tp, '#10b981', 'TP');
-                    addEndPoints(fp, '#ef4444', 'FP');
-                    addEndPoints(fn, '#06b6d4', 'FN');
+                    if (config.showTp) addEndPoints(tp, '#10b981', 'TP');
+                    if (config.showFp) addEndPoints(fp, '#ef4444', 'FP');
+                    if (config.showFn) addEndPoints(fn, '#06b6d4', 'FN');
                 });
             });
 
