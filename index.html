@@ -761,10 +761,16 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Point Cloud (細胞検出プロット)</div>
-                        <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
-                            <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera6 🔄
-                        </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.3rem;">
+                                <span style="font-size: 0.75rem; color: var(--text-secondary);">Select Node:</span>
+                                <input type="number" id="select-node-input-det" style="width: 60px; height: 20px; font-size: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--accent); text-align: center; border-radius: 4px; font-family: var(--font-mono);" placeholder="ID">
+                            </div>
+                            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
+                                <input type="checkbox" id="sync-camera-checkbox-det" style="accent-color: var(--accent); cursor: pointer;">
+                                Sync Camera 🔄
+                            </label>
+                        </div>
                     </div>
                     <div id="plotly-3d" class="plotly-container"></div>
                 </div>
@@ -773,10 +779,16 @@
                 <div class="view-card" style="flex-shrink: 0; margin-bottom: 1rem;">
                     <div class="view-card-header">
                         <div class="view-title">3D Tracking (トラッキング評価プロット)</div>
-                        <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
-                            <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
-                            Sync Camera6 🔄
-                        </label>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="display: flex; align-items: center; gap: 0.3rem;">
+                                <span style="font-size: 0.75rem; color: var(--text-secondary);">Select Node:</span>
+                                <input type="number" id="select-node-input-track" style="width: 60px; height: 20px; font-size: 0.75rem; background: rgba(15, 23, 42, 0.8); border: 1px solid var(--border-color); color: var(--accent); text-align: center; border-radius: 4px; font-family: var(--font-mono);" placeholder="ID">
+                            </div>
+                            <label style="font-size: 0.75rem; display: flex; align-items: center; gap: 0.3rem; cursor: pointer; color: var(--text-secondary);">
+                                <input type="checkbox" id="sync-camera-checkbox-track" style="accent-color: var(--accent); cursor: pointer;">
+                                Sync Camera 🔄
+                            </label>
+                        </div>
                     </div>
                     <div id="plotly-tracking" class="plotly-container"></div>
                 </div>
@@ -1110,6 +1122,54 @@
                     selectSpot(null);
                 }
             });
+
+            // Node ID 指定によるセル選択イベント
+            const findSpotById = (nodeId) => {
+                const frameData = state.framesData.frames[state.currentFrame];
+                if (!frameData) return null;
+                
+                const searchList = [];
+                if (frameData.node_tp) frameData.node_tp.forEach(c => searchList.push({ coord: c, type: 'TP' }));
+                if (frameData.node_fp) frameData.node_fp.forEach(c => searchList.push({ coord: c, type: 'FP' }));
+                if (frameData.node_fn) frameData.node_fn.forEach(c => searchList.push({ coord: c, type: 'FN' }));
+                
+                for (const item of searchList) {
+                    if (item.coord[3] === nodeId) {
+                        return {
+                            id: item.coord[3],
+                            type: item.type,
+                            z: item.coord[0], y: item.coord[1], x: item.coord[2],
+                            dataset: item.coord[4]
+                        };
+                    }
+                }
+                return null;
+            };
+
+            const handleNodeIdInputChange = (e) => {
+                const val = parseInt(e.target.value);
+                if (isNaN(val)) {
+                    selectSpot(null);
+                    return;
+                }
+                
+                const detInput = document.getElementById('select-node-input-det');
+                const trackInput = document.getElementById('select-node-input-track');
+                if (detInput) detInput.value = val;
+                if (trackInput) trackInput.value = val;
+                
+                const spot = findSpotById(val);
+                if (spot) {
+                    selectSpot(spot);
+                } else {
+                    selectSpot(null);
+                }
+            };
+
+            const detInput = document.getElementById('select-node-input-det');
+            const trackInput = document.getElementById('select-node-input-track');
+            if (detInput) detInput.addEventListener('input', handleNodeIdInputChange);
+            if (trackInput) trackInput.addEventListener('input', handleNodeIdInputChange);
 
             // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
             Object.keys(elements.canvases).forEach(axis => {
@@ -2068,6 +2128,23 @@
             } else {
                 state.selectedSpot = null;
                 elements.inspectorPanel.innerHTML = `Click a spot in the MIP panels or 3D view to inspect cell details here.`;
+            }
+            
+            // 入力欄の値を同期
+            const detInput = document.getElementById('select-node-input-det');
+            const trackInput = document.getElementById('select-node-input-track');
+            if (spot) {
+                const spotId = spot.id !== undefined ? spot.id : (spot.customdata ? spot.customdata.id : '');
+                if (spot.source_nodeid !== undefined || (spot.customdata && spot.customdata.source_nodeid !== undefined)) {
+                    if (detInput) detInput.value = '';
+                    if (trackInput) trackInput.value = '';
+                } else {
+                    if (detInput) detInput.value = spotId;
+                    if (trackInput) trackInput.value = spotId;
+                }
+            } else {
+                if (detInput) detInput.value = '';
+                if (trackInput) trackInput.value = '';
             }
             
             if (elements.currentFrameInput) elements.currentFrameInput.value = state.currentFrame;
