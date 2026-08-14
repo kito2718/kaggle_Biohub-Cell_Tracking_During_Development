@@ -292,6 +292,9 @@
         }
 
         .mip-canvas {
+            aspect-ratio: 1 / 1;
+            width: auto;
+            height: 100%;
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
@@ -1882,10 +1885,15 @@
         // Canvas描画
         async function renderMips(frameIdx, frameData) {
             const axes = ['xy', 'xz', 'yz'];
+            const defaultW = (state.meta && state.meta.shape) ? state.meta.shape[2] : 256;
+            const defaultH = (state.meta && state.meta.shape) ? state.meta.shape[1] : 256;
             
             axes.forEach(async (axis) => {
                 const canvas = elements.canvases[axis];
                 const ctx = canvas.getContext('2d');
+                
+                if (!canvas.width || canvas.width === 300) canvas.width = defaultW;
+                if (!canvas.height || canvas.height === 150) canvas.height = defaultH;
                 
                 try {
                     const img = await fetchMipImage(frameIdx, axis);
@@ -1904,7 +1912,7 @@
 
                 } catch (err) {
                     ctx.fillStyle = '#0f172a';
-                    ctx.fillRect(0, 0, canvas.width || 300, canvas.height || 150);
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
                     ctx.fillStyle = '#ef4444';
                     ctx.font = '12px var(--font-mono)';
                     ctx.fillText('Image Load Error', 10, canvas.height / 2);
