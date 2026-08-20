@@ -1174,6 +1174,10 @@
             if (detInput) detInput.addEventListener('input', handleNodeIdInputChange);
             if (trackInput) trackInput.addEventListener('input', handleNodeIdInputChange);
 
+            // Dataset Explorer 検索フィルター入力イベント
+            const datasetSearchInput = document.getElementById('dataset-search-input');
+            if (datasetSearchInput) datasetSearchInput.addEventListener('input', renderDatasetList);
+
             // Canvas クリック＆ホバーイベント (ドラッグで移動、ホイールでズーム、ダブルクリックでリセット)
             Object.keys(elements.canvases).forEach(axis => {
                 const canvas = elements.canvases[axis];
