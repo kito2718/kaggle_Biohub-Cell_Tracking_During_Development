@@ -1,0 +1,5 @@
+dataset,total_gt_edges,total_pred_edges,tp,fp,fn,precision,recall,f1_score,official_edge_tp,official_edge_fp,official_edge_fn
+44b6_0b24845f,49,1488,0,1488,49,0.0,0.0,0.0,0,0,49
+44b6_74d0c52e,139,2386,25,2361,114,0.0105,0.1799,0.0198,25,6,114
+6bba_05b6850b,845,3561,563,2998,282,0.1581,0.6663,0.2556,563,191,282
+6bba_085bf656,1168,5054,756,4298,412,0.1496,0.6473,0.243,758,265,410
