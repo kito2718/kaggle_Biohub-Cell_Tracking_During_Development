@@ -1,6 +1,6 @@
 {
-  "epoch": 8,
-  "best_val_loss": 2.994506895242624,
+  "epoch": 9,
+  "best_val_loss": 2.944879756750573,
   "weights_path": "3dunet_p48x96x96_sig3.0x1.0_lr0.0005.pth",
-  "updated_at": "2026-09-08 04:33:40"
+  "updated_at": "2026-09-08 23:29:01"
 }
