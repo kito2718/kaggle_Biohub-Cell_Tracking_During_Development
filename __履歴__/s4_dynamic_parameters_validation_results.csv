@@ -1,0 +1,5 @@
+dataset,series,description,eval_frames,gt_nodes,base_nodes,base_pe_ratio,base_recall,base_mean_dist_um,base_time_sec,prop_nodes,prop_pe_ratio,prop_recall,prop_mean_dist_um,prop_time_sec,prop_avg_threshold,prop_avg_snr,pe_improvement,recall_diff
+44b6_0b24845f,44b6,超高密度・低コントラスト (課題データセット),15,15,5261,0.545,0.8667,3.51,10.15,5687,0.59,0.8,4.005,9.31,0.035,1.19,-0.044,-0.0667
+44b6_0113de3b,44b6,高密度・良好,15,15,4803,0.945,1.0,1.285,9.53,3987,0.784,1.0,0.719,9.31,0.0468,9.88,0.161,0.0
+6bba_05b6850b,6bba,中密度・標準,15,98,1583,1.659,0.9592,3.336,9.69,1288,1.35,0.9694,3.539,9.25,0.0598,18.9,0.309,0.0102
+6bba_085bf656,6bba,疎・高コントラスト (過剰検出多め),15,131,2107,1.66,1.0,3.108,10.53,1962,1.546,1.0,3.241,9.24,0.0406,5.76,0.114,0.0
