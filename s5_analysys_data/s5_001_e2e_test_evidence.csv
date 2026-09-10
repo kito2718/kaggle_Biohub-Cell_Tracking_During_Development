@@ -1,0 +1,2 @@
+test_dataset,frames_tested,elapsed_seconds,raw_nodes_detected,features_extracted,edges_detected,sub_total_rows,sub_node_rows,sub_edge_rows,isolated_nodes_culled,isolated_nodes_remaining,all_checks_passed
+44b6_0113de3b,3,2.7,702,6,385,993,608,385,94,0,True
