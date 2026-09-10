@@ -65,6 +65,30 @@
 
 ---
 
+### 4.3 全コードパス貫通テスト (E2E Pipeline Test) の実走検証とエビデンス
+- **テスト目的**: `s5_001_try_and_error.ipynb` の改修 (動的DoG検出、NodeFeatureExtractor、4D Mahalanobis追跡、孤立ノード刈取、submission.csv生成) が、本物の生画像 (Zarr) から完全結合して一気通貫で例外ゼロで動作することを証明する。
+- **実行環境**: ローカル環境 (Windows, CPU)
+- **テストスクリプト**: `s5/github/s5_analysys_data/s5_001_test_e2e_pipeline.py`
+- **対象データ**: `44b6_0113de3b.zarr` (先頭3フレーム, shape: (3, 64, 256, 256))
+- **実行結果エビデンス** (`s5/github/s5_analysys_data/s5_001_e2e_test_evidence.csv`):
+
+| パイプラインステップ | 実行内容 | 処理時間 | 出力件数 / 状態 | 判定 |
+| :--- | :--- | :---: | :---: | :---: |
+| Step 1/5 | Zarr 3フレーム読込 & 正規化 (open_dataset/zarr) | 0.09秒 | shape: (3, 64, 256, 256) | PASS |
+| Step 2/5 | 動的 DoG ノード検出 (BlobDogNodeDetector) | 2.51秒 | 702 ノード | PASS |
+| Step 3/5 | 6特徴量抽出 (NodeFeatureExtractor) | 0.08秒 | 全 702 ノード完了 | PASS |
+| Step 4/5 | 4D Mahalanobis Edge 検出 (FeatureEnhancedEdgeDetector) | 0.01秒 | 385 エッジ | PASS |
+| Step 5/5 | 孤立ノード刈取 & submission.csv 生成 (generate_submission_file) | 0.01秒 | 993 行 (ノード608行, エッジ385行) | PASS |
+| **全体統合** | **全コードパス貫通テスト所要時間** | **2.70秒** | **残存孤立ノード: 0件 (刈取94件, 13.4%削減)** | **ALL PASS** |
+
+- **スキーマ & データ完全性検証**:
+  - [A] カラム完全一致 (10列: `['id', 'dataset', 'row_type', 'node_id', 't', 'z', 'y', 'x', 'source_id', 'target_id']`): **PASS [OK]**
+  - [B] 欠損値 (NaN/null): **PASS [OK] (全列 0件)**
+  - [C] 孤立ノード刈取 (次数0の細胞): **PASS [OK] (0件)**
+  - [D] 整数ID型 (int64/int32): **PASS [OK]**
+
+---
+
 ## 5. 全体作業ステップ計画
 
 ```mermaid
