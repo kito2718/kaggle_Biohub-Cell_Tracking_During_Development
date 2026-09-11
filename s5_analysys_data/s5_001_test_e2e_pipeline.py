@@ -75,10 +75,18 @@ for idx in target_cells:
 # テスト実行のため PUSH_TO_GITHUB を False に固定
 env["PUSH_TO_GITHUB"] = False
 
+# ローカル実行環境用: Kaggle モデルパスが存在しない場合はローカルモデルパスに上書き設定
+local_lgbm_path = Path("s5/github/s5_analysys_data/s5_003_tracking_edge_lgbm.joblib").resolve()
+env["LGBM_MODEL_PATH"] = str(local_lgbm_path)
+if not os.path.exists(str(env.get("LGBM_MODEL_PATH", ""))):
+    if not local_lgbm_path.exists():
+        print(f"[!] 警告: ローカルモデル '{local_lgbm_path}' が見つかりません。")
+
 print(f"[*] ロード完了パラメータ:")
 print(f"  - NODES_DETECTOR_METHOD  : {env.get('NODES_DETECTOR_METHOD')}")
 print(f"  - BLOBDOG_DYNAMIC_ADAPTIVE: {env.get('BLOBDOG_DYNAMIC_ADAPTIVE')}")
 print(f"  - EDGES_TRACKER_METHOD   : {env.get('EDGES_TRACKER_METHOD')}")
+print(f"  - LGBM_MODEL_PATH        : {env.get('LGBM_MODEL_PATH')}")
 print(f"  - FILTER_ISOLATED_NODES  : {env.get('FILTER_ISOLATED_NODES')}")
 
 # 3. 貫通テストの実行
