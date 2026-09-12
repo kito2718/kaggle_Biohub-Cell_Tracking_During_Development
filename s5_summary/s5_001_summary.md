@@ -538,4 +538,68 @@ Step 4 の E2E テスト実行によって `s5_001_e2e_test_*.csv` 等が更新�
 
 ---
 
+## 9. 実行識別子 (MAGIC_STRING / RUN_PREFIX) 付与と方法A (Booster形式) の統合【完了】
+
+### 9.1 実施背景と目的
+Kaggle上での複数試行やパラメータ探索において、GitHubリモート(`working/`)上で過去の成果物や中間キャッシュが衝突・上書きされるのを防ぐため、実験成果物および中間キャッシュに統一プレフィックス(`RUN_PREFIX = f"s5_{MAGIC_STRING}_"`)を付与できるように改修いたしました。
+あわせて、scikit-learnのバージョン差異警告を完全解消する「方法A(LightGBM Booster ネイティブ形式)」への移行も完全連動させました。
+
+### 9.2 確定全ファイル命名規則の一覧 (`MAGIC_STRING = "ADDLGBM"`)
+ユーザー様からのご指摘に基づき、全実験共通の参照データであるGTデータから `MAGIC_STRING` を除外し、実験ごとの中間キャッシュには `MAGIC_STRING` を含めるよう整理・最適化しました：
+
+| 分類 | 命名規約 | 具体例 (`MAGIC_STRING="ADDLGBM"`) | 役割・理由 |
+| :--- | :--- | :--- | :--- |
+| **GTノード** | `s5_gt_nodes.csv` | **`s5_gt_nodes.csv`** | 実験手法・パラメータに依存しない共通正解データ (MAGIC_STRING 不要) |
+| **GTエッジ** | `s5_gt_edges.csv` | **`s5_gt_edges.csv`** | 実験手法・パラメータに依存しない共通正解データ (MAGIC_STRING 不要) |
+| **GTサマリー** | `s5_gt_summary.csv` | **`s5_gt_summary.csv`** | 実験手法・パラメータに依存しない共通正解データ (MAGIC_STRING 不要) |
+| **ノード中間キャッシュ** | `{RUN_PREFIX}cache_detect_nodes_...` | **`s5_ADDLGBM_cache_detect_nodes_...csv`** | 実験単位で独立したキャッシュ管理 (MAGIC_STRING 付与) |
+| **エッジ中間キャッシュ** | `{RUN_PREFIX}cache_detect_edges_...` | **`s5_ADDLGBM_cache_detect_edges_...csv`** | 実験単位で独立したキャッシュ管理 (MAGIC_STRING 付与) |
+| **統合ノード予測** | `{RUN_PREFIX}01_detect_nodes_pred_...` | **`s5_ADDLGBM_01_detect_nodes_pred_...csv`** | 実験固有の成果物 |
+| **ノード評価サマリー** | `{RUN_PREFIX}02_check_nodes_summary_...` | **`s5_ADDLGBM_02_check_nodes_summary_...csv`** | 実験固有の成果物 |
+| **ノード評価詳細** | `{RUN_PREFIX}02_check_nodes_details_...` | **`s5_ADDLGBM_02_check_nodes_details_...csv`** | 実験固有の成果物 |
+| **統合エッジ予測** | `{RUN_PREFIX}03_detect_edges_pred_...` | **`s5_ADDLGBM_03_detect_edges_pred_...csv`** | 実験固有の成果物 |
+| **エッジ評価サマリー** | `{RUN_PREFIX}04_check_edges_summary_...` | **`s5_ADDLGBM_04_check_edges_summary_...csv`** | 実験固有の成果物 |
+| **エッジ評価詳細** | `{RUN_PREFIX}04_check_edges_details_...` | **`s5_ADDLGBM_04_check_edges_details_...csv`** | 実験固有の成果物 |
+| **Kaggle公式採点用** | 固定名 | **`submission.csv`** | Kaggle公式採点エンジンの必須仕様 |
+| **GitHub保存用提出** | `{RUN_PREFIX}submission.csv` | **`s5_ADDLGBM_submission.csv`** | 実験固有の提出履歴保管用 |
+
+### 9.3 Git 同期 ＆ Resume 連動 (Cell 5)
+- `sync_from_github`: `remote_working.glob("s5_*.csv")` により、s5 系列の全成果物・GT・中間キャッシュを一括選択同期。
+- `reset_github_resume_files`: 削除対象パターンを `f"{RUN_PREFIX}cache_detect_*"` に統一。
+- `cleanup_intermediate_cache`: 統合完了後の一括掃除パターンを `f"{RUN_PREFIX}cache_detect_*"` に連動。
+- `load_split_or_single_csv`: 分割ファイル探索時のキャッシュ除外判定を `not f.name.startswith(f"{RUN_PREFIX}cache_")` に統一。
+
+---
+
+## 10. マシン諸元の強調表示 ＆ ループ先頭リソース監視の実装【完了】
+
+### 10.1 実行開始時のマシン諸元バナー出力 (Cell 6: check_environment)
+Kaggle Notebook 実行時に割り当てられた CPU・メモリ・ディスク・GPU のハードウェアスペックを明示するため、実行環境検証の冒頭に目立つバナー出力を追加：
+```
+================================================================================
+  >>> EXECUTION ENVIRONMENT & HARDWARE SPECIFICATIONS <<<
+================================================================================
+  - Platform / OS     : Linux / Windows
+  - CPU Cores         : 2 vCPUs (Physical: 1)  ※GPU ON時
+  - RAM Total / Avail : 13.0 GB Total (Available: 12.1 GB, Used: 6.9%)
+  - Disk Space        : 73.1 GB Total (Free: 19.5 GB)
+  - GPU Accelerator   : Tesla P100-PCIE-16GB (VRAM: 15.9 GB)
+  - Run Identifier    : MAGIC_STRING='ADDLGBM', RUN_PREFIX='s5_ADDLGBM_'
+================================================================================
+```
+
+### 10.2 データセット処理ループ先頭での1行リソース監視 (Cell 13: main)
+データセット単位の処理ループ(`for idx, dataset in enumerate(datasets, 1):`)の先頭にて、1行でリソース消費状況をモニタリング出力：
+```
+[Resource Monitor] CPU:  98.5% | RAM: 4.2/13.0GB (32.3%) | Disk Free: 19.2GB | VRAM: 0.0GB
+```
+
+### 10.3 実走テスト結果 (E2E)
+手元ローカル環境にて実画像Zarr(`44b6_0113de3b`)を用いた貫通テスト(`s5_001_test_e2e_pipeline.py`)を実行：
+- 所要時間: **3.01 秒**
+- ハードウェア諸元バナーの正常出力確認。
+- 10列完全一致、NaNゼロ、孤立ノードゼロ(52.1%刈取)の全アサーションで **ALL PASS (100% 適合)** を確認完了。
+
+---
+
 お役に立てれば幸いです。

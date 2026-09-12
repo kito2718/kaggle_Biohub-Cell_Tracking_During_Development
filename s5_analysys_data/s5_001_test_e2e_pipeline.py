@@ -14,6 +14,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 # 0. kaggle_secrets ダミーモジュール (ローカル実行互換)
 dummy_ks = types.ModuleType("kaggle_secrets")
 class DummySecretsClient:
@@ -21,6 +26,19 @@ class DummySecretsClient:
         return ""
 dummy_ks.UserSecretsClient = DummySecretsClient
 sys.modules["kaggle_secrets"] = dummy_ks
+
+try:
+    import tracksdata
+except Exception:
+    sys.modules["tracksdata"] = types.ModuleType("tracksdata")
+
+try:
+    import tracking_cellmot
+except Exception:
+    sys.modules["tracking_cellmot"] = types.ModuleType("tracking_cellmot")
+    tcm_io = types.ModuleType("tracking_cellmot.io")
+    tcm_io.open_dataset = lambda *args, **kwargs: None
+    sys.modules["tracking_cellmot.io"] = tcm_io
 
 # 1. パス環境の自動解決
 BASE_DIR = Path(r"d:\BizOwn\000_Biw2\51_googleantigravity\007_kaggle_Biohub-Cell_Tracking_During_Development")
@@ -63,8 +81,8 @@ env = {
 }
 exec("import numpy as np; import pandas as pd; import torch; import zarr; from typing import NamedTuple, Optional", env)
 
-# Cell 3 (パラメータ), Cell 5 (ユーティリティ), Cell 7 (Extractor), Cell 8 (Detector), Cell 10 (Tracker), Cell 12 (Submission) を順次ロード
-target_cells = [3, 5, 7, 8, 10, 12]
+# Cell 3 (パラメータ), Cell 5 (ユーティリティ), Cell 6 (環境検証・諸元表示), Cell 7 (Extractor), Cell 8 (Detector), Cell 10 (Tracker), Cell 12 (Submission) を順次ロード
+target_cells = [3, 5, 6, 7, 8, 10, 12]
 for idx in target_cells:
     code = "".join(nb["cells"][idx]["source"])
     clean_lines = [l for l in code.split("\n") if not l.strip().startswith("!") and not l.strip().startswith("%")]
@@ -72,27 +90,31 @@ for idx in target_cells:
     exec(clean_code, env)
     print(f"  - [OK] Cell {idx} ロード成功")
 
-# テスト実行のため PUSH_TO_GITHUB を False に固定
+# テスト実行のため PUSH_TO_GITHUB および CONTINUOUS_RESUME を False に固定
 env["PUSH_TO_GITHUB"] = False
+env["CONTINUOUS_RESUME"] = False
 
 # ローカル実行環境用: Kaggle モデルパスが存在しない場合はローカルモデルパスに上書き設定
-local_lgbm_path = Path("s5/github/s5_analysys_data/s5_003_tracking_edge_lgbm.joblib").resolve()
+local_lgbm_path = Path("s5/github/s5_analysys_data/s5_003_tracking_edge_lgbm.txt").resolve()
 env["LGBM_MODEL_PATH"] = str(local_lgbm_path)
-if not os.path.exists(str(env.get("LGBM_MODEL_PATH", ""))):
-    if not local_lgbm_path.exists():
-        print(f"[!] 警告: ローカルモデル '{local_lgbm_path}' が見つかりません。")
+if not local_lgbm_path.exists():
+    print(f"[!] 警告: ローカルモデル '{local_lgbm_path}' が見つかりません。")
 
 print(f"[*] ロード完了パラメータ:")
+print(f"  - MAGIC_STRING           : {env.get('MAGIC_STRING')}")
+print(f"  - RUN_PREFIX             : {env.get('RUN_PREFIX')}")
 print(f"  - NODES_DETECTOR_METHOD  : {env.get('NODES_DETECTOR_METHOD')}")
 print(f"  - BLOBDOG_DYNAMIC_ADAPTIVE: {env.get('BLOBDOG_DYNAMIC_ADAPTIVE')}")
 print(f"  - EDGES_TRACKER_METHOD   : {env.get('EDGES_TRACKER_METHOD')}")
 print(f"  - LGBM_MODEL_PATH        : {env.get('LGBM_MODEL_PATH')}")
-print(f"  - FILTER_ISOLATED_NODES  : {env.get('FILTER_ISOLATED_NODES')}")
 
 # 3. 貫通テストの実行
 print("\n" + "-" * 80)
 print(">>> パイプライン実走ステップ")
 print("-" * 80)
+
+# (0) 実行環境検証 ＆ ハードウェア諸元バナー出力 (Cell 6)
+env["check_environment"]()
 
 t_start = time.time()
 
@@ -159,7 +181,7 @@ print(f"[Step 4/5] FeatureEnhancedEdgeDetector ('4dmahalanobis') 追跡: {time.t
 # (5) 孤立ノード刈り取り ＆ submission.csv 生成
 t4 = time.time()
 generate_sub = env["generate_submission_file"]
-sub_df = generate_sub(nodes_df, edges_df, filter_isolated_nodes=True)
+sub_df = generate_sub(nodes_df, edges_df)
 
 # テスト用 submission ファイルを出力
 sub_test_path = DATA_DIR / "s5_001_e2e_test_submission.csv"
