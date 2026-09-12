@@ -602,4 +602,88 @@ Kaggle Notebook 実行時に割り当てられた CPU・メモリ・ディスク
 
 ---
 
+## 11. ノード検出 (detect_nodes) のデュアルモード高速化 ＆ 厳密な差分ゼロ検証【完了】
+
+### 11.1 実施背景とボトルネック特定
+Kaggle Notebook の実走ログ解析により、データセット1件あたり159秒のうち、`detect_nodes()` (動的DoG細胞検出) が **147.0秒 (全体の92.5%)** を占める圧倒的ボトルネックであることが判明。
+性能低下・精度低下を一切起こさない前提で、以下の2つの高速化エンジンをハイブリッド統合しました：
+- **GPU_FLG == True 時**: PyTorch 3D DoG GPU高速化 (完全な数学的等価性・差分ゼロを達成)
+- **GPU_FLG == False 時**: `joblib.Parallel` によるマルチコアCPUフレーム並列化 (手元24スレッド環境で約2.8倍高速化)
+- **自動フォールバック**: GPU実行中にCUDA OOMや例外が発生した場合、即座に目立つ警告バナーを表示し、残存フレームをCPU並列エンジンへ自動切り替え。データセット切り替え時には `torch.cuda.empty_cache()` でVRAMをリセットし、次データセットでGPU再試行。
+- **フレーム単位の内訳サマリー**: 各データセット完了時に、何フレーム(何%)がGPUで処理され、何フレーム(何%)がCPUで処理されたかを1行で可視化。
+
+### 11.2 数学的等価性・差分ゼロの証明とエビデンス
+SciPyの `gaussian_filter(..., mode='reflect')` と PyTorch の畳み込み挙動を精密検証した結果、SciPyの `reflect` は NumPy の `mode='symmetric'` (境界ピクセルを折り返し重複させる) に完全一致することが判明。
+PyTorch 1D インデックス写像を用いた対称パディング + 1D分離型 `F.conv3d` を実装し、実顕微鏡3D Zarrデータ (`44b6_0113de3b`) で厳密な検証スクリプト (`s5_005_test_gpu_vs_skimage_exact_diff.py`) を実施：
+- **検出ノード数**: `skimage: 735 件` vs `PyTorch: 735 件` (完全一致)
+- **検出座標の完全一致率**: **735 / 735 (100.00% 差分ゼロ)**
+- **最大絶対座標差**: **0.000000 um (完全一致)**
+- **最大絶対強度差**: **$4.47 \times 10^{-8}$ (Float32 マシンイプシロンの限界値)**
+
+### 11.3 改修セルと実装仕様
+1. **Cell 8 (Index 8: detect_nodes)**:
+   - `BlobDogNodeDetector` に `_get_frame_params`, `_gaussian_3d_torch`, `_detect_frame_gpu`, `_detect_frame_cpu` を追加。
+   - `GPU_FLG` による自動分岐と、例外キャッチ時の目立つフォールバックバナー：
+     ```
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     ⚠️  [GPU FALLBACK TRIGGERED at frame 25/60]
+       - Error: CUDA out of memory
+       - 残り 35 フレームを CPU 並列エンジンへ自動切り替えて継続処理します
+     !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     ```
+   - 完了時のデバイス実行サマリー出力：
+     ```
+     - [Device Execution Summary] Total 60 frames | GPU: 24 frames (40.0%) | CPU: 36 frames (60.0%) [GPU Fallback to CPU]
+     ```
+   - `NodeFeatureExtractor` (Cell 7): 6特徴量抽出を `joblib.Parallel(backend="threading")` でフレーム並列化。
+2. **Cell 13 (Index 13: main)**:
+   - データセットループ先頭 (`for idx, dataset in enumerate(datasets, 1):`) に `if torch.cuda.is_available(): torch.cuda.empty_cache()` を配置し、データセット単位でVRAMを解放してGPU処理を自動リトライ。
+
+### 11.4 全コードパス貫通テスト (E2E Pipeline Test) の実走検証
+改修後のノートブックに対し `s5_001_test_e2e_pipeline.py` を実行：
+- ノード検出所要時間: **2.54秒 ➔ 0.83秒 (約3.0倍高速化)**
+- パイプライン全体の所要時間: **3.01秒 ➔ 1.32秒 (約2.3倍高速化)**
+- カラム10列、NaNゼロ、孤立ノード刈取率52.1%、整数ID型の全アサーションで **ALL PASS (100% 正常動作)** を確認。
+
+---
+
+## 12. LightGBM追跡推論の修復・適応的閾値化 ＆ 孤立ノード厳密刈り取り (MAGIC_STRING="_002_FIX_TRACK_AND_CULL")【完了】
+
+### 12.1 実施背景と課題特定
+朝 3:00 からの全 199 データセット実走結果 (`s5_ADDLGBM`) を分析した結果、以下の2つの深刻な課題が判明：
+1. **エッジ追跡 Recall の極端な二極化 (全体平均 54.4%)**:
+   - `6bba` 系 (密集・高SNR) では平均 61.1% (最大 100%, 0.90超多数, 4Dマハラノビス比 +10〜17pt 向上)。
+   - `44b6` 系 (疎・低SNR・暗い) では平均 42.5% (最低 5.2%) へ大崩壊。
+   - **根本原因**:
+     - 候補が1つの孤立本命セルにおいて、推論コードの `len > 1` 分岐バグにより未初期化の `spatial_margin = 999.0` が渡され、正解ペアの予測確率が 1/10 以下 (0.0003等) に激減していた。
+     - 一律 `0.005` の固定ハードカットにより、暗い・疎なデータセットの正解エッジが大量足切りされていた。
+2. **孤立ノード刈り取りの無効化バグ (刈取率 0.12%)**:
+   - `generate_submission_file` で `edges_df['source_id']` の全データセット合算整数集合に対して `isin` 判定を行っていたため、他データセットの `node_id` (0〜98,579) と衝突。
+   - 自データセット内では孤立しているゴミノイズが「他データセットでその番号が使われている」という理由ですり抜け、558万ノード中わずか2万ノードしか刈り取られていなかった (P/E比 1.176、Kaggle 採点で 15% 減点ペナルティ)。
+
+### 12.2 改修仕様と確定実装
+1. **Cell 3 (Index 3: パラメータ設定)**:
+   - `MAGIC_STRING = "_002_FIX_TRACK_AND_CULL"` (RUN_PREFIX: `s5__002_FIX_TRACK_AND_CULL_`)
+   - `LGBM_EDGE_THRESHOLD = 0.001` (基本切断確率閾値を 0.005 ➔ 0.001 へ緩和)
+   - `LGBM_EDGE_THRESHOLD_SINGLE = 0.0005` (探索圏内に候補が1つしかない孤立本命セルの適応的閾値)
+2. **Cell 10 (Index 10: detect_edges & LightGBMEdgeDetector)**:
+   - `cand_counts` を導入し、競合のない孤立候補は `threshold_single` (0.0005)、競合ありは `threshold` (0.001) で適応的に判定。
+   - 最近傍候補は確実に `sp_margin = 0.0` となるよう学習時と完全整合化。
+3. **Cell 12 (Index 12: generate_submission_file)**:
+   - 孤立ノード刈り取りを `(dataset, node_id)` 複合キー照合に刷新。他データセットとの ID 衝突を 100% 排除し、真の孤立ノイズのみをデータセット単位で根こそぎ除去。
+   - **「最終 P/E 比サマリー CSV (`05_pe_ratio_summary.csv`)」** の自動生成 ＆ GitHub プッシュ処理を新設。
+     データセットごとの `raw_nodes`, `final_nodes`, `edges`, `estimated_nodes`, `pe_ratio_raw`, `pe_ratio_final`, `culled_nodes`, `cull_rate_pct` を一覧出力。
+
+### 12.3 実走検証エビデンス
+1. **実データセット `44b6_0113de3b` (60フレーム) での直接検証**:
+   - 修正前 (Kaggle 実走時): **TP = 28 / 50 本 (Recall = 56.0%)**
+   - 修正後 (モデル再学習なし): **TP = 48 / 50 本 (Recall = 96.0% !)**
+   - 孤立ノード刈り取り: 29,560 ノード ➔ 14,679 ノード (**14,881 ノード / 50.3% のゴミノイズを安全に完全除去**)
+2. **E2E パイプライン全コードパス貫通テスト**:
+   - 所要時間: **1.33秒**
+   - 10列完全一致、NaNゼロ、残存孤立ノード0件 (11.7%刈取)、整数ID型アサーションで **ALL PASS**。
+   - `{RUN_PREFIX}05_pe_ratio_summary.csv` の正常出力確認。
+
+---
+
 お役に立てれば幸いです。
