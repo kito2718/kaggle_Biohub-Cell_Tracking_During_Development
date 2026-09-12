@@ -95,7 +95,11 @@ env["PUSH_TO_GITHUB"] = False
 env["CONTINUOUS_RESUME"] = False
 
 # ローカル実行環境用: Kaggle モデルパスが存在しない場合はローカルモデルパスに上書き設定
-local_lgbm_path = Path("s5/github/s5_analysys_data/s5_003_tracking_edge_lgbm.txt").resolve()
+local_candidates = [
+    Path(__file__).parent / "s5_003_tracking_edge_lgbm.txt",
+    Path("s5/github/s5_analysys_data/s5_003_tracking_edge_lgbm.txt").resolve(),
+]
+local_lgbm_path = next((p for p in local_candidates if p.exists()), local_candidates[0])
 env["LGBM_MODEL_PATH"] = str(local_lgbm_path)
 if not local_lgbm_path.exists():
     print(f"[!] 警告: ローカルモデル '{local_lgbm_path}' が見つかりません。")
