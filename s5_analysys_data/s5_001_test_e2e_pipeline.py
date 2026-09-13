@@ -101,8 +101,8 @@ local_candidates = [
 ]
 local_lgbm_path = next((p for p in local_candidates if p.exists()), local_candidates[0])
 env["LGBM_MODEL_PATH"] = str(local_lgbm_path)
-if not local_lgbm_path.exists():
-    print(f"[!] 警告: ローカルモデル '{local_lgbm_path}' が見つかりません。")
+local_adaptive_path = Path(__file__).parent / "lightgbm_adaptive_th.txt"
+env["LIGHTGBM_ADAPTIVE_TH_MODEL_PATH"] = str(local_adaptive_path)
 
 print(f"[*] ロード完了パラメータ:")
 print(f"  - MAGIC_STRING           : {env.get('MAGIC_STRING')}")
