@@ -1193,7 +1193,7 @@ Feature Importance で重要度を算出した 12 種類の特徴量そのもの
 
 ### 16.4 光学プレ解析に基づく「適応型背景差分」判定基準の確立
 全画像から14種の光学特徴量を抽出し、改善群 vs 悪化群 (2件) を機械学習分析 (`s5_019_analyze_bg_subtraction_criteria.py`):
-- **エビデンス画像**: [`s5_019_bg_subtraction_evidence.png`](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_019_bg_subtraction_evidence.png) 出力・保存済み。
+- **エビデンス画像**: ![s5_019_bg_subtraction_evidence.png](../s5_analysys_data/s5_019_bg_subtraction_evidence.png) 出力・保存済み。
 - **悪化群 (2件) の特徴**: `snr_proxy = 24.8` (背景が真っ黒で細胞だけが強烈に発光する超高SNR画像)。背景差分で巨大細胞の中心がわずかに削られた。
 - **証拠ベースの自動判定ルール**:
   $$\mathbf{apply\_bg\_subtraction} = (\text{snr\_proxy} \le 12.0) \;\;\mathbf{or}\;\; (\text{bg\_median} \ge 80.0)$$
@@ -1211,7 +1211,7 @@ Feature Importance で重要度を算出した 12 種類の特徴量そのもの
   - スキップ保護 (Skipped): 45 / 199 セット (22.6%)
   - **適応型平均 Recall**: **0.9765 (97.65%) (+4.75 pt 向上)**
   - 超高画質セット (`snr_proxy > 14.6`) の悪化を完全に除外しつつ、低Recallセットを根こそぎ救出できることを全199セットで完全実証。
-- **総合エビデンス画像**: [`s5_020_all199_bg_subtraction_evidence.png`](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_020_all199_bg_subtraction_evidence.png) 出力・保存済み。
+- **総合エビデンス画像**: ![s5_020_all199_bg_subtraction_evidence.png](../s5_analysys_data/s5_020_all199_bg_subtraction_evidence.png) 出力・保存済み。
 
 ### 16.6 「適応型背景差分ルール」×「照明ムラ限定フィルター」のハイブリッド適応フィルター全数検証【確定】
 1. **問題提起とハイブリッド設計思想**:
@@ -1225,9 +1225,9 @@ Feature Importance で重要度を算出した 12 種類の特徴量そのもの
        - 非該当 $\to$ **【方式2: マイルド背景差分 ($\sigma=(4,16,16), th=0.025$)】**(広域背景の緩やかな除去・細胞核削れ防止)
 
 2. **全199データセットにおける完全実証シミュレーション結果**:
-   - 実行スクリプト: [`s5_021_verify_hybrid_filter_all199.py`](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_021_verify_hybrid_filter_all199.py)
-   - 結果CSV: [`s5_021_all199_hybrid_filter_results.csv`](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_021_all199_hybrid_filter_results.csv)
-   - エビデンス画像: [`s5_021_all199_hybrid_filter_evidence.png`](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_021_all199_hybrid_filter_evidence.png)
+   - 実行スクリプト: [s5_021_verify_hybrid_filter_all199.py](../s5_analysys_data/s5_021_verify_hybrid_filter_all199.py)
+   - 結果CSV: [s5_021_all199_hybrid_filter_results.csv](../s5_analysys_data/s5_021_all199_hybrid_filter_results.csv)
+   - エビデンス画像: ![s5_021_all199_hybrid_filter_evidence.png](../s5_analysys_data/s5_021_all199_hybrid_filter_evidence.png)
    - **全199データセット集計結果**:
      - 全体平均 Node Recall: **0.9290 (92.90%) ➔ 0.9648 (96.48%) (+0.0358 / +3.58 pt 向上)**
      - 改善データセット数: **68 / 199 (34.2%)**
