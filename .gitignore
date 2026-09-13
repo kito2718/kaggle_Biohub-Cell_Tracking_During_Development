@@ -222,4 +222,6 @@ __marimo__/
 /outputs/
 /working/kaggle_cell_tracking_competition/
 .lock
+*.parquet
+
 

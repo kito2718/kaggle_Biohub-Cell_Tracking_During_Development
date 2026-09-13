@@ -59,13 +59,13 @@ def train():
         'objective': 'binary',
         'metric': 'auc',
         'boosting_type': 'gbdt',
-        'learning_rate': 0.05,
+        'learning_rate': 0.08,
         'num_leaves': 31,
         'max_depth': 6,
         'min_child_samples': 50,
         'subsample': 0.8,
         'colsample_bytree': 0.8,
-        'n_estimators': 1000,
+        'n_estimators': 400,
         'random_state': 42,
         'n_jobs': -1,
         'verbose': -1
@@ -121,7 +121,7 @@ def train():
     print("\n[*] 全 199 データセット全数を用いた最終本番モデル学習中...")
     avg_best_iter = int(df_folds['best_iteration'].mean())
     final_params = dict(params)
-    final_params['n_estimators'] = int(avg_best_iter * 1.1)
+    final_params['n_estimators'] = min(450, max(200, int(avg_best_iter * 1.05)))
     
     final_model = lgb.LGBMClassifier(**final_params)
     final_model.fit(X, y)
