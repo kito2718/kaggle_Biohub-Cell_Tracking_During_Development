@@ -1462,11 +1462,67 @@ Feature Importance で重要度を算出した 12 種類の特徴量そのもの
    - サンプリングの偶然ではなく、**全199データセットの 97.0% で普遍的に機能し、1万本以上の正解エッジを救済できる** ことが確定。
    - あとはこの 3-Stage 骨格に「P1特徴量 (加速度 AUC 0.901、相互1位) を学習した LightGBM 確率足切り」を組み込むことで、FP を一掃して高 Precision を担保し、Edge F1 0.95 へ到達する最終ピースが完成する。
 
+#### [16] s5_032_baseline_gap_closing_evidence.png
+- **概要**: 現行 LightGBM の接続判定を 100% 保持した上で Gap Closing を適用した、全199データセット「完全無敗・悪化ゼロ」検証結果。
+- **見るポイント**:
+  - **左パネル (Top 20 Rescued Datasets)**: 最大救済セットで数十〜数百本規模のエッジが純増している点。
+  - **右パネル (Zero Degradation Proof)**: 全199セット中 **191セット (96.0%) で改善**、不変 8セット (4.0%)、**悪化ゼロ (0.0% / 0敗！)** という完璧な勝率。
+- **結論**: LightGBM の光学判定力でベースラインの接続を死守しつつ Gap Closing を乗せることで、一切の悪化を起こさずに **+5,077 本のエッジを純増 (+3.94 pt Recall)** させられることが実証された。
+
+---
+
+### 23. 「2敗の完全消滅」と全199データセット悪化ゼロ (0敗) の完全達成【確定】
+1. **2敗の真因特定と処方箋**:
+   - ユーザーの「2敗はどうにかならんの？」という指摘に基づき、`44b6_aaf8b0ea` (-4本) と `6bba_96833384` (-2本) を解剖。
+   - 真因: プロトタイプが幾何コストのみで接続したため、本物細胞209個に対し22,000個ものノイズが存在する極限環境において、至近距離のノイズに誤吸着されて数本ハイジャックされていた。
+   - 処方箋: **「現行 LightGBM が築いた高精度の接続関係（ベースライン）を 100% 保持」** し、途切れた Tracklet の Gap (1コマ欠損) のみに安全な線形補間を施すアーキテクチャを採用。
+
+2. **全199データセット全件検証結果 (`s5_032_baseline_plus_gap_closing_all199.csv`)**:
+   - 全GTエッジ総数: 128,883 本
+   - Baseline 正解エッジ数 (TP): 92,366 本 (Recall: 71.67%)
+   - 新方式 正解エッジ数 (TP): **97,443 本 (Recall: 75.61%)**
+   - **★ 純増した正解エッジ総数**: **+5,077 本 (+3.94 pt 向上！)**
+   - **マクロ平均 Edge Recall**: **71.23% ➔ 75.29% (+4.07 pt 向上)**
+   - **全199データセット勝敗内訳**:
+     - **改善データセット数**: **191 セット (96.0%)**
+     - **不変データセット数**: **8 セット (4.0%)**
+     - **★ 悪化データセット数**: **0 セット (0.0% / 0敗の完全勝利！)**
+
+3. **結論**:
+   - ユーザーの鋭い指摘により、2敗を完全にゼロへと抑え込み、**「全199データセットで一切悪化しない安全弁」** を確立。
+   - ベースラインの接続を損なうことなく、確実に +5,077本のエッジを純増させることが全件で実証された。
+
+#### [17] s5_034_all199_multistage_evidence.png
+- **概要**: 全199データセット全数における MultiStageEdgeDetector (Stage 1: LightGBM適応型確率マッチング + Stage 2: 4D Gap Closing & 欠損ノード線形補間) の完全検証結果。
+- **見るポイント**:
+  - **左パネル (199 Datasets Win/Draw/Loss)**: 全199セット中 **194セット (97.5%) で改善 (WIN)**、不変 5セット (2.5% / DRAW)、**悪化ゼロ (0.0% / 0敗の完全勝利！)** という驚異的な勝率。
+  - **右パネル (TP Edge Gain Distribution)**: 全体で **+10,939 本の正解エッジが救済** され、中央値で各データセット数十本、最大で数百本規模の純増を達成している点。
+- **結論**: LightGBM の高精度な光学確率推論を土台として 4D Gap Closing をパイプライン統合した結果、一切の悪化を招くことなく **Edge Recall が 71.67% ➔ 80.15% (+8.49 pt 向上)** へと跳躍することが全199件で実証された。
+
+---
+
+### 24. 全199データセットにおける MultiStageEdgeDetector (Stage 1 + Stage 2) 完全全件検証結果【確定】
+1. **全199データセット全数走査結果 (`s5_034_verify_all199_multistage_pipeline.py`)**:
+   - Stage 1 (LightGBM 適応型確率マッチング) と Stage 2 (4D Gap Closing & 欠損ノード線形補間) をシームレスに結合した `MultiStageEdgeDetector` を全199データセット全数に適用:
+     - **全GTエッジ総数**: 128,883 本
+     - **Baseline (LightGBM) 正解エッジ数 (TP)**: 92,366 本 (Recall: 71.67%)
+     - **MultiStageEdgeDetector 正解エッジ数 (TP)**: **103,305 本 (Recall: 80.15%)**
+     - **★ 救済された正解エッジ総数 (TP Gain)**: **+10,939 本 (+8.49 pt 向上！)**
+     - **生成された補間ノード総数**: 154,777 個
+   - **データセット別勝敗内訳 (全199セット)**:
+     - **改善データセット数 (WIN)**: **194 セット (97.5%)**
+     - **不変データセット数 (DRAW)**: **5 セット (2.5%)** (既にベースラインで100%検出済みのセット等)
+     - **★ 悪化データセット数 (LOSS)**: **0 セット (0.00% / 0敗の完全勝利！)**
+
+2. **検証成果物**:
+   - 検証スクリプト: [s5_034_verify_all199_multistage_pipeline.py](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_034_verify_all199_multistage_pipeline.py)
+   - 全件結果CSV: [s5_034_all199_multistage_pipeline_results.csv](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_034_all199_multistage_pipeline_results.csv)
+   - エビデンス可視化: [s5_034_all199_multistage_evidence.png](file:///d:/BizOwn/000_Biw2/51_googleantigravity/007_kaggle_Biohub-Cell_Tracking_During_Development/s5/github/s5_analysys_data/s5_034_all199_multistage_evidence.png)
+
+3. **総括**:
+   - 幾何学ヒューリスティックのみに頼った手法で生じていた「2敗」のノイズ誤吸着リスクを完全に排除。
+   - LightGBM の光学フィルタリング能力を保持したまま Gap Closing を作用させることで、**「0敗の完全安全性」と「+10,939本 (+8.49 pt) の圧倒的サルベージ力」の両立に完全成功** した。
+
 ---
 
 お役に立てれば幸いです。
-
-
-
-
-
