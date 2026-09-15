@@ -132,13 +132,29 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
 
 ---
 
-## 7. 出力成果物とGitHub同期
+## 7. 出力成果物とGitHub同期（確定仕様）
 
 - **スクリプトファイル**: `s5/github/working/s5_022_try_and_error.ipynb`
-- **生成データ出力先**:
-  - `s5/github/working/s5_022_gt_pairs_features_all199.parquet`（全特徴量テーブル、高圧縮・高速）
-  - `s5/github/working/s5_022_gt_pairs_summary_all199.csv`（データセット別サマリー）
-- **GitHub自動同期**: ノートブック実行完了時に `push_to_github()` により `origin/main` ブランチへ自動コミット＆プッシュ。
+- **生成データ出力仕様**:
+  1. **【最重要・GitHubプッシュ対象】全特徴量EDAメトリクスサマリーCSV**:
+     - ファイル名: **`working/s5_022_summary_features_eda_metrics_all199_all100.csv`**
+     - 意味: 全199Dataset・全100フレーム（計19,900フレーム）の全254,426ペアに基づき、全41特徴量の分離性能を全数集計した解析用テーブル。
+     - 出力列:
+       - `feature_name`: 特徴量名（全41種）
+       - `roc_auc`: ROC-AUC（0.5〜1.0）
+       - `direction`: 正例ほど値が大きいか小さいか（`POS_HIGH` / `POS_LOW`）
+       - `cohens_d`: 効果量 Cohen's d（正負の平均差 / 標準偏差）
+       - `best_f1`: 最適単一閾値での F1 スコア
+       - `best_precision`, `best_recall`, `best_threshold`: 最適単一閾値および適合率・再現率
+       - `pos_mean`, `pos_std`, `pos_median`, `pos_iqr`: 正例（同一細胞）の分布代表値
+       - `neg_mean`, `neg_std`, `neg_median`, `neg_iqr`: 難関負例（10μm他人）の分布代表値
+  2. **【監査用・GitHubプッシュ対象】データセット別ペア件数サマリーCSV**:
+     - ファイル名: **`working/s5_022_gt_pairs_summary_all199.csv`**
+     - 内容: 全199データセットそれぞれの正例ペア数、難関負例ペア数、総ペア数。
+  3. **【Kaggle作業領域ローカル保持・GitHubプッシュ除外】全特徴量生データテーブル**:
+     - ファイル名: **`working/s5_022_gt_pairs_features_all199.parquet`** (27.40 MB, 254,426 行)
+     - ユーザー指示に従い、GitHub へのプッシュ対象からは完全に除外し、Kaggle 上のローカル作業領域にのみ保存。
+- **GitHub自動同期**: ノートブック実行完了時に `push_to_github([metrics_csv, summary_csv], commit_msg)` により指定ブランチへ自動コミット＆プッシュ。
 
 ---
 
@@ -155,7 +171,6 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
 - **完全解決策**:
   切り替え先ブランチをリモートから `--depth 1` でピンポイントに fetch し、取得先である `FETCH_HEAD` からローカルブランチを checkout（切替/新規作成）する仕様に改修：
   ```python
-  # 指定ブランチをピンポイントで fetch して FETCH_HEAD から確実に checkout
   fetch_res = subprocess.run(["git", "fetch", "--depth", "1", "origin", branch], cwd=repo_dir, capture_output=True, text=True)
   if fetch_res.returncode == 0:
       subprocess.run(["git", "checkout", "-B", branch, "FETCH_HEAD"], cwd=repo_dir, check=True)
@@ -165,11 +180,7 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
   ```
   これにより、途中でブランチ名を変更した場合や、リモートに存在する任意のブランチへ 100% 確実に切り替わることが実証された。
 
-### (2) Parquet ファイルのコミット除外（GitHub 100MB 制限の完全回避）
-- **背景**: 過去に Parquet ファイルが大きすぎて GitHub にコミットできなかった経緯があり、全199データセットの全数特徴量テーブル（数十万〜百数十万行）も GitHub の 100MB 制限を超過するリスクが存在した。
-- **対策**:
-  - Parquet ファイル（`s5_022_gt_pairs_features_all199.parquet`）は Kaggle Notebook の作業ディレクトリ（`working/`）に確実に保存・保持（Kaggle Output として活用可能）。
-  - **GitHub への自動プッシュ対象からは Parquet を除外し、軽量なデータセット別サマリー CSV（`s5_022_gt_pairs_summary_all199.csv`）のみをプッシュ** する安全仕様に確定。
-  - これにより、GitHub のファイルサイズ制限（100MB）によるプッシュ失敗リスクを 100% 完全に解消。
+### (2) Parquet ファイルのコミット除外
+ユーザーの厳格な指示に従い、Parquet ファイルは GitHub コミット対象から完全に除外し、軽量かつ解析に必要な `s5_022_summary_features_eda_metrics_all199_all100.csv` および `s5_022_gt_pairs_summary_all199.csv` のみをコミット・プッシュする方針を確定。
 
 お役に立てれば幸いです。
