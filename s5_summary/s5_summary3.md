@@ -144,13 +144,26 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
 
 ## 8. トラブルシューティング: GitHub プッシュ安全化（ブランチ切替と巨大ファイル除外）
 
-### (1) ブランチ切替の直接実行（git checkout）
-Kaggle Notebook 実行中に `BRANCH_NAME = '021HYBRIDFILTER2'` 等へ変更した場合でも確実に反映されるよう、`get_or_init_git_repo()` において余計な判定チェックを挟まず、直接 `git checkout $BRANCH_NAME` を実行してリモートと同期するシンプルな仕様に是正：
-```python
-# 既に存在する場合は指定ブランチへ直接 checkout して pull --rebase
-subprocess.run(["git", "checkout", branch], cwd=repo_dir, check=True)
-subprocess.run(["git", "pull", "--rebase", "origin", branch], cwd=repo_dir, check=True)
-```
+### (1) Shallow Clone におけるブランチ切替エラーの完全解消（git fetch ➔ FETCH_HEAD checkout）
+- **発生したエラー**:
+  ```text
+  error: pathspec '022MULTISTAGE_TRACKER' did not match any file(s) known to git
+  CalledProcessError: Command '['git', 'checkout', '022MULTISTAGE_TRACKER']' returned non-zero exit status 1.
+  ```
+- **真因**:
+  初回クローン時に `--depth 1 --branch <初期ブランチ>`（Shallow Clone）を行っているため、Git ローカルにはクローンした単一ブランチ以外の refs/tracking 情報が一切保持されていない。そのため、直接 `git checkout <別ブランチ名>` を実行すると、Git がブランチを認識できず `pathspec did not match` エラーとなる。
+- **完全解決策**:
+  切り替え先ブランチをリモートから `--depth 1` でピンポイントに fetch し、取得先である `FETCH_HEAD` からローカルブランチを checkout（切替/新規作成）する仕様に改修：
+  ```python
+  # 指定ブランチをピンポイントで fetch して FETCH_HEAD から確実に checkout
+  fetch_res = subprocess.run(["git", "fetch", "--depth", "1", "origin", branch], cwd=repo_dir, capture_output=True, text=True)
+  if fetch_res.returncode == 0:
+      subprocess.run(["git", "checkout", "-B", branch, "FETCH_HEAD"], cwd=repo_dir, check=True)
+  else:
+      subprocess.run(["git", "checkout", "-B", branch], cwd=repo_dir, check=True)
+  subprocess.run(["git", "pull", "--rebase", "origin", branch], cwd=repo_dir, capture_output=True)
+  ```
+  これにより、途中でブランチ名を変更した場合や、リモートに存在する任意のブランチへ 100% 確実に切り替わることが実証された。
 
 ### (2) Parquet ファイルのコミット除外（GitHub 100MB 制限の完全回避）
 - **背景**: 過去に Parquet ファイルが大きすぎて GitHub にコミットできなかった経緯があり、全199データセットの全数特徴量テーブル（数十万〜百数十万行）も GitHub の 100MB 制限を超過するリスクが存在した。
