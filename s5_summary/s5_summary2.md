@@ -811,3 +811,45 @@ Python `ast.parse` および変数スコープトラッカーを用いて全11�
 
 ### 3. 検証結果
 全11セル（コードセル9個、Markdownセル2個）に対して `ast.parse` を再実行し、**全セルで構文エラー・インデントエラー・未定義変数参照がゼロ（AST Parse SUCCESS 100%）** であることを検証・確認完了した。
+
+## 29. 【021タスク】単一フレーム光学・テクスチャ・形態特徴量の全数計測とサマリーCSV連携
+
+### 1. 経緯と目的
+P/E比引き下げのための後段フィルター選別（ノード間引き）に必要なデータとして、ユーザーより以下の特徴量が確実に取得・出力される状態になっているかの確認があった：
+1. `cv_texture`（テクスチャ変動係数）
+2. `sharpness_ratio`（尖鋭度）
+3. `contrast_ratio`（局所正規化コントラスト）
+4. `dyn_range`（ダイナミックレンジ）
+5. `vol_mean`, `vol_std`（輝度平均値とばらつき）
+6. `fg_ratio`（前景ボクセル比率・密集度）
+7. `bg_gradient_std`（局所背景勾配の激しさ・照明ムラ度）
+8. `max_to_med`（最大輝度と中央値の比率・巨大自家蛍光塊シグナル）
+
+### 2. 実施した実装と連携構造
+コード点検の結果、光学プレ解析関数（`analyze_frame_optics`）において一部特徴量が未算出であり、また `check_nodes` へのデータ受け渡し連携が未実装であったため、以下の改修を完全適用した：
+
+1. **`analyze_frame_optics` の完全拡張 (Cell 8)**:
+   - `vol_mean` (`sub.mean()`), `vol_std` (`sub.std()`) を算出。
+   - `cv_texture` (`vol_std / (vol_mean + 1e-5)`)
+   - `sharpness_ratio` (`vol_max / (vol_mean + 1e-5)`)
+   - `contrast_ratio` (`(vol_mean - p50) / (p50 + 1e-5)`)
+   - `dyn_range` (`p995 - p01`), `fg_ratio`, `bg_gradient_std`, `max_to_med`
+   を全100フレームで高速計測（サブサンプルにより1フレームあたり数ミリ秒で完結）。
+2. **フレーム光学特徴量のシームレス受け渡し (`detect` -> `check_nodes`)**:
+   - `BlobDogNodeDetector.detect()` において、フレームごとの光学辞書を `frame_optics_dict[t]` に蓄積。
+   - 返却 DataFrame の `attrs['frame_optics']` に格納して `check_nodes` へ受け渡し。
+3. **`s5_021_frame_summary_all199_all100.csv` への全列展開 (Cell 9)**:
+   - 全100フレームの反復ループ内において、全8種類＋基礎光学指標（計14種）を辞書から取得し、全フレームサマリーCSVに完全出力。
+
+### 3. 出力列一覧 (全19,900行 × 22列)
+- メタデータ・検出評価列: `dataset`, `t`, `estimated_number_of_nodes`, `gt_nodes_frame`, `hyb_pred_nodes`, `hyb_tp`, `tp_diff`, `pred_diff`
+- 単一フレーム光学・テクスチャ・形態特徴量:
+  - `cv_texture`: テクスチャ変動係数
+  - `sharpness_ratio`: 尖鋭度
+  - `contrast_ratio`: 局所正規化コントラスト
+  - `dyn_range`: ダイナミックレンジ
+  - `vol_mean`, `vol_std`: 輝度平均値と標準偏差
+  - `fg_ratio`: 前景ボクセル比率（密集度）
+  - `bg_gradient_std`: 局所背景勾配（照明ムラ度）
+  - `max_to_med`: 最大値/中央値比（自家蛍光塊）
+  - `snr_proxy`, `bg_median`, `bg_noise`, `p01`, `p995`, `vol_max`
