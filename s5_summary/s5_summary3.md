@@ -140,4 +140,29 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
   - `s5/github/working/s5_022_gt_pairs_summary_all199.csv`（データセット別サマリー）
 - **GitHub自動同期**: ノートブック実行完了時に `push_to_github()` により `origin/main` ブランチへ自動コミット＆プッシュ。
 
+---
+
+## 8. トラブルシューティング: .gitignore による Parquet 追加ブロックの解消
+
+### (1) 発生した事象
+Kaggle Notebook 実行完了時の `push_to_github()` において、以下のエラーで停止：
+```text
+The following paths are ignored by one of your .gitignore files:
+working/s5_022_gt_pairs_features_all199.parquet
+hint: Use -f if you really want to add them.
+CalledProcessError: Command '['git', 'add', 'working/s5_022_gt_pairs_features_all199.parquet']' returned non-zero exit status 1.
+```
+
+### (2) 原因
+リポジトリルートの `.gitignore`（225行目）に `*.parquet` が指定されていたため、通常の `git add` では Parquet ファイルのステージングが Git によって拒絶されていた。
+
+### (3) 対策と修正
+- `push_to_github()` 内のステージングコマンドを `git add -f`（強制追加オプション）に変更：
+  ```python
+  for rel_p in copied_rel_paths:
+      subprocess.run(["git", "add", "-f", rel_p], cwd=repo_dir, check=True)
+  ```
+- これにより、`.gitignore` の設定に関わらず、指定された Parquet ファイルおよびサマリー CSV が確実にステージングされ、GitHub への自動プッシュが正常に完了する。
+- ノートブック `s5/github/working/s5_022_try_and_error.ipynb` の Cell 5 に本修正を反映済み。
+
 お役に立てれば幸いです。
