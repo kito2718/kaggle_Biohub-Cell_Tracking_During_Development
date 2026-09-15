@@ -142,27 +142,21 @@ Cell 11 [Code]    : メイン関数 (main 一気通貫エントリポイント)
 
 ---
 
-## 8. トラブルシューティング: .gitignore による Parquet 追加ブロックの解消
+## 8. トラブルシューティング: GitHub プッシュ安全化（ブランチ切替と巨大ファイル除外）
 
-### (1) 発生した事象
-Kaggle Notebook 実行完了時の `push_to_github()` において、以下のエラーで停止：
-```text
-The following paths are ignored by one of your .gitignore files:
-working/s5_022_gt_pairs_features_all199.parquet
-hint: Use -f if you really want to add them.
-CalledProcessError: Command '['git', 'add', 'working/s5_022_gt_pairs_features_all199.parquet']' returned non-zero exit status 1.
+### (1) ブランチ切替の直接実行（git checkout）
+Kaggle Notebook 実行中に `BRANCH_NAME = '021HYBRIDFILTER2'` 等へ変更した場合でも確実に反映されるよう、`get_or_init_git_repo()` において余計な判定チェックを挟まず、直接 `git checkout $BRANCH_NAME` を実行してリモートと同期するシンプルな仕様に是正：
+```python
+# 既に存在する場合は指定ブランチへ直接 checkout して pull --rebase
+subprocess.run(["git", "checkout", branch], cwd=repo_dir, check=True)
+subprocess.run(["git", "pull", "--rebase", "origin", branch], cwd=repo_dir, check=True)
 ```
 
-### (2) 原因
-リポジトリルートの `.gitignore`（225行目）に `*.parquet` が指定されていたため、通常の `git add` では Parquet ファイルのステージングが Git によって拒絶されていた。
-
-### (3) 対策と修正
-- `push_to_github()` 内のステージングコマンドを `git add -f`（強制追加オプション）に変更：
-  ```python
-  for rel_p in copied_rel_paths:
-      subprocess.run(["git", "add", "-f", rel_p], cwd=repo_dir, check=True)
-  ```
-- これにより、`.gitignore` の設定に関わらず、指定された Parquet ファイルおよびサマリー CSV が確実にステージングされ、GitHub への自動プッシュが正常に完了する。
-- ノートブック `s5/github/working/s5_022_try_and_error.ipynb` の Cell 5 に本修正を反映済み。
+### (2) Parquet ファイルのコミット除外（GitHub 100MB 制限の完全回避）
+- **背景**: 過去に Parquet ファイルが大きすぎて GitHub にコミットできなかった経緯があり、全199データセットの全数特徴量テーブル（数十万〜百数十万行）も GitHub の 100MB 制限を超過するリスクが存在した。
+- **対策**:
+  - Parquet ファイル（`s5_022_gt_pairs_features_all199.parquet`）は Kaggle Notebook の作業ディレクトリ（`working/`）に確実に保存・保持（Kaggle Output として活用可能）。
+  - **GitHub への自動プッシュ対象からは Parquet を除外し、軽量なデータセット別サマリー CSV（`s5_022_gt_pairs_summary_all199.csv`）のみをプッシュ** する安全仕様に確定。
+  - これにより、GitHub のファイルサイズ制限（100MB）によるプッシュ失敗リスクを 100% 完全に解消。
 
 お役に立てれば幸いです。
