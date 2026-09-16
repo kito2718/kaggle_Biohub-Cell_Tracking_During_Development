@@ -1,0 +1,2 @@
+magic_string,run_prefix,num_datasets,total_gt_nodes,total_est_nodes,total_gt_edges,total_pred_edges,macro_mean_pre_node_recall,macro_mean_post_node_recall,macro_mean_final_pe_ratio,macro_mean_edge_recall,macro_mean_edge_f1,macro_mean_official_jaccard
+023FLYMETOTHETOP,s5_023_002_,2,528,34795,496,29826,0.9853,0.7797,0.925,0.689,0.032,0.6367
