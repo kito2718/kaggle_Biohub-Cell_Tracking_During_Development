@@ -1,0 +1,5 @@
+stage,pass1_radius_um,pass2_radius_um,covered_edges,coverage_rate_pct,uncovered_edges,relative_search_cost,comment
+Single Stage (Baseline 7.0um),7.0,,126183,97.9050766974698,2700,1.0,"Current 7.0um fixed. 2,700 edges (2.09%) completely missed."
+Single Stage (Uniform 12.0um),12.0,,128653,99.82154357052521,230,5.037900874635568,"All nodes expanded to 12um. Volume expands 5.06x, false pairs explode."
+Multi-Stage (Pass1: 7um -> Pass2: 12um Rescue),7.0,12.0,128653,99.82154357052521,230,1.1052921282798833,"97.91% fixed at 7um. Unmatched nodes (2.09%) searched at 12um. Cost 1.11x, 99.86% covered!"
+Multi-Stage (Pass1: 7um -> Pass2: 15um Rescue),7.0,15.0,128796,99.93249691580736,87,1.2056486880466473,"Unmatched nodes searched at 15um. Cost 1.21x, 99.93% covered (missed only 87 edges)!"
