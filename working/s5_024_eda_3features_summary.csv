@@ -1,0 +1,10 @@
+dataset,group,track_count,total_nodes,mean_length,mean_raw_intensity,median_raw_intensity,mean_dog_response,median_dog_response,mean_local_contrast,median_local_contrast,mean_step_um,mean_total_disp_um
+44b6_0113de3b,Group A: Annotated GT Cells,5,112,22.4,1647.44,1652.86,259.43,259.49,1.41,1.37,2.62,39.47
+44b6_0113de3b,Group B: Static/Optical Noise (Yolk/Debris),1370,1482,1.08,1110.86,1012.5,168.03,141.8,1.49,1.46,0.03,0.03
+44b6_0113de3b,Group C: Unannotated Cell Candidates,3111,30272,9.73,1265.94,1207.2,198.4,187.24,1.45,1.43,2.4,15.64
+6bba_6feb10f0,Group A: Annotated GT Cells,260,1828,7.03,808.96,698.62,15.8,12.67,0.54,0.53,1.4,3.74
+6bba_6feb10f0,Group B: Static/Optical Noise (Yolk/Debris),4834,5999,1.24,994.58,941.0,20.32,14.37,0.78,0.75,0.03,0.04
+6bba_6feb10f0,Group C: Unannotated Cell Candidates,4355,26742,6.14,1066.35,1012.0,25.57,18.62,0.8,0.78,2.03,4.23
+6bba_c73a1d11,Group A: Annotated GT Cells,218,1160,5.32,611.35,584.5,24.89,17.4,0.9,0.95,2.46,8.41
+6bba_c73a1d11,Group B: Static/Optical Noise (Yolk/Debris),3804,4185,1.1,529.0,508.0,18.77,12.31,0.9,0.89,0.01,0.01
+6bba_c73a1d11,Group C: Unannotated Cell Candidates,5073,26833,5.29,616.45,597.25,30.39,21.93,0.98,1.02,2.86,8.26
