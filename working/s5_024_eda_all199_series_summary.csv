@@ -1,0 +1,7 @@
+series,group,dataset_count,total_tracks,total_nodes,mean_length,mean_raw_intensity,mean_dog_response,mean_step_um,mean_total_disp_um
+44b6,Group A: GT Cells,71,3191,33802,14.32,1721.65,141.43,1.82,13.38
+44b6,Group B: Static Optical Noise,71,288339,337678,1.15,1462.02,88.66,0.03,0.05
+44b6,Group C: Unannotated Cells,71,408853,3523980,9.09,1591.72,114.11,2.11,8.09
+6bba,Group A: GT Cells,128,19788,183544,10.21,866.37,71.17,1.88,10.79
+6bba,Group B: Static Optical Noise,128,257244,323906,1.26,654.86,47.9,0.03,0.05
+6bba,Group C: Unannotated Cells,128,364270,2653298,7.66,768.95,66.23,2.28,8.64
