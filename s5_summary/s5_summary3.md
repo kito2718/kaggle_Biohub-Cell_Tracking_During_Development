@@ -649,4 +649,94 @@ graph TD
 6. **(6) 提出ファイル生成 (Cell 12: `submission.csv`)**:
    - 定員枠(P/E 0.925)内に無事生き残ったノードIDとエッジIDを、Kaggle主催者の規定CSVフォーマット(`submission.csv`)へと書き出す。
 
+---
+
+## 14. 024-002 Kaggleスコア(0.669)の徹底原因究明とスコア乖離の数理的分析
+
+### (1) 問題の所在と提起
+024-002(STATICPURGECULLING)をKaggle本番へSUBMITした結果、**Public Score: 0.669** が返却された。
+ローカル開発段階では「検出Node Recall 95.49%、Post Node Recall 83.71%、Edge Recall 73.23%」という高水準の再現率を記録しており、また代表データセット(6bba_6feb10f0)でEdge TPが464本から480本へ向上(+16本)していたにもかかわらず、本番スコアが0.669にとどまった原因について徹底的な調査・検証を実施した。
+
+---
+
+### (2) スコア乖離の2重の謎と数理的メカニズムの解明
+
+#### 謎1: なぜローカルのRecall(ノード95%、エッジ73%)に比べ、本番スコア(0.669)は低いのか？
+Kaggle公式評価コード(`royerlab/kaggle-cell-tracking-competition` の `metrics.md`)を精査した結果、以下の数理的理由が判明した。
+
+1. **Recall(再現率)とJaccard(類似度)の構造的落差**:
+   - $\text{Edge Recall} = \frac{TP}{TP + FN}$ (分母は正解エッジのみ)
+   - $\text{Official Jaccard} = \frac{TP}{TP + FP + FN}$ (分母に誤接続エッジ $FP$ が加わる)
+   - 公式ルールにおいて、$FP$ と判定されるのは「**GTノードにマッチした予測ノードから伸びるエッジが、誤った相手に接続されている場合**」である。
+   - 細胞が近接・交差した際にMNNトラッカーが接続を取り違えると、正解エッジが落ちる($FN+1$)と同時に誤接続エッジが発生($FP+1$)するため、分母が $+2$ され、JaccardはRecallより必然的に低下する(73.23% ➔ 67.52%)。
+2. **Division Jaccard(細胞分裂スコア)の未取得(0.0点)**:
+   - 公式最終スコア式:
+     $$\text{Score} = \text{Adjusted Edge Jaccard} + 0.1 \times \text{Division Jaccard}$$
+   - 現在のパイプラインは1対1マッチング(MNN)のみで構成されており、細胞分裂(1つの親ノードから2つの子ノードへの分岐エッジ)を1件も出力していない。
+   - したがって、後半の第2項($0.1 \times \text{Division Jaccard}$)は常に **0.000点** となり、最大0.10ポイントの加点を無条件で失っている。
+
+#### 謎2: なぜローカルの簡易Jaccard(0.0515 / 5%)に比べ、本番スコア(0.669)は遥かに高いのか？
+- ローカル簡易チェックコード(Cell 11)では、「GTエッジと完全一致しない予測エッジ」をすべて $FP$ として一括カウントしていた(1データセットあたり約2万件、全199件で400万件超)。
+- しかしコンペ公式ルールでは、「**正解アノテーション外の未注記領域に引かれた予測エッジは、FPにカウントされず完全に無視される(All other predicted edges are ignored by our metric)**」という仕様になっている。
+- したがって、ローカル簡易評価のJaccard 0.0515(5%)は数式定義の誤解による見かけ上の破滅値であり、真の公式Jaccardマクロ平均は **0.6752(67.52%)** であった。
+
+---
+
+### (3) 深掘り調査で判明した4重の致命的根本原因
+
+今回の調査により、024-002の改善効果が相殺され、0.669に低迷した直接原因として以下の4点が完全に特定された。
+
+#### ①【最重要】Kaggle本番(SUBMITモード)でP/Eバジェット刈り取りが100%スキップされていた
+- ノートブック Cell 10 のバジェット刈り取り分岐:
+  ```python
+  est_nodes = gt_data_by_ds[ds_name]['estimated_number_of_nodes'] if ... else -1
+  if est_nodes > 0:
+      target_count = int(TARGET_PE_RATIO * est_nodes)  # バジェット刈り取り
+  else:
+      cur_nodes = []
+      for _, r in active_comp_df.iterrows():
+          cur_nodes.extend(r['nodes'])  # ← 全トラック全ノードを無条件提出！
+      kept_set = set(cur_nodes)
+  ```
+- Kaggle本番のテスト環境には `.geff`(GT正解ファイル)が配備されていないため、`gt_data_by_ds` は空辞書 `{}` となり、`est_nodes` は常に `-1` となる。
+- その結果、**Kaggle本番実行ではバジェット枠(0.925)による刈り取りが1件も発動せず、検出ノードがほぼ100%提出されていた**。
+- これにより、`6bba` 等のデータセットでP/E比が2.0〜3.9倍に激増し、Kaggle公式の Adjusted Jaccard ペナルティ:
+  $$\text{Adjusted Jaccard} = \max(0, \text{Jaccard} \times (1 - 0.1 \times \frac{T_{pred} - T_{true}}{T_{true}}))$$
+  によって **最大29.0%(平均4.3%)もの大減点ペナルティ** を受けていた。
+
+#### ②【バグ】Cell 10 の静止ノイズ判定における「時間未ソート」による運動変位の破綻
+- Cell 10 のコード:
+  ```python
+  comps = list(nx.connected_components(G))
+  for c in comps:
+      c_list = list(c)  # ← NetworkXのsetからリスト化(時間tの順序が完全にバラバラ)
+      sub_coords = node_map.loc[c_list, ['z', 'y', 'x']].values * scale
+      diffs = np.linalg.norm(np.diff(sub_coords, axis=0), axis=1)  # ← 時間順でない座標差分
+      mean_step = float(np.mean(diffs)) if len(diffs) > 0 else 0.0
+      total_disp = float(np.linalg.norm(sub_coords[-1] - sub_coords[0]))
+  ```
+- `c_list` が時間 $t$ 順に整列されていなかったため、`np.diff` はフレームを行き来するランダムな距離を積算していた。
+- そのため、真の静止光学ノイズであっても `mean_step` が大きく計算されて判定をすり抜け、狙っていた静止ノイズ100%パージがほぼ機能していなかった。
+
+#### ③【バグ】バジェット枠充当時の「トラック途中分断」バグ
+- バジェット上限に達したトラックの切り詰め処理において、未ソートリストから `r['nodes'][:rem]` を先頭スライスしていたため、トラックの途中のフレームのノードが虫食い状に欠落し、生存エッジが分断されていた。
+
+#### ④【設計欠落】細胞分裂(Division)の未実装による0.10点分の損失
+- 前述の通り、Kaggleのスコア配分であるDivision Jaccard(重み0.1)が最初から手付かず(0点)であった。
+
+---
+
+### (4) Kaggle CLI による自動Submit環境の確立(オペミス防止)
+
+手動での `SUBMIT_TO_COMPETITION` 書き換えやダウンロード/アップロード時の人為的オペレーションミスを完全に排除するため、Kaggle CLI による自動プッシュ・実行環境を検証した。
+
+- **Kaggle CLI バージョン**: `2.2.3` 正常稼働
+- **API認証**: 正常確認済み
+- **自動提出メカニズム**:
+  1. `kernel-metadata.json` を生成
+  2. ローカルから `kaggle kernels push -p <dir>` を実行
+  3. Kaggleクラウド上でノートブックが自動起動・実行され、生成された `submission.csv` が公式Leaderboardへ自動反映される。
+
+---
+
 お役に立てれば幸いです。

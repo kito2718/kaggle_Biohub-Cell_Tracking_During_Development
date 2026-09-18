@@ -1,0 +1,2 @@
+magic_string,total_gt_nodes,total_est_nodes,total_gt_edges,total_pred_edges,macro_mean_pre_node_recall,macro_mean_post_node_recall,macro_mean_final_pe_ratio,macro_mean_edge_recall,macro_mean_edge_f1,macro_mean_official_jaccard
+024-002-STATICPURGECULLING,1420,34617,1393,30492,0.8955,0.6544,0.925,0.6087,0.0539,
