@@ -193,10 +193,10 @@ flowchart TD
 | **0** | `[Markdown] ノートブック概要説明` | ドキュメント | タイトル、MAGIC_STRING (`026-UNET_ILP_095`)、RUN_PREFIX (`s6_026-UNET_ILP_095_`)、提出規格の宣言 |
 | **1** | `[Markdown] パイプラインアーキテクチャ & セル構成` | フローチャート | Mermaid によるパイプライン全体のアーキテクチャ図および Cell 2〜13 の実行フロー図 |
 | **2** | `[Code] # Cell 2: オフライン パッケージライブラリインストール` | パッケージ導入 | サポートパック `wheels/` からのオフラインインストール (`tracksdata`, `pyscipopt`, `ilpy`, `geff`, `zarr`, `polars` 等) |
-| **3** | `[Code] # Cell 3: パラメータ・グローバル変数定義` | 定数定義 | `MAGIC_STRING`、Kaggle パス定義、推論・ILP ハイパーパラメータ (`DET_THRESHOLD = 0.95`, `USE_ILP = True`) |
+| **3** | `[Code] # Cell 3: パラメータ・グローバル変数定義` | 定数定義 | `MAGIC_STRING`、Kaggle/ローカル確定パス、推論・ILP パラメータ、`UserSecretsClient` による `GITHUB_TOKEN`、グローバル実行状態変数の定義 |
 | **4** | `[Code] # Cell 4: 共通関数定義 (push_to_github & sync_from_github)` | GitHub 連携 | ノートブック出力 CSV を GitHub リポジトリへ自動 push する関数 |
-| **5** | `[Code] # Cell 5: 実行環境セットアップ (setup_environment)` | 環境構築 | サポートパック `repo/src/`, `repo/scripts/` の動的読込、GPU/CPU 自動選択、モデルロード (`load_model()`) |
-| **6** | `[Code] # Cell 6: 実行環境・入力データ検証 (check_environment)` | 入力検証 | test 4 データセットの存在確認、重みファイルの存在確認、zarr メタデータの読み出しとサニティチェック |
+| **5** | `[Code] # Cell 5: 実行環境セットアップ (setup_environment)` | 環境構築 | サポートパックソースの存在確認と sys.path 追加、CPU Monkey Patch、モデルロード (戻り値なし、グローバル変数に直接設定) |
+| **6** | `[Code] # Cell 6: 実行環境・入力データ検証 (check_environment)` | 入力検証 | 入力ディレクトリの存在確認 (存在しない場合は即座に raise)、test データセット一覧の確定 (戻り値なし、グローバル変数に設定) |
 | **7** | `[Code] # Cell 7: GTデータ読み込み (load_gt_data)` | GT読込 | GT検証モード時のみ `.geff` をロード (SUBMIT時は自動スキップ) |
 | **8** | `[Code] # Cell 8: 深層学習推論 (detect_nodes_and_edges)` | **推論** | 各データセットに対し `predict_video()` を実行 (3D-UNet 細胞中心検出 + Transformer 候補エッジ推論) |
 | **9** | `[Code] # Cell 9: 検出結果チェック (check_nodes)` | 検出チェック | 検出ノード数・フレーム数・平均密度の集計監査 |
@@ -235,10 +235,10 @@ AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリ�
 - **Cell 0 [Markdown]**: ノートブック概要説明 (タイトル、MAGIC_STRING: `026-UNET_ILP_095`、RUN_PREFIX: `s6_026-UNET_ILP_095_`、提出規格)
 - **Cell 1 [Markdown]**: パイプラインアーキテクチャ & セル構成 (Mermaidフローチャート)
 - **Cell 2 [Code]**: オフライン パッケージライブラリインストール (`tracksdata`, `pyscipopt`, `ilpy`, `geff`, `zarr`, `polars` 等)
-- **Cell 3 [Code]**: パラメータ・グローバル変数定義 (`MAGIC_STRING = "026-UNET_ILP_095"`, `DET_THRESHOLD = 0.95`, `USE_ILP = True`)
+- **Cell 3 [Code]**: パラメータ・グローバル変数定義 (`MAGIC_STRING = "026-UNET_ILP_095"`, `DET_THRESHOLD = 0.95`, `USE_ILP = True`, `UserSecretsClient` による `GITHUB_TOKEN`)
 - **Cell 4 [Code]**: 共通関数定義 (`push_to_github` & `sync_from_github`)
-- **Cell 5 [Code]**: 実行環境セットアップ (`setup_environment`: サポートパックの動的読込、GPU/CPU 自動選択、モデルロード)
-- **Cell 6 [Code]**: 実行環境・入力データ検証 (`check_environment`: test データセットの自動検知とサニティチェック)
+- **Cell 5 [Code]**: 実行環境セットアップ (`setup_environment`: サポートパック読込、モデルロード、戻り値なしでグローバル変数設定)
+- **Cell 6 [Code]**: 実行環境・入力データ検証 (`check_environment`: test データセット検知とサニティチェック、戻り値なしでグローバル変数設定)
 - **Cell 7 [Code]**: GTデータ読み込み (`load_gt_data`: SUBMIT時は自動スキップ)
 - **Cell 8 [Code]**: 深層学習推論 (`detect_nodes_and_edges`: 3D-UNet による細胞中心検出 + Transformer によるエッジ推論)
 - **Cell 9 [Code]**: 検出結果チェック (`check_nodes`: データセット別ノード統計の監査)
