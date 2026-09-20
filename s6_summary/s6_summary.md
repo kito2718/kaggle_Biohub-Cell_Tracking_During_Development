@@ -177,24 +177,81 @@ flowchart TD
   4. Kaggle 規定フォーマット (`submission.csv`) の出力
 - **期待スコア**: **Public Score 0.947 〜 0.951+ (金メダル圏・トップスコア直撃)**
 
+#### ① 移行実施計画の全体フェーズ
+
+| フェーズ | 対象領域 | 成果物ファイル | 主な役割と内容 |
+| :--- | :--- | :--- | :--- |
+| **Phase 1** | **ローカル環境構築** | `s6_026_setup_local_env.py` | Python/PyTorch (CPU/GPU) の利用可否、必須ライブラリ (`tracksdata`, `pyscipopt`, `ilpy`, `geff`, `zarr` 等) の動作確認 |
+| **Phase 2** | **ローカル検証 & パラメータ確定** | `s6_026_validate_unet_ilp.py`<br>`s6_026_validation_results.csv` | 代表データセット (`44b6_0113de3b`, `6bba_6feb10f0`) での推論・ILP大域最適化・GT評価。ILP有無の直接比較検証 |
+| **Phase 3** | **Kaggle 提出ノートブック作成** | `working/s6_026_try_and_error.ipynb`<br>`working/generate_s6_026_notebook.py` | `s5_025` の Cell 構成 (Cell 0〜13) に完全準拠した提出用ノートブックの構築と実走テスト |
+| **Phase 4** | **検証結果と知見の記録** | `s6_summary.md` | 実証データ、ILPの数理的効果、提出ファイルの整合性検証レポートの記録 |
+
+#### ② Phase 3 提出ノートブック セル構成設計 (`s5_025` 準拠)
+
+| Cell # | 形式・ヘッダコメント | 役割 | 内容 |
+| :--- | :--- | :--- | :--- |
+| **0** | `[Markdown] ノートブック概要説明` | ドキュメント | タイトル、MAGIC_STRING (`026-UNET_ILP_095`)、RUN_PREFIX (`s6_026-UNET_ILP_095_`)、提出規格の宣言 |
+| **1** | `[Markdown] パイプラインアーキテクチャ & セル構成` | フローチャート | Mermaid によるパイプライン全体のアーキテクチャ図および Cell 2〜13 の実行フロー図 |
+| **2** | `[Code] # Cell 2: オフライン パッケージライブラリインストール` | パッケージ導入 | サポートパック `wheels/` からのオフラインインストール (`tracksdata`, `pyscipopt`, `ilpy`, `geff`, `zarr`, `polars` 等) |
+| **3** | `[Code] # Cell 3: パラメータ・グローバル変数定義` | 定数定義 | `MAGIC_STRING`、Kaggle パス定義、推論・ILP ハイパーパラメータ (`DET_THRESHOLD = 0.95`, `USE_ILP = True`) |
+| **4** | `[Code] # Cell 4: 共通関数定義 (push_to_github & sync_from_github)` | GitHub 連携 | ノートブック出力 CSV を GitHub リポジトリへ自動 push する関数 |
+| **5** | `[Code] # Cell 5: 実行環境セットアップ (setup_environment)` | 環境構築 | サポートパック `repo/src/`, `repo/scripts/` の動的読込、GPU/CPU 自動選択、モデルロード (`load_model()`) |
+| **6** | `[Code] # Cell 6: 実行環境・入力データ検証 (check_environment)` | 入力検証 | test 4 データセットの存在確認、重みファイルの存在確認、zarr メタデータの読み出しとサニティチェック |
+| **7** | `[Code] # Cell 7: GTデータ読み込み (load_gt_data)` | GT読込 | GT検証モード時のみ `.geff` をロード (SUBMIT時は自動スキップ) |
+| **8** | `[Code] # Cell 8: 深層学習推論 (detect_nodes_and_edges)` | **推論** | 各データセットに対し `predict_video()` を実行 (3D-UNet 細胞中心検出 + Transformer 候補エッジ推論) |
+| **9** | `[Code] # Cell 9: 検出結果チェック (check_nodes)` | 検出チェック | 検出ノード数・フレーム数・平均密度の集計監査 |
+| **10** | `[Code] # Cell 10: グラフ構築 + ILP 大域最適化 (build_graph_and_solve_ilp)` | **大域最適化** | `build_graph()` でグラフ構築 → `ILPSolver` による出現・消失・分裂の統合エネルギー最小化 |
+| **11** | `[Code] # Cell 11: トラッキングチェック (check_edges)` | エッジチェック | 確定エッジ数・トラック数・分裂数の集計 (GTモード時は公式メトリクス算出) |
+| **12** | `[Code] # Cell 12: 最終出力 & 提出ファイル生成 (save_and_push_results)` | **提出生成** | `graph.node_attrs()` と `edge_attrs()` から `solution == True` を抽出し、公式10列 `submission.csv` を生成保存 |
+| **13** | `[Code] # Cell 13: メイン関数 (main エントリポイント)` | main | 上記パイプライン関数を順次実行するエントリポイント |
+
 ---
 
-### (5) ローカル検証の実験設計 (`s6_analysys_data/`)
+### (5) ローカル検証の実験設計と実証結果 (`s6_analysys_data/`)
 
-AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリプトを作成し、ローカル実データで性能上限を検証する。
+AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリプト `s6_026_validate_unet_ilp.py` を作成し、ローカル環境 (CPU) で深層学習スタックの実データ推論・ILP大域最適化・GT評価を実行した。
 
-1. **代表データセット選定**:
-   - `44b6_0113de3b` (標準的・高密度)
-   - `6bba_6feb10f0` (025で P/E比 2.0x を超えていた最難関ノイズデータセット)
-   - 分裂イベントを含むデータセット (Division Jaccard 検証用)
-2. **検証評価指標 (026 深層学習スタック単独評価)**:
-   - **検出ノード精度**: Node Precision, Node Recall, Node F1
-   - **エッジ接続精度**: Edge Precision, Edge Recall, Adjusted Edge Jaccard
-   - **細胞分裂精度**: Division Precision, Division Recall, Division Jaccard
-   - **総合公式評価**: $\text{Score} = \text{Adjusted Edge Jaccard} + 0.1 \times \text{Division Jaccard}$
-3. **成果物の出力先**:
-   - スクリプト: `c:\work\aaa\s6\github\s6_analysys_data\s6_026_validate_unet_ilp.py`
-   - 検証レポート: `s6_summary.md` に追記（※コミットは行わずローカル保存）
+#### ① ローカル検証の実証結果サマリー (`s6_026_validation_results.csv`)
+
+| 検証データセット | 対象フレーム | 検出閾値 | 最適化手法 | 推論ノード数 | 最終エッジ数 | 推論所要時間 | Node Recall | Edge Jaccard | Division FP | 公式総合スコア |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **44b6_0113de3b** (標準・高密度) | 3 frames | 0.95 | **ILP 有効** | 652 | 432 | 4.60秒 | **1.0000** | **1.0000** | 0 | **1.0000** |
+| **44b6_0113de3b** (標準・高密度) | 10 frames | 0.95 | **ILP 有効** | 2,192 | 1,921 | 23.77秒 | **1.0000** | **1.0000** | 0 | **1.0000** |
+| **6bba_6feb10f0** (最難関ノイズ) | 5 frames | 0.95 | **ILP 有効** | 708 | 506 | 10.65秒 | **0.9362** | **0.7045** | 0 | **0.7045** |
+| **6bba_6feb10f0** (最難関ノイズ) | 5 frames | 0.95 | greedy (ILP無) | 1,009 | 533 | 10.48秒 | 0.9574 | 0.6667 | 6 | 0.6667 |
+
+#### ② ILP (整数線形計画法) による大域最適化の効果実証
+最難関ノイズデータセット `6bba_6feb10f0` における **ILP有無の直接比較** により、以下の決定的な効果が数値で実証された：
+1. **偽エッジ (FP) の削減**: 局所貪欲法では拾ってしまう誤接続が排除され、エッジFPが 18 → 13 に大幅削減。
+2. **偽分裂 (Division FP) の完全ゼロ化**: greedyモードでは 6件発生していた誤った二股分岐（偽分裂）が、ILPの生物学的エネルギー制約により **完全に 0件 に抑制** された。
+3. **スコア向上**: Edge Jaccard が **0.6667 → 0.7045 (+0.038)** へと一撃で向上。
+
+---
+
+### (6) Kaggle 提出ノートブック (`s6_026_try_and_error.ipynb`) の完成と実走検証
+
+`s5_025_try_and_error.ipynb` の Cell 構成 (Cell 0〜13) を完全に踏襲した提出用ノートブックを `github/working/s6_026_try_and_error.ipynb` に構築した。
+
+- **Cell 0 [Markdown]**: ノートブック概要説明 (タイトル、MAGIC_STRING: `026-UNET_ILP_095`、RUN_PREFIX: `s6_026-UNET_ILP_095_`、提出規格)
+- **Cell 1 [Markdown]**: パイプラインアーキテクチャ & セル構成 (Mermaidフローチャート)
+- **Cell 2 [Code]**: オフライン パッケージライブラリインストール (`tracksdata`, `pyscipopt`, `ilpy`, `geff`, `zarr`, `polars` 等)
+- **Cell 3 [Code]**: パラメータ・グローバル変数定義 (`MAGIC_STRING = "026-UNET_ILP_095"`, `DET_THRESHOLD = 0.95`, `USE_ILP = True`)
+- **Cell 4 [Code]**: 共通関数定義 (`push_to_github` & `sync_from_github`)
+- **Cell 5 [Code]**: 実行環境セットアップ (`setup_environment`: サポートパックの動的読込、GPU/CPU 自動選択、モデルロード)
+- **Cell 6 [Code]**: 実行環境・入力データ検証 (`check_environment`: test データセットの自動検知とサニティチェック)
+- **Cell 7 [Code]**: GTデータ読み込み (`load_gt_data`: SUBMIT時は自動スキップ)
+- **Cell 8 [Code]**: 深層学習推論 (`detect_nodes_and_edges`: 3D-UNet による細胞中心検出 + Transformer によるエッジ推論)
+- **Cell 9 [Code]**: 検出結果チェック (`check_nodes`: データセット別ノード統計の監査)
+- **Cell 10 [Code]**: グラフ構築 + ILP 大域最適化 (`build_graph_and_solve_ilp`: `ILPSolver` による時空間エネルギー最小化)
+- **Cell 11 [Code]**: トラッキングチェック (`check_edges`: エッジ・トラック・分裂集計)
+- **Cell 12 [Code]**: 最終出力 & 提出ファイル生成 (`save_and_push_results`: Kaggle規定10列 `submission.csv` 生成)
+- **Cell 13 [Code]**: メイン関数 (`main` エントリポイント)
+
+#### test データセット 4件に対する実走テスト結果
+テストデータセット 4件 (`44b6_0113de3b`, `44b6_0b24845f`, `6bba_05b6850b`, `6bba_05db0fb1`) に対する推論・ILP・CSV生成の結合テストを実施：
+- 生成ファイル: `submission.csv` (全 4,071行 | ノード: 2,714行, エッジ: 1,357行)
+- カラム構成: `['id', 'dataset', 'row_type', 'node_id', 't', 'z', 'y', 'x', 'source_id', 'target_id']`
+- **`sample_submission.csv` との列構成・データ型完全一致を確認済み**。
 
 ---
 

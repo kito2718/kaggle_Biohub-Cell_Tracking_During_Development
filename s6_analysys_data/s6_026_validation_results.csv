@@ -1,0 +1,5 @@
+dataset,max_frames,det_threshold,use_ilp,pred_nodes,pred_edges,infer_time_sec,total_time_sec,node_recall,edge_jaccard,edge_tp,edge_fp,edge_fn,division_jaccard,division_tp,division_fp,division_fn,score
+44b6_0113de3b,3,0.95,True,652,432,4.6,4.86,1.0,1.0,2,0,0,0.0,0,0,0,1.0
+44b6_0113de3b,10,0.95,True,2192,1921,23.77,24.45,1.0,1.0,2,0,0,0.0,0,0,0,1.0
+6bba_6feb10f0,5,0.95,True,708,506,10.65,10.98,0.9362,0.7045,62,13,13,0.0,0,0,0,0.7045
+6bba_6feb10f0,5,0.95,False,1009,533,10.48,10.51,0.9574,0.6667,62,18,13,0.0,0,6,0,0.6667
