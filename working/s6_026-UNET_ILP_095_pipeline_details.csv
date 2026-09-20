@@ -1,0 +1,2 @@
+dataset,pred_nodes,unique_frames,nodes_per_frame,candidate_edges,gt_nodes,est_nodes,node_tp,node_fp,node_fn,node_recall,node_precision,node_f1,pre_pe_ratio,final_nodes,final_edges,gt_edges,edge_tp,edge_fp,edge_fn,edge_recall,edge_precision,edge_f1,post_node_recall,final_pe_ratio,official_edge_jaccard,official_division_jaccard,official_score
+44b6_0113de3b,26510,100,265.1,25158,52,25755,52,26458,0,1.0,0.002,0.0039,1.0293,26133,24978,50,50,0,0,1.0,1.0,1.0,1.0,1.0147,1.0,0.0,1.0
