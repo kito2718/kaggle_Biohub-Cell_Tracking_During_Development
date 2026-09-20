@@ -8,18 +8,22 @@
 その結果、**直近のアプローチ（古典的DoGフィルター ＋ 貪欲MNN追跡 ＋ 後処理刈り取り）と、トップコンペティター（0.95+）の間には、越えられないアーキテクチャの断絶が存在する** ことが完全に判明した。
 
 ```mermaid
-graph TD
-    subgraph Current [直近の古典的アプローチ (理論限界: 0.68~0.70)]
+flowchart LR
+    subgraph Current ["直近の古典的アプローチ (理論限界: 0.68~0.70)"]
+        direction TD
         C1["(1) 検出: DoG (古典的差分ガウシアン)"] -->|固定PSF・局所偽ピーク多発| C2["(2) 追跡: MNN (貪欲局所最近傍)"]
         C2 -->|近接・交差で100%誤結合| C3["(3) 後処理: 幾何・形態・LightGBM 刈り取り"]
-        C3 -->|分裂未取得(0点)・P/Eペナルティ| C4["Kaggle Score: 0.687 (頭打ち)"]
+        C3 -->|"分裂未取得(0点)・P/Eペナルティ"| C4["Kaggle Score: 0.687 (頭打ち)"]
     end
 
-    subgraph TopTier [上位陣 0.95+ の深層学習アーキテクチャ]
+    subgraph TopTier ["上位陣 0.95+ の深層学習アーキテクチャ"]
+        direction TD
         T1["(1) 検出: TemporalUNet3D (3次元時空間CNN)"] -->|細胞質・膜・文脈の完全認識| T2["(2) 追跡: SimpleNodeTransformer (特徴量アテンション)"]
         T2 -->|全フレーム時空間埋め込み| T3["(3) 大域最適化: ILPSolver (整数線形計画法)"]
         T3 -->|大域エネルギー最小化・分裂加点 0.23+| T4["★ Kaggle Score: 0.947 ~ 0.951+ 突破!"]
     end
+    %% TopTierを左、Currentを右にする非表示リンク
+    Current --> TopTier
 ```
 
 ---
@@ -47,7 +51,118 @@ graph TD
 
 ---
 
-### (3) 新バージョン 026: 方針1 への完全移行計画
+### 25. 026: 深層学習スタック (3D-UNet ＋ Transformer ＋ ILP) ローカル検証計画と特徴量設計
+
+### (1) ローカル検証の目的とスコア上限の探求
+Kaggle Leaderboard で 0.95+ を叩き出している深層学習スタック（3D-UNet ＋ Transformer ＋ ILP）を、まずはノートブック（提出ファイル）を更新する前に **ローカル環境で直接実行・検証し、本手法がどこまでスコアを伸ばせるのか（0.94〜0.96+）の数理的上限と各コンポーネントの挙動を完全に解明** する。
+
+---
+
+### (2) なぜこの解決方法（3D-UNet ＋ Transformer ＋ ILP）に至ったのか？（歴史的経緯と必然性）
+
+細胞トラッキング分野において、「なぜこの3つの組み合わせなのか？」「これは最近のトレンドなのか？」という疑問に対する答えは、**コンピュータビジョンおよびバイオイメージングにおける過去15年間の試行錯誤の歴史的必然** にある。
+
+```mermaid
+flowchart LR
+    subgraph G1 ["第1世代 (〜2015年): 古典画像処理 ＋ 局所貪欲法"]
+        direction TD
+        G1_1["DoG / 水流法 (ピクセル輝度極大)"] --> G1_2["最近傍法 (MNN) / カルマンフィルタ"]
+        G1_2 --> G1_3["【破綻】自家蛍光ノイズ多発、交差・密集で100%取り違え、分裂判定不能"]
+        G1_3 --> G1_E[検出精度の限界]
+    end
+
+    subgraph G2 ["第2世代 (2015〜2020年): 深層学習検出 ＋ ハンガリアン法"]
+        direction TD
+        G2_1["3D-UNet / Mask R-CNN (細胞セグメンテーション)"] --> G2_2["フレーム間2部マッチング (Hungarian / DeepSORT)"]
+        G2_2 --> G2_3["【限界】検出は成功するが、短期的マッチングのため一時的重なりでトラックが途切れる"]
+        G2_3 --> G2_E[時空間整合性と分裂の限界]
+    end
+
+    subgraph G3 ["第3世代 (現在の業界標準): 時空間アテンション ＋ 大域整数線形計画法"]
+        direction TD
+        G3_1["3D-UNet (細胞体積特徴)"] --> G3_2["Transformer (時空間アテンション)"]
+        G3_2 --> G3_3["ILPSolver (整数線形計画法)"]
+        G3_3 --> G3_4["【完全解】生物学的制約 (分裂・不滅) を守りつつ全フレーム大域最適化で 0.95+ 達成"]
+        G3_4 --> G3_E[今に至る]
+    end
+
+    G1 -->|第2世代へ| G2
+    G2 -->|第3世代へ| G3
+```
+
+1. **第1世代（〜2015年: 古典画像処理 ＋ 局所貪欲追跡）**:
+   - **手法**: DoG（差分ガウシアン）で輝度の山を探し、フレーム間で最も近い点同士を結ぶ（MNN）。
+   - **なぜ失敗したか**: 生体顕微鏡画像には激しいノイズや自家蛍光が存在し、輝度だけでは本物の細胞核とゴミを区別できない。また、細胞がすれ違う「交差」や「高密度クラスタ」では最短距離の結線が破綻し、細胞分裂（1対2）の判定も手動ヒューリスティクスでは不可能だった。
+2. **第2世代（2015〜2020年: 深層学習検出 ＋ 局所マッチング）**:
+   - **手法**: 3D-UNet 等で細胞領域を高精度に検出し、フレーム間をハンガリアン法などで結ぶ。
+   - **なぜ頭打ちになったか**: 検出精度は上がったが、追跡が依然として「$t$ と $t+1$ の局所二部マッチング」だったため、1フレームでも細胞が陰に隠れたり見失われたりするとトラックが途切れる（断片化）。また、「未来のフレーム（$t+2, t+3$）でどう動くか」を考慮できないため、エラーが後続フレームへ雪だるま式に波及した。
+3. **第3世代（現在のトレンド・国際コンペのデファクトスタンダード）: 3D-UNet ＋ Transformer ＋ ILP**:
+   - **必然性**: 国際細胞追跡コンペ（Cell Tracking Challenge: CTC）等で上位を独占している王道アプローチ。
+   - **ILP（整数線形計画法）の決定打**: 生物学的な絶対ルール（「細胞は突然ワープしない」「合体しない」「分裂は最大2つまで」）を線形不等式の制約条件として数理モデル化し、全フレームの全候補エッジの中から **生物学的に矛盾しない世界線の最適解を一撃で大域最適化** する。
+   - **Transformerの導入（最新トレンド）**: ILPに入力するエッジ接続確率を、単なる距離ではなく Transformer の Multi-Head Attention を通すことで、細胞の見た目の深層特徴量と3次元空間の位置関係から極めて高精度に推論する。
+
+---
+
+### (3) 4つの推論階層（Stage）と絞り込みのメカニズム
+
+これは単なる「4層の画像フィルター」ではなく、**膨大な生データから最終的な細胞系統樹（グラフ）へと探索空間と不確実性を段階的に絞り込む4段階の推論パイプライン** である。
+
+```mermaid
+flowchart TD
+    subgraph Stage1 ["第1階層: 細胞中心検出 (Node Stage: 3D-UNet)"]
+        direction LR
+        S1_In["入力: 連続2フレーム 3次元ボクセル (T=2, C=1, Z, Y, X)"]
+        S1_Proc["処理: 3D畳み込み潜在空間 ＋ 3D Max-Pooling (5.0μm)"]
+        S1_Out["出力: 細胞中心ノード群 (t, z, y, x) ＋ 32ch深層特徴量"]
+        S1_Filter["【絞り込み】数千万ボクセル空間から、数千個の真の細胞核のみへ絞り込み (偽陽性排除)"]
+        S1_In --> S1_Proc --> S1_Out --> S1_Filter
+    end
+
+    subgraph Stage2 ["第2階層: 時空間位置埋め込み (Positional Encoding Stage)"]
+        direction LR
+        S2_In["入力: 検出された細胞中心の物理座標 (t, z, y, x)"]
+        S2_Proc["処理: 多周波数正弦波展開 (8周波数 x 4軸 = 32次元) ＋ 3次元異方性補正"]
+        S2_Out["出力: 32次元位置ベクトル (幾何学的位置関係の数値化)"]
+        S2_Filter["【絞り込み】全ノード間の組み合わせ爆発 (N x N) から、物理的移動可能ペアへ絞り込み"]
+        S2_In --> S2_Proc --> S2_Out --> S2_Filter
+    end
+
+    subgraph Stage3 ["第3階層: 候補エッジ関連度推論 (Edge Stage: SimpleNodeTransformer)"]
+        direction LR
+        S3_In["入力: 結合特徴量 64次元 (32ch深層特徴 ＋ 32ch位置埋め込み)"]
+        S3_Proc["処理: 4ヘッド x 4ブロック Multi-Head Attention (文脈・交差の考慮)"]
+        S3_Out["出力: 候補エッジの接続確率 (Softmax正規化 edge_prob)"]
+        S3_Filter["【絞り込み】近接候補ペアから、同一細胞の移動・分裂である確からしさへ絞り込み"]
+        S3_In --> S3_Proc --> S3_Out --> S3_Filter
+    end
+
+    subgraph Stage4 ["第4階層: 大域グラフ制約最適化 (Graph/ILP Stage: ILPSolver)"]
+        direction LR
+        S4_In["入力: 全候補エッジ確率 ＋ 生物学的物理制約 (流入・流出・分裂)"]
+        S4_Proc["処理: 整数線形計画法 (ILP) による時空間エネルギー最小化"]
+        S4_Out["出力: 完全無矛盾な細胞系統樹・提出用トラックグラフ (submission.csv)"]
+        S4_Filter["【絞り込み】局所的確率の矛盾 (多重結合・不正合体・不滅) を排除し、唯一の大域最適解へ確定"]
+        S4_In --> S4_Proc --> S4_Out --> S4_Filter
+    end
+
+    Stage1 -->|細胞中心・深層特徴量を引き渡し| Stage2
+    Stage2 -->|幾何学的候補ペアと位置情報を引き渡し| Stage3
+    Stage3 -->|候補エッジの接続確率マップを引き渡し| Stage4
+    Stage4 --> Final["★ 公式スコア 0.95+ 達成 (Adjusted Edge Jaccard ＋ 0.1 x Division Jaccard)"]
+```
+
+#### 各階層の役割と「何を絞り込んでいるか」の対比一覧
+
+| 階層 (Stage) | 正式名称 | 主なアルゴリズム | 入力データ | 出力データ | 何を絞り込んでいるか (フィルタリング対象) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **第1階層** | **細胞中心検出 (Node Stage)** | `TemporalUNet3D` | 3次元画像ボクセル $(T=2, C=1, Z, Y, X)$ | 細胞中心座標 $(t, z, y, x)$ と 32ch潜在特徴 | **数千万画素の空間から、数千個の細胞中心点へと絞り込む**（自家蛍光・ノイズ・背景を完全遮断） |
+| **第2階層** | **時空間位置埋め込み (Positional Encoding Stage)** | 多周波数正弦波展開 ＋ 物理スケール補正 | 検出ノードの座標 $(t, z, y, x)$ | 32次元時空間位置埋め込みベクトル | **$N \times N$ の天文学的組み合わせから、物理的に移動可能な候補ペアへ絞り込む**（時空間の遠距離ペアを即座に除外） |
+| **第3階層** | **候補エッジ関連度推論 (Edge Stage)** | `SimpleNodeTransformer` (Multi-Head Attention) | 64次元結合ベクトル (32ch特徴 ＋ 32ch位置) | 候補ペア間の接続確率 `edge_prob` | **幾何学的候補ペアから、同一細胞の移動や分裂である確からしさへ絞り込む**（密集や交差時でも周囲の文脈から高精度にペアを識別） |
+| **第4階層** | **大域グラフ制約最適化 (Graph/ILP Stage)** | `tracksdata.solvers.ILPSolver` (整数線形計画法) | 全エッジ確率 ＋ 生物学的物理制約式 | 最適化された系統樹エッジ集合 | **ローカル確率の寄せ集めから、生物学的にあり得ない矛盾（多重結合・合体・不正消失）を排除し、大域最適解へ確定する** |
+
+---
+
+### (4) 新バージョン 026: 方針1 への完全移行計画
 
 本方針に基づき、パイプラインのアーキテクチャを深層学習スタックへ抜本的に移行する。
 
@@ -64,75 +179,7 @@ graph TD
 
 ---
 
----
-
-## 25. 026: 深層学習スタック (3D-UNet ＋ Transformer ＋ ILP) ローカル検証計画と特徴量設計
-
-### (1) ローカル検証の目的とスコア上限の探求
-Kaggle Leaderboard で 0.95+ を叩き出している深層学習スタック（3D-UNet ＋ Transformer ＋ ILP）を、まずはノートブック（提出ファイル）を更新する前に **ローカル環境で直接実行・検証し、本手法がどこまでスコアを伸ばせるのか（0.94〜0.96+）の数理的上限と各コンポーネントの挙動を完全に解明** する。
-
----
-
-### (2) 深層学習パイプラインにおける多階層特徴量設計
-
-従来の「DoG極大点 ＋ 手動幾何学ルール」とは異なり、3D-UNet ＋ Transformer ＋ ILP では以下の **4つの階層（Layer）にまたがる深層特徴量およびエネルギー関数** を設計・統合する。
-
-```mermaid
-graph TD
-    subgraph Layer1 [1. 空間・体積特徴量 (3D-UNet 潜在空間)]
-        L1_1["f: 32チャネル深層特徴マップ (B, T=2, C=32, Z, Y, X)"]
-        L1_2["point_logit: 細胞中心存在対数オッズ (1チャネル)"]
-        L1_3["point_prob: シグモイド確率マップ (Pool Kernel 5.0μm極大抽出)"]
-    end
-
-    subgraph Layer2 [2. 時空間幾何・位置エンコーディング]
-        L2_1["Positional Encoding: 周波数展開 (8周波数 x 4軸 = 32次元)"]
-        L2_2["subsample座標: (dz=1, dy=4, dx=4) 物理空間補正"]
-        L2_3["coord_dist: 3次元異方性物理距離 (scale = 1.625, 0.40625, 0.40625)"]
-    end
-
-    subgraph Layer3 [3. ペアワイズ関連度・トポロジー (NodeTransformer)]
-        L3_1["結合入力: (32ch深層特徴 ＋ 32ch位置埋め込み = 64次元)"]
-        L3_2["Multi-Head Attention: 4ヘッド x 4ブロックによる大域相互作用"]
-        L3_3["edge_prob: Softmax正規化接続確率 (t0ノード -> t1ノード)"]
-    end
-
-    subgraph Layer4 [4. 大域エネルギースパース最適化 (ILPSolver)]
-        L4_1["E_edge = -1.0 x edge_prob (正解エッジの引き込み)"]
-        L4_2["E_disappear = +1.4 (不自然な細胞消失の抑制)"]
-        L4_3["E_division = +1.0 (真の細胞分裂のみを許容する加点トリガー)"]
-    end
-
-    Layer1 --> Layer2
-    Layer2 --> Layer3
-    Layer3 --> Layer4
-    Layer4 --> Score["★ 公式評価: Adjusted Edge Jaccard + 0.1 x Division Jaccard"]
-```
-
-#### 1. 検出階層 (Node Level: 3D-UNet)
-- **入力特徴量**: 連続 2フレームのサブサンプル 3次元テンソル $(T=2, Z=64, Y=64, X=64)$。
-- **深層表現**: 各ボクセルにおける 32チャネルの特徴表現ベクトル。
-- **中心度スコアリング**: 3D極大プーリング (`pool_kernel_um = 5.0`) による非最大値抑制（NMS）と閾値判定 (`POINT_THRESHOLD = 0.9700`)。
-
-#### 2. 位置埋め込み階層 (Positional Encoding Level)
-- **多周波数正弦波埋め込み**: $t, z, y, x$ の 4次元それぞれについて 8段階の周波数基底を展開：
-  $$\text{embed}(v) = [\sin(2^0 \pi v), \cos(2^0 \pi v), \dots, \sin(2^3 \pi v), \cos(2^3 \pi v)]$$
-  計 32次元の位置ベクトルを生成し、空間的な近接性と時間順序を Transformer に注入。
-
-#### 3. エッジ追跡階層 (Edge Level: SimpleNodeTransformer)
-- **特徴量結合**: 3D-UNet の 32次元潜在ベクトル ＋ 32次元位置エンコーディング ＝ **64次元結合ノード特徴量**。
-- **ペアワイズ推論**: 時間 $t$ の候補点群 $N_0$ と時間 $t+1$ の候補点群 $N_1$ の全ペアに対し、Transformer の Self-Attention / Cross-Attention により、交差・分裂・密集に頑健な接続ロジット `edge_logit` を算出。
-
-#### 4. グラフ大域エネルギー階層 (ILP Level: Integer Linear Programming)
-- **目的関数**:
-  $$\min \sum_{e} c_e x_e + \sum_{v} c_{app} y_{app, v} + \sum_{v} c_{dis} y_{dis, v} + \sum_{v} c_{div} y_{div, v}$$
-  - $c_e = -1.0 \times \text{edge\_prob}$: 高確率エッジを強力に採用。
-  - $c_{dis} = +1.4$: トラックの唐突な途切れにペナルティ。
-  - $c_{div} = +1.0$: 分裂イベントの厳密なエネルギー制御（偽の二股分岐を排除し、真の分裂のみを選択）。
-
----
-
-### (3) ローカル検証の実験設計 (`s6_analysys_data/`)
+### (5) ローカル検証の実験設計 (`s6_analysys_data/`)
 
 AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリプトを作成し、ローカル実データで性能上限を検証する。
 
@@ -140,15 +187,13 @@ AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリ�
    - `44b6_0113de3b` (標準的・高密度)
    - `6bba_6feb10f0` (025で P/E比 2.0x を超えていた最難関ノイズデータセット)
    - 分裂イベントを含むデータセット (Division Jaccard 検証用)
-2. **比較検証項目**:
-   - **025 古典パイプライン**: 公式 Jaccard 0.687 (Division 0.000)
-   - **026 3D-UNet ＋ Transformer ＋ ILP**:
-     - 検出ノード精度 (Node Recall, Node Precision)
-     - エッジ接続精度 (Edge Recall, Edge Jaccard)
-     - 分裂回収精度 (Division Recall, Division Jaccard)
-     - 最終総合スコア ($\text{Adjusted Edge Jaccard} + 0.1 \times \text{Division Jaccard}$)
+2. **検証評価指標 (026 深層学習スタック単独評価)**:
+   - **検出ノード精度**: Node Precision, Node Recall, Node F1
+   - **エッジ接続精度**: Edge Precision, Edge Recall, Adjusted Edge Jaccard
+   - **細胞分裂精度**: Division Precision, Division Recall, Division Jaccard
+   - **総合公式評価**: $\text{Score} = \text{Adjusted Edge Jaccard} + 0.1 \times \text{Division Jaccard}$
 3. **成果物の出力先**:
-   - スクリプト: `C:\workaa\s6\github\s6_analysys_data\s6_026_validate_unet_ilp.py`
+   - スクリプト: `c:\work\aaa\s6\github\s6_analysys_data\s6_026_validate_unet_ilp.py`
    - 検証レポート: `s6_summary.md` に追記（※コミットは行わずローカル保存）
 
 ---
