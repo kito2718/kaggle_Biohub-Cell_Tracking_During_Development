@@ -255,4 +255,56 @@ AGENTS.md のルールに従い、`s6_analysys_data/` 配下に検証スクリ�
 
 ---
 
-お役に立てれば幸いです。
+### (7) Kaggle GPU 環境での Save Version 実行と提出完了
+
+Kaggle クラウド GPU(Nvidia Tesla T4)環境にて、本ノートブック(`s6_026_try_and_error.ipynb`)の「Save Version」(バッチ実行)を実施し、正常完走を確認した。
+
+#### ① 実行メタデータとステータス
+- **Kernel ID**: `aaaa1597/s6-026-try-and-error-ipynb`
+- **ノートブック URL**: [https://www.kaggle.com/code/aaaa1597/s6-026-try-and-error-ipynb](https://www.kaggle.com/code/aaaa1597/s6-026-try-and-error-ipynb)
+- **最終実行ステータス**: **`KernelWorkerStatus.COMPLETE`**
+- **パイプライン総所要時間**: **377.73 秒(約 6.3 分)**
+- **実行ハードウェア**: Kaggle GPU(Nvidia Tesla T4)
+
+#### ② テストデータセット(test 全4件)の推論・大域最適化結果
+
+| データセット | 検出ノード数 | 候補エッジ数 | ILP 確定エッジ数 | ILP 最適化時間 | 最終ノード数 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **44b6_0113de3b** | 26,511 | 25,157 | **24,977** | 25.04 秒 | 26,132 |
+| **44b6_0b24845f** | 37,969 | 26,552 | **25,046** | 20.54 秒 | 30,985 |
+| **6bba_05b6850b** | 7,683 | 6,463 | **6,341** | 4.78 秒 | 6,966 |
+| **6bba_05db0fb1** | 76,079 | 68,625 | **67,260** | 72.82 秒 | 73,296 |
+| **合計** | **148,242** | **126,797** | **123,624** | **123.18 秒** | **137,379** |
+
+#### ③ 生成された提出ファイル(`submission.csv`)の仕様
+- **出力先**: `/kaggle/working/submission.csv`
+- **総行数**: **261,003 行**(ヘッダ行含め全 261,004 行)
+  - ノード行(`row_type == "node"`): 137,379 行
+  - エッジ行(`row_type == "edge"`): 123,624 行
+- **フォーマット準拠性**:
+  - Kaggle 公式 10 列フォーマット(`id, dataset, row_type, node_id, t, z, y, x, source_id, target_id`)に完全準拠。
+  - 孤立・未接続エッジ、欠損値(NaN)、型不整合のない完全なグラフ構造が出力された。
+
+#### ④ クラウド実行トラブルシューティングと知見の蓄積
+1. **Papermill メタデータ(`kernelspec`)**:
+   - スクリプトから `.ipynb` JSON を生成する際、`metadata.kernelspec` が存在しないと Papermill が `ValueError` で即死する。`python3` の `kernelspec` 明記が必須。
+2. **Kaggle 公開データセットのマウントパス**:
+   - 公開データセット(`pilkwang/biohub-tracking-support-pack-50ep-v1`)は、環境によって `/kaggle/input/...` または `/kaggle/input/datasets/pilkwang/...` のいずれかにマウントされる。ノートブック側で両パスに対応する記述が必須。
+3. **トップレベルインポートの遅延化**:
+   - ノートブックが上からセル順に評価される際、`setup_environment()` の呼び出し前に別セルで独自モジュールを import すると `ModuleNotFoundError` になる。Cell 3 での早期 `sys.path` 登録と、関数内での遅延インポートを徹底。
+4. **`--no-deps` による NumPy/SciPy バイナリ破損の防止**:
+   - `wheels/` からオフラインインストールする際、`--no-deps` を付けないと pip が既存カーネルの NumPy/SciPy を上書きし、メモリ上の C拡張モジュールとの間で `ImportError: cannot import name '_center' from 'numpy._core.umath'` を引き起こす。必要な専用ライブラリのみをピンポイント指定して `--no-deps` でインストールすることが極めて重要。
+
+#### ⑤ リーダーボード提出結果とスコア大躍進
+
+| 提出 ID(Ref) | 提出日時 | 提出ノートブック / 説明 | 提出ステータス | Public Score | 従来ベスト(025)との差分 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **56385820** | 2026-09-20 16:57:13 JST | **026-UNET_ILP_095 (3D-UNet + Transformer + ILP)**<br>(Notebook: `aaaa1597/s6-026-try-and-error-ipynb` Version 5) | **`SubmissionStatus.COMPLETE`** | **`0.950`** | **`+0.263`** (0.687 → 0.950) |
+
+- **総括**:
+  - 方針1(深層学習スタックへの完全移行)への転換により、Public Score が **0.687 から一撃で 0.950 へと +0.263 の劇的な大躍進** を記録。
+  - 事前見通し(0.947 〜 0.951+)の範囲内、高位水準の **0.950** を達成し、金メダル圏・トップ集団へ到達した。
+
+---
+
+お役に立てれば。
