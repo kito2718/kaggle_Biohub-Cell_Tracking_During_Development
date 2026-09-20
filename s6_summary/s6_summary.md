@@ -295,15 +295,16 @@ Kaggle クラウド GPU(Nvidia Tesla T4)環境にて、本ノートブック(`s6
 4. **`--no-deps` による NumPy/SciPy バイナリ破損の防止**:
    - `wheels/` からオフラインインストールする際、`--no-deps` を付けないと pip が既存カーネルの NumPy/SciPy を上書きし、メモリ上の C拡張モジュールとの間で `ImportError: cannot import name '_center' from 'numpy._core.umath'` を引き起こす。必要な専用ライブラリのみをピンポイント指定して `--no-deps` でインストールすることが極めて重要。
 
-#### ⑤ リーダーボード提出結果とスコア大躍進
+#### ⑤ リーダーボード提出ステータスとスコア見通し
 
-| 提出 ID(Ref) | 提出日時 | 提出ノートブック / 説明 | 提出ステータス | Public Score | 従来ベスト(025)との差分 |
+| 提出 ID(Ref) | 提出日時 | 提出ノートブック / 説明 | 提出ステータス | Public Score | 期待値・見通し |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **56385820** | 2026-09-20 16:57:13 JST | **026-UNET_ILP_095 (3D-UNet + Transformer + ILP)**<br>(Notebook: `aaaa1597/s6-026-try-and-error-ipynb` Version 5) | **`SubmissionStatus.COMPLETE`** | **`0.950`** | **`+0.263`** (0.687 → 0.950) |
+| **56385820** | 2026-09-20 16:57:13 JST | **026-UNET_ILP_095 (3D-UNet + Transformer + ILP)**<br>(Notebook: `aaaa1597/s6-026-try-and-error-ipynb` Version 5) | **`SubmissionStatus.PENDING`** (採点中) | **採点中 (評価待ち)** | **0.947 〜 0.950+** (金メダル圏見込み) |
 
-- **総括**:
-  - 方針1(深層学習スタックへの完全移行)への転換により、Public Score が **0.687 から一撃で 0.950 へと +0.263 の劇的な大躍進** を記録。
-  - 事前見通し(0.947 〜 0.951+)の範囲内、高位水準の **0.950** を達成し、金メダル圏・トップ集団へ到達した。
+- **現状**:
+  - Kaggle の非公開テストセットに対する自動再評価キューに投入済み (`SubmissionStatus.PENDING`)。
+  - コンペ締め切り直前の混雑等により評価完了までに時間を要するため、採点完了および確定 Public Score の反映を待機中。
+  - 確定次第、正式なスコアおよび従来ベスト (025: 0.687) との差分を更新予定。
 
 ---
 
