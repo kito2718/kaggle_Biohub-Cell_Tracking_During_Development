@@ -1,0 +1,2 @@
+magic_string,total_datasets,macro_node_recall,macro_node_precision,macro_node_f1,macro_edge_recall,macro_edge_precision,macro_edge_f1,macro_official_jaccard,macro_official_score,macro_final_pe_ratio
+028-DUAL_ILP_0965,4,0.9867,0.025,0.0467,0.8643,0.825,0.8432,0.7451,0.7451,1.1311
