@@ -1,0 +1,9 @@
+phase,approach,target_dataset,frames,nodes,edges,edge_jaccard,div_jaccard,total_score,score_diff_vs_base,key_findings
+Baseline,UNet_ILP_028,44b6_71a4179f,20,5769,4868,0.7111,0.0000,0.7111,0.0000,ベースライン単一モデル。ノイズ耐性とエッジ判定のバランス最良
+Phase_1,HOCT_Hybrid,44b6_12dfb391,10,4379,3771,0.9375,0.0000,0.9375,-0.0515,9.9秒でエンドツーエンド完走。TP=90(98.9%)回収も汎用重みでFP微増
+Phase_1,HOCT_Hybrid,44b6_71a4179f,10,3332,2696,0.3125,0.0000,0.3125,-0.2708,CTC汎用重みのため高密度ゼブラフィッシュでエッジ誤結合多発
+Phase_2,UNet_Transformer_FT,44b6_71a4179f,20,6,5,0.0000,0.0000,0.0000,-0.7111,全結合学習で未アノテーション核を背景と誤認するZero Collapse発生
+Phase_2,Transformer_Only_FT,44b6_71a4179f,20,8039,7014,0.6667,0.0000,0.6667,-0.0444,UNetフリーズでZero Collapse回避。単一胚過学習でFPが微増
+Phase_3,EMA_Velocity_GapClosing_strict,44b6_71a4179f,5,1093,1093,0.8750,0.0000,0.8750,+0.0000,距離2.0-5.0umでは安全だがエッジ増加ゼロ
+Phase_3,EMA_Velocity_GapClosing_loose,44b6_71a4179f,5,1109,1109,0.7778,0.0000,0.7778,-0.0972,距離10.0umに緩和するとFPが1本混入しJaccard急落
+Phase_4,MultiScale_DoG_Hungarian,44b6_71a4179f,20,20435,14573,0.4151,0.0000,0.4151,-0.2960,Node Recallは97.5%と驚異的だが背景ノイズ過剰検出でFP多発

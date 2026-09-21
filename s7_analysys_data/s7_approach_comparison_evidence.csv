@@ -1,0 +1,6 @@
+approach_id,approach_name,priority,category,core_components,expected_score,pros,cons,key_references
+000,UNet_Transformer_ILP_Baseline,Baseline,DeepLearning+ILP,3D-UNet + SimpleNodeTransformer + ILPSolver,0.867,軽量・提供済ベースライン,点検出ベースで境界・体積情報喪失・0.867頭打ち,"royerlab/kaggle-cell-tracking-competition"
+001,FOCUS3D_HOCT,Priority 1,SOTA Instance Seg + Edge Transformer,FOCUS-3D (Volumetric Instance Seg) + HOCT (Higher-Order Cell Tracking Transformer),0.940-0.975,CTC SOTA・密なセグメンテーション特徴・エッジ間アテンション・幾何事前分布,GPUメモリ消費大・推論速度の最適化要,"bioRxiv 2026 FOCUS-3D, arXiv:2607.11754 HOCT, royerlab/hoct"
+002,UNet_Finetune_199,Priority 2,Detection Model Refinement,TemporalUNet3D Fine-tuning on 199 Embryos + Transformer Retrain,0.890-0.925,既存パイプライン完全互換・点検出自体のRecall/Precision向上,学習時間要・過学習リスク,"royerlab baseline training scripts"
+003,Velocity_Projected_GapClosing,Priority 3,Motion Physics Post-Processing,EMA 3D Velocity Vector Projection + Hungarian Relinking,0.875-0.900,既存パイプラインにプラグイン可能・高速移動細胞の欠落防止,検出漏れ自体の救済には限界あり,"Kaggle Discussion Topic 741749/742064, CTC Benchmark"
+004,MultiScale_DoG_Hungarian,Priority 4,Rule-Based Geometry Tracker,Multi-Scale DoG (Difference of Gaussians) + Hungarian Algorithm + Track Repair,0.870-0.930,高速・過学習なし・Gold Zone実績あり,密集領域での極大点分離限界・パラメータ調整依存,"scikit-image blob_dog, scipy linear_sum_assignment"
