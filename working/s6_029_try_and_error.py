@@ -52,6 +52,8 @@ LGB_NODE_MODELS_B64 = {
 
 def load_lgb_node_boosters():
     """In-memory で 5-Fold LightGBM Booster を復元する (外部ファイル依存ゼロ)"""
+    import base64
+    import zlib
     import lightgbm as lgb
     boosters = []
     for name, b64_str in sorted(LGB_NODE_MODELS_B64.items()):
