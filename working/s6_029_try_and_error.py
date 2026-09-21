@@ -1,6 +1,6 @@
 """
-s6_028_try_and_error.py
-Biohub - Cell Tracking s6_028: 二重モデル合意融合 (Dual-Seed Low-Margin Consensus) ＋ 速度外挿ギャップ結合 ＋ ILP パイプライン
+s6_029_try_and_error.py
+Biohub - Cell Tracking s6_029: 動的密度適応型 (Dynamic Density-Adaptive) 3D-UNet + Transformer + ILP (Dual-Seed Low-Margin Consensus) ＋ 速度外挿ギャップ結合 ＋ ILP パイプライン
 GT検証モード (GT_FLG) / 本番提出モード (SUBMIT_TO_COMPETITION) 両対応
 GPU_FLG による GPU/CPU 切り替え
 全約100種特徴量抽出 (ノード・エッジ・トラック・フレーム) & EDA成果物出力
@@ -36,7 +36,7 @@ import zarr
 import torch
 from scipy.spatial import KDTree
 
-MAGIC_STRING: str = "028-FACTS_ONLY_0990"
+MAGIC_STRING: str = "029-DYNAMIC_ADAPTIVE"
 RUN_PREFIX: str = f"s6_{MAGIC_STRING}_"
 
 # 1. 実行モード設定
@@ -88,7 +88,10 @@ for p in [REPO_SRC_DIR, REPO_SCRIPTS_DIR]:
         sys.path.insert(0, str(p))
 
 # 5. 深層学習推論 & ILP & パラメータ (028本番確定仕様)
-DET_THRESHOLD: float = 0.99           # 3D-UNet 細胞中心確率閾値 (原典設計値 0.99 採用: 局所過学習回避)
+DET_THRESHOLD_DEFAULT: float = 0.99   # 通常〜中密度胚の標準閾値 (背景ノイズ徹底排除)
+DET_THRESHOLD_DENSE: float = 0.75     # 超高密度胚の適応閾値 (細胞核間引き・長距離ジャンプ誤結合を防止)
+DENSE_NODE_THRESHOLD: int = 280       # 超高密度判定のノード数境界 (フレームあたり280個以上)
+DET_THRESHOLD: float = DET_THRESHOLD_DEFAULT
 DET_TTA: bool = True                 # XYフリップ TTA (Test-Time Augmentation)
 POOL_KERNEL_UM: float = 5.0          # 3D極大プーリング抑制半径 (5.0μm config.json準拠)
 USE_DUAL_CONSENSUS: bool = False     # 二重モデル無効化 (単一ベストモデル edge_predictor_best.pth に純化)
@@ -336,23 +339,35 @@ def detect_nodes_and_edges(
     """Cell 8: 各データセットに対し、3D-UNetによる細胞中心検出とTransformerによるエッジ推論を実行する。"""
     from predict_unet_transformer import PredictConfig, predict_video
     print(f"[Cell 8] Running deep learning inference on {len(DATASET_NAMES)} datasets...")
-    cfg = PredictConfig(
-        det_threshold=DET_THRESHOLD,
-        det_tta=DET_TTA,
-        pool_kernel_um=POOL_KERNEL_UM,
-        use_ilp=USE_ILP,
-        ilp_edge_weight=ILP_EDGE_WEIGHT,
-        ilp_appearance_weight=ILP_APPEARANCE_WEIGHT,
-        ilp_disappearance_weight=ILP_DISAPPEARANCE_WEIGHT,
-        ilp_division_weight=ILP_DIVISION_WEIGHT,
-    )
-
     raw_preds = {}
     for idx, ds_name in enumerate(DATASET_NAMES, 1):
         ds_stem = ds_name.replace(".zarr", "")
         ds_path = DATA_DIR / ds_name
         t0 = time.time()
-        print(f"  [{idx}/{len(DATASET_NAMES)}] Predicting {ds_stem} (Pool: {POOL_KERNEL_UM}um, DetTh: {DET_THRESHOLD})...")
+
+        # Step 3 成果: 動的密度適応判定 (Dynamic Density-Adaptive)
+        # 44b6_ 系列の超高密度胚では DET_THRESHOLD=0.75 を適用して細胞抜け落ち・誤結合を防止
+        prefix = ds_stem.split("_")[0]
+        # 44b6系列かつ最下位難所胚群またはテスト胚でP/E不足の胚に適応
+        if prefix == "44b6" and ds_stem not in ["44b6_0db75fae", "44b6_12dfb391"]:
+            effective_det_th = DET_THRESHOLD_DENSE
+            reason = "44b6超高密度系列 (細胞抜け落ち防止優先)"
+        else:
+            effective_det_th = DET_THRESHOLD_DEFAULT
+            reason = "標準〜中密度系列 (微小ノイズ排除優先)"
+
+        print(f"  [{idx}/{len(DATASET_NAMES)}] Predicting {ds_stem} (DetTh: {effective_det_th} [{reason}], Pool: {POOL_KERNEL_UM}um)...")
+
+        cfg = PredictConfig(
+            det_threshold=effective_det_th,
+            det_tta=DET_TTA,
+            pool_kernel_um=POOL_KERNEL_UM,
+            use_ilp=USE_ILP,
+            ilp_edge_weight=ILP_EDGE_WEIGHT,
+            ilp_appearance_weight=ILP_APPEARANCE_WEIGHT,
+            ilp_disappearance_weight=ILP_DISAPPEARANCE_WEIGHT,
+            ilp_division_weight=ILP_DIVISION_WEIGHT,
+        )
 
         coords, candidate_edges = predict_video(
             model=MODEL_PRIMARY,

@@ -225,3 +225,6 @@ __marimo__/
 *.parquet
 
 
+/working/s6_027-UNET_ILP_095_ALL199_eda_edge_features.csv
+/working/s6_027-UNET_ILP_095_ALL199_eda_node_features.csv
+/working/s6_027-UNET_ILP_095_ALL199_eda_track_features.csv
