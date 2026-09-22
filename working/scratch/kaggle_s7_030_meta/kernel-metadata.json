@@ -1,0 +1,21 @@
+{
+  "id": "aaaa1597/s7-030-try-and-error-ipynb",
+  "title": "s7_030_try_and_error.ipynb",
+  "code_file": "s7_030_try_and_error.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "keywords": [
+    "gpu"
+  ],
+  "dataset_sources": [
+    "pilkwang/biohub-tracking-support-pack-50ep-v1",
+    "aaaa1597/biohub-domain-adapted-weights"
+  ],
+  "competition_sources": [
+    "biohub-cell-tracking-during-development"
+  ]
+}
