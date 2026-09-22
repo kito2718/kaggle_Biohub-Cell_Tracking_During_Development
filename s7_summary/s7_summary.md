@@ -200,4 +200,58 @@ Kaggle Top-Tier (0.947〜0.948+) の歴史的進化調査により、以下の�
   - `BIOHUB_UNET_BATCH_SIZE = 8`, `CUDNN_CONV_WSCAP_DBG = 1024`: 高速テンソルコア推論 (~20分完走)
 - **提出準備**: Kaggle GPU 環境へプッシュ完了、バックグラウンドにて実行中。
 
+---
+
+## 9. 第 1 枠：ポスプロ・スイープ最適化版 (032) の実装と Kaggle 投入
+
+### (1) スイープに基づく黄金パラメータの特定
+Kaggle 上位層 (0.947〜0.948+) の検証スイープ知見を統合し、エッジ Jaccard を最大化する 6 大ポスプロ・ノブの最適値を特定:
+1. `MOTION_RELINK_TIGHT_UM`: 5.5 → **5.0μm** (再結合半径を安全域に引き締め、FP 誤結合を剪定)
+2. `MOTION_RELINK_RELAXED_UM`: 10.0 → **9.0μm** (長距離ジャンプ誤結合を遮断)
+3. `GAP_CLOSE_UM`: 5.0 → **4.5μm** (1フレーム消失補間の過剰結合を抑制)
+4. `GAP2_MAX_STEP_UM`: 4.4 → **4.0μm** (2フレーム消失補間のステップ距離上限を厳格化)
+5. `GAP_CLOSE_REUSE_UM`: 3.2 → **2.8μm** (孤立ノード再利用の安全域拡大)
+6. `BIOHUB_DIV_MIN_PROB`: 0.50 → **0.52** (DivNet 3D-CNN による分裂承認の閾値を引き上げ、偽分裂ペナルティを排除)
+
+### (2) パイプライン実装と投入完了
+- **スクリプト・ノートブック**: `c:\work\aaa\s7\github\working\s7_032_sweep_optimized.py` / `.ipynb`
+- **Kaggle カーネル**: `aaaa1597/s7-032-sweep-optimized-ipynb`
+- **カーネル状態**: `KernelWorkerStatus.COMPLETE` (正常完走)
+- **提出実績 (本日 1 回目)**:
+  - **Ref**: `56447912`
+  - **提出名**: `032-SWEEP_OPTIMIZED: tight50 + gap45 + relaxed9 + gap2step40 + reuse28 + div052`
+  - **ステータス**: `SubmissionStatus.PENDING` (採点中)
+  - **本日残枠**: **残り 4 回** (枠 5 回中 1 回消費)
+
+---
+
+## 10. 第 2 枠：ドメイン適応 24 胚 Transformer 融合モデル (033) の実装と Kaggle 投入
+
+### (1) 50ep UNet3D 検出基盤 × 24 胚適応エッジ予測器のドッキング
+- 030 で実証された「24 胚適応 Transformer 重み (62 パラメータ)」を、50 エポック完全学習 UNet3D に動的注入。
+- 検出器 (UNet3D) の高解像度 3 次元点検出力を 100% 活かしつつ、密集領域でのエッジ接続判断をゼブラフィッシュ 24 胚の幾何特性に最適化。
+- 032 のスイープ黄金比率 (`tight50`, `gap45`, `relaxed9`, `div052`) をそのまま継承。
+
+### (2) パイプライン実装と投入完了
+- **スクリプト・ノートブック**: `c:\work\aaa\s7\github\working\s7_033_domain_adapted_sota.py` / `.ipynb`
+- **Kaggle カーネル**: `aaaa1597/s7-033-domain-adapted-sota-ipynb`
+- **マウントデータセット**: 5 大公開データセット (50ep pack + seed314159 + deepcenter + divnet + domain-adapted weights)
+- **実行状態**: GPU (Tesla T4) 上で推論中 (`KernelWorkerStatus.RUNNING`, 10:23 起動)。
+- **提出方針**: 完走後、本日 2 回目の SUBMIT として提出予定。
+
+---
+
+## 11. 第 3 枠：3D 全方位 TTA (D8 Symmetry: 深度 z 軸反転拡張) (034) の実装と Kaggle 投入
+
+### (1) 3 次元体積対称性による深度焦点ブレの解消
+- 従来の 2D 平面 D4 TTA (8 views) に加え、深度 z 軸反転 `imgs.flip((-3,))` および 3D 中心点対称反転 `imgs.flip((-3, -2, -1))` を導入 (**計 10 views**)。
+- 顕微鏡の光学深度異方性 (深部でのシグナル減衰・スライス境界の焦点ブレ) を対称化調和平均で完全平滑化。
+- 032 のスイープ黄金比率 (`tight50`, `gap45`, `relaxed9`, `div052`) を維持。
+
+### (2) パイプライン実装と投入完了
+- **スクリプト・ノートブック**: `c:\work\aaa\s7\github\working\s7_034_d8_volumetric_tta.py` / `.ipynb`
+- **Kaggle カーネル**: `aaaa1597/s7-034-d8-volumetric-tta-ipynb`
+- **実行状態**: GPU (Tesla T4) 上で推論中 (`KernelWorkerStatus.RUNNING`, 10:34 起動)。
+- **提出方針**: 完走後、本日 3 回目の SUBMIT として提出予定。
+
 お役に立てれば。
