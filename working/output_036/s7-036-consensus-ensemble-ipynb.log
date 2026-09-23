@@ -1,0 +1,53 @@
+[{"stream_name":"stderr","time":9.928251555,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.92833143,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.928339298000001,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.928344384,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":10.782532049,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":10.782595597,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":10.782604713,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":10.782610137,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":13.866039066,"data":"Starting SOTA 036 Grand Consensus Ensemble...\n"}
+,{"stream_name":"stdout","time":335.016920502,"data":"Model [032]: found path = /kaggle/input/notebooks/aaaa1597/s7-032-sweep-optimized-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":335.368086687,"data":"  Successfully loaded 032 with 240897 rows\n"}
+,{"stream_name":"stdout","time":501.50489032,"data":"Model [035]: found path = /kaggle/input/notebooks/aaaa1597/s7-035-kinematic-filtering-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":501.770576337,"data":"  Successfully loaded 035 with 239744 rows\n"}
+,{"stream_name":"stdout","time":667.56875927,"data":"Model [033]: found path = /kaggle/input/notebooks/aaaa1597/s7-033-domain-adapted-sota-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":667.821388918,"data":"  Successfully loaded 033 with 234672 rows\n"}
+,{"stream_name":"stdout","time":832.52836272,"data":"Model [034]: found path = /kaggle/input/notebooks/aaaa1597/s7-034-d8-volumetric-tta-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":832.574232552,"data":"  Successfully loaded 034 with 240558 rows\n"}
+,{"stream_name":"stdout","time":832.574285987,"data":"Successfully loaded 4 models for ensemble.\n"}
+,{"stream_name":"stdout","time":832.808739945,"data":"Datasets to process: ['44b6_0113de3b', '44b6_0b24845f', '6bba_05b6850b', '6bba_05db0fb1']\n"}
+,{"stream_name":"stdout","time":832.808841222,"data":"\n"}
+,{"stream_name":"stdout","time":832.808849372,"data":"Processing dataset: 44b6_0113de3b ...\n"}
+,{"stream_name":"stdout","time":840.107765893,"data":"  Unified nodes: 26480\n"}
+,{"stream_name":"stdout","time":846.92694197,"data":"  Accepted consensus edges: 24937\n"}
+,{"stream_name":"stdout","time":846.927012515,"data":"\n"}
+,{"stream_name":"stdout","time":846.927020037,"data":"Processing dataset: 44b6_0b24845f ...\n"}
+,{"stream_name":"stdout","time":853.06658778,"data":"  Unified nodes: 28361\n"}
+,{"stream_name":"stdout","time":857.62705299,"data":"  Accepted consensus edges: 19693\n"}
+,{"stream_name":"stdout","time":857.62711636,"data":"\n"}
+,{"stream_name":"stdout","time":857.627124944,"data":"Processing dataset: 6bba_05b6850b ...\n"}
+,{"stream_name":"stdout","time":859.76842017,"data":"  Unified nodes: 6589\n"}
+,{"stream_name":"stdout","time":861.259095266,"data":"  Accepted consensus edges: 5971\n"}
+,{"stream_name":"stdout","time":861.259150803,"data":"\n"}
+,{"stream_name":"stdout","time":861.259158635,"data":"Processing dataset: 6bba_05db0fb1 ...\n"}
+,{"stream_name":"stdout","time":880.838200485,"data":"  Unified nodes: 77039\n"}
+,{"stream_name":"stdout","time":896.555648329,"data":"  Accepted consensus edges: 68437\n"}
+,{"stream_name":"stdout","time":896.555704047,"data":"\n"}
+,{"stream_name":"stdout","time":896.555712829,"data":"--- Overall Consensus Distribution ---\n"}
+,{"stream_name":"stdout","time":896.555718505,"data":"Votes = 4 models: 99040 edges\n"}
+,{"stream_name":"stdout","time":896.555724059,"data":"Votes = 3 models: 15163 edges\n"}
+,{"stream_name":"stdout","time":896.555729436,"data":"Votes = 2 models: 5038 edges\n"}
+,{"stream_name":"stdout","time":896.555734439,"data":"Votes = 1 models: 17302 edges\n"}
+,{"stream_name":"stdout","time":898.513323954,"data":"Final submission saved to /kaggle/working/submission.csv with 242607 rows\n"}
+,{"stream_name":"stdout","time":898.513375877,"data":"Summary: Nodes = 123569, Edges = 119038, Ratio E/N = 0.9633\n"}
+,{"stream_name":"stdout","time":898.513384074,"data":"INTEGRITY CHECK PASSED SUCCESSFULLY!\n"}
+,{"stream_name":"stderr","time":902.625937502,"data":"/usr/local/lib/python3.12/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":902.625985297,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":902.862527385,"data":"/usr/local/lib/python3.12/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":902.862611495,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":904.027786863,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":904.507946165,"data":"[NbConvertApp] Writing 16154 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":908.234081225,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":909.431712606,"data":"[NbConvertApp] Writing 317007 bytes to __results__.html\n"}
+]

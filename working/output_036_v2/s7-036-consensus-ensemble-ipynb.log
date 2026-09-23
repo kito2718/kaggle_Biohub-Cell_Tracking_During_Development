@@ -1,0 +1,65 @@
+[{"stream_name":"stderr","time":8.273571926,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.273680851,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.273688298,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.273692,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.072597031,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.072637771,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.072642769,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.072646219,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":11.963788334,"data":"Starting SOTA 036 Grand Consensus Ensemble...\n"}
+,{"stream_name":"stdout","time":353.257049144,"data":"Model [032]: found path = /kaggle/input/notebooks/aaaa1597/s7-032-sweep-optimized-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":353.586445141,"data":"  Successfully loaded 032 with 240897 rows\n"}
+,{"stream_name":"stdout","time":523.879018436,"data":"Model [035]: found path = /kaggle/input/notebooks/aaaa1597/s7-035-kinematic-filtering-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":524.160017427,"data":"  Successfully loaded 035 with 239744 rows\n"}
+,{"stream_name":"stdout","time":684.695522969,"data":"Model [033]: found path = /kaggle/input/notebooks/aaaa1597/s7-033-domain-adapted-sota-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":684.940538997,"data":"  Successfully loaded 033 with 234672 rows\n"}
+,{"stream_name":"stdout","time":844.601058473,"data":"Model [034]: found path = /kaggle/input/notebooks/aaaa1597/s7-034-d8-volumetric-tta-ipynb/submission.csv\n"}
+,{"stream_name":"stdout","time":844.669020717,"data":"  Successfully loaded 034 with 240558 rows\n"}
+,{"stream_name":"stdout","time":844.669067444,"data":"Successfully loaded 4 models for ensemble.\n"}
+,{"stream_name":"stdout","time":844.896790267,"data":"Datasets to process: ['44b6_0113de3b', '44b6_0b24845f', '6bba_05b6850b', '6bba_05db0fb1']\n"}
+,{"stream_name":"stdout","time":844.896872835,"data":"\n"}
+,{"stream_name":"stdout","time":844.896881632,"data":"Processing dataset: 44b6_0113de3b ...\n"}
+,{"stream_name":"stdout","time":852.082039067,"data":"  Unified nodes: 26480\n"}
+,{"stream_name":"stdout","time":857.591825681,"data":"  Accepted consensus edges: 24937\n"}
+,{"stream_name":"stdout","time":857.591900827,"data":"\n"}
+,{"stream_name":"stdout","time":857.591920308,"data":"Processing dataset: 44b6_0b24845f ...\n"}
+,{"stream_name":"stdout","time":863.735370201,"data":"  Unified nodes: 28361\n"}
+,{"stream_name":"stdout","time":868.138572899,"data":"  Accepted consensus edges: 19693\n"}
+,{"stream_name":"stdout","time":868.138624453,"data":"\n"}
+,{"stream_name":"stdout","time":868.138631408,"data":"Processing dataset: 6bba_05b6850b ...\n"}
+,{"stream_name":"stdout","time":870.207636298,"data":"  Unified nodes: 6589\n"}
+,{"stream_name":"stdout","time":871.629546174,"data":"  Accepted consensus edges: 5971\n"}
+,{"stream_name":"stdout","time":871.629601317,"data":"\n"}
+,{"stream_name":"stdout","time":871.629609783,"data":"Processing dataset: 6bba_05db0fb1 ...\n"}
+,{"stream_name":"stdout","time":890.598261672,"data":"  Unified nodes: 77039\n"}
+,{"stream_name":"stdout","time":905.441367952,"data":"  Accepted consensus edges: 68437\n"}
+,{"stream_name":"stdout","time":905.441456075,"data":"\n"}
+,{"stream_name":"stdout","time":905.441467035,"data":"--- Overall Consensus Distribution ---\n"}
+,{"stream_name":"stdout","time":905.441473031,"data":"Votes = 4 models: 99040 edges\n"}
+,{"stream_name":"stdout","time":905.441478669,"data":"Votes = 3 models: 15163 edges\n"}
+,{"stream_name":"stdout","time":905.441485085,"data":"Votes = 2 models: 5038 edges\n"}
+,{"stream_name":"stdout","time":905.441490284,"data":"Votes = 1 models: 17302 edges\n"}
+,{"stream_name":"stdout","time":906.870910003,"data":"Final submission saved to /kaggle/working/submission.csv with 242607 rows\n"}
+,{"stream_name":"stdout","time":906.870977491,"data":"Missing values count per column:\n"}
+,{"stream_name":"stdout","time":906.870986191,"data":" id           0\n"}
+,{"stream_name":"stdout","time":906.870992201,"data":"dataset      0\n"}
+,{"stream_name":"stdout","time":906.87099797,"data":"row_type     0\n"}
+,{"stream_name":"stdout","time":906.871004127,"data":"node_id      0\n"}
+,{"stream_name":"stdout","time":906.87100811,"data":"t            0\n"}
+,{"stream_name":"stdout","time":906.871011837,"data":"z            0\n"}
+,{"stream_name":"stdout","time":906.871015485,"data":"y            0\n"}
+,{"stream_name":"stdout","time":906.871019146,"data":"x            0\n"}
+,{"stream_name":"stdout","time":906.871022783,"data":"source_id    0\n"}
+,{"stream_name":"stdout","time":906.871026319,"data":"target_id    0\n"}
+,{"stream_name":"stdout","time":906.871029867,"data":"dtype: int64\n"}
+,{"stream_name":"stdout","time":906.871033992,"data":"Summary: Nodes = 123569, Edges = 119038, Ratio E/N = 0.9633\n"}
+,{"stream_name":"stdout","time":906.871039733,"data":"EXACT OFFICIAL KAGGLE FORMAT VERIFIED!\n"}
+,{"stream_name":"stderr","time":910.427309815,"data":"/usr/local/lib/python3.12/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":910.427363925,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":910.625755936,"data":"/usr/local/lib/python3.12/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":910.625799889,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":911.505428529,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":911.957108396,"data":"[NbConvertApp] Writing 17414 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":915.335514337,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":916.460552999,"data":"[NbConvertApp] Writing 321584 bytes to __results__.html\n"}
+]
