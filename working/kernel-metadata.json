@@ -1,7 +1,7 @@
 {
-  "id": "aaaa1597/s7-034-d8-volumetric-tta-ipynb",
-  "title": "s7_034_d8_volumetric_tta_ipynb",
-  "code_file": "s7_034_d8_volumetric_tta.ipynb",
+  "id": "aaaa1597/s7-040-collective-motion-ipynb",
+  "title": "s7_040_collective_motion_ipynb",
+  "code_file": "s7_040_collective_motion.ipynb",
   "language": "python",
   "kernel_type": "notebook",
   "is_private": true,
@@ -12,7 +12,8 @@
     "pilkwang/biohub-deepcenter-unet3d-center-prior-v1",
     "pilkwang/biohub-temporal-unet3d-seed314159-v1",
     "pilkwang/biohub-tracking-support-pack-50ep-v1",
-    "giorgosi/biohub-divnet-v2"
+    "giorgosi/biohub-divnet-v2",
+    "aaaa1597/biohub-domain-adapted-weights"
   ],
   "competition_sources": [
     "biohub-cell-tracking-during-development"
