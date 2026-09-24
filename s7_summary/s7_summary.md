@@ -1093,9 +1093,12 @@ Kaggle クラウドで生成された本番出力ファイル (`working/output_0
 | `44b6_0113de3b` (低密度) | 0.86792 | 0.86792 | 維持 |
 | `44b6_0b24845f` (低密度) | 0.98000 | 0.98000 | 維持 |
 
-### (4) 結論と提出案内
-- エッジ全上書きバグを完全に撲滅したことで、041b (LB 0.949) を 1 本も損なうことなく、スプライン補間による正解エッジの回収 (+2 本 TP) が実証された。
-- 本コンペは Notebook Submission (コードコンペ) 形式のため、Kaggle ノートブックの Output 画面 (`https://www.kaggle.com/code/aaaa1597/s7-043c-true-spline-refine-ipynb`) より `submission.csv` の「Submit」ボタンを押下して LB スコアリングへ進む。
+### (4) Kaggle LB への正式提出 (Submit) 完了
+- エッジ全上書きバグを完全に撲滅したことで、041b (LB 0.949) の既存エッジを 1 本も損なうことなく、スプライン補間による正解エッジの純増 (+2 本 TP) が実証された。
+- Code Competition API 経由にて Kaggle LB へ正式提出を完了した。
+  - **提出 Reference ID**: `56533059` / `56533069`
+  - **メッセージ**: `043c-TRUE_SPLINE_REFINE: 041b Base + Spline 2-4 Gap + Kinematic Guard (GT 0.89453)`
+  - **ステータス**: **`SubmissionStatus.PENDING`** (Kaggle 非公開テストセットでの自動スコアリング実行中)
 
 ---
 
