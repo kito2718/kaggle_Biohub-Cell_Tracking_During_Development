@@ -832,22 +832,44 @@ $$\text{Cost}(i, j) = \text{Dist}_{\text{motion}}(i, j) + 0.05 \cdot \text{Dist}
 
 形態重みを導入しても、GT アノテーション細胞の TP は 1 本たりとも脱落せず **2,028 本を 100% 堅持** し、GT Micro Jaccard **`0.89814`** が維持された。未アノテーション領域においては、体積や扁平率の乖離が大きい結合が抑制され、より生体物理的に自然なトラッキングへと再編成されていることが確認された。
 
-### (5) 今後の戦略的総括とバックグラウンドタスク状況
+### (5) 今後の戦略的総括
 - **045 (形態特徴量) の戦略的価値**:
   GT 4 胚ベンチマークにおける正解追跡細胞は、Ultrack の運動量・余弦一貫性のみで既に ID Swap が 0 件という極限精度に達している。045 の 3D 形態特徴量は、GT スコアを損なうことなく (2,028 本 100% 堅持)、未アノテーション細胞を含む全胚空間において、急激な体積変化を起こすデブリや局所ノイズとの誤結合を排除する物理正則化として極めて有効である。
-- **現在進行中のバックグラウンドタスク**:
-  1. **047 v2 (`s7-047-true-unified-sota-ipynb`)**:
-     - Kaggle クラウド (Dual Tesla T4) 上で現在 `KernelWorkerStatus.RUNNING`。
-     - 運動学的適応フィルタを Ultrack 時間的一貫性の直後 (最終防衛線) に配置しており、9 本の異常急反転エッジの切断が確実に反映される見込み。
-  2. **043b 提出 (`56516581`)**:
-     - 現在 Kaggle 採点キューで `SubmissionStatus.PENDING` (採点待ち)。
-- **次期アクション**:
-  - 047 v2 の完走通知を受信次第、直ちに `output_047_v2` へ成果物をダウンロードし、行数・エッジ数・異常エッジ切断効果の多点監査を実施する。
-  - 047 v2 の監査が合格した場合、Kaggle 本番提出 (本日第 2 枠) の可否を判定する。
+
+---
+
+## 31. 047 v2 の Kaggle 本番提出 (Ref: 56523651) と 045 (3D 局所形態パイプライン) Save Version 投入
+
+### (1) 047 v2 の Kaggle 公式本番提出 (SUBMIT) 完了
+047 v2 (`s7-047-true-unified-sota-ipynb` Version 2) のダウンロード成果物 (`output_047_v2/submission.csv`) に対する厳格多点監査が完全合格したことを受け、Kaggle 公式コンペティションへの正式本番提出を実行した。
+
+```
+=== Kaggle 公式提出情報 (047 v2) ===
+- 提出 Ref ID: 56523651
+- ファイル名: submission.csv (Kernel aaaa1597/s7-047-true-unified-sota-ipynb Version 2 出力)
+- 提出日時: 2026-09-24 14:22:17 (UTC)
+- 説明文: 047-TRUE_UNIFIED_SOTA_v2: 8-View D4 TTA + Spline 2-4 Gap + Post-Ultrack Kinematic Guard (GT 0.89814)
+- ステータス: SubmissionStatus.PENDING (採点キュー投入完了)
+- コア革新: 043b / v1 から急反転の異常エッジ 8 本を排除し、完全な物理安全ガードを確立
+```
+
+### (2) 045 (3D 局所形態特徴量パイプライン) の Kaggle Save Version 投入
+GT 4 胚ベンチマークでの無害性 (GT スコア 0.89814 および TP 2,028 本の 100% 完全維持) と物理的有用性の確認を経て、Kaggle クラウド上での Save Version を開始した。
+
+- **カーネル名**: `aaaa1597/s7-045-3d-morphology-pipeline-ipynb` (Version 1)
+- **ソースノートブック**: `s7_045_3d_morphology_pipeline.ipynb`
+- **アクセラレータ**: Dual Tesla T4 GPU (推論時 CPU 側で生体ボリューム zarr から直接 3D 形態パッチを抽出)
+- **ステータス**: **`KernelWorkerStatus.RUNNING`** (実行中、所要時間約 22〜25 分想定)
+- **パイプライン構造**:
+  1. 8-View D4 TTA (UNet 50ep + Dynamic Density Relink)
+  2. エルミートスプライン 2〜4 Gap 補間
+  3. **3D 局所形態特徴量統合 Ultrack 時間的一貫性リファイン** ($w_{\text{morph}}=1.0$)
+  4. 最終段適応キネマティクス安全ガード
 
 ---
 
 お役に立てれば。
+
 
 
 
