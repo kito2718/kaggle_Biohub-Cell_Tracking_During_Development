@@ -1,0 +1,21 @@
+{
+  "id": "aaaa1597/s7-043-temporal-consistency-ipynb",
+  "title": "s7_043_temporal_consistency_ipynb",
+  "code_file": "s7_043_temporal_consistency.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": false,
+  "dataset_sources": [
+    "pilkwang/biohub-deepcenter-unet3d-center-prior-v1",
+    "pilkwang/biohub-temporal-unet3d-seed314159-v1",
+    "pilkwang/biohub-tracking-support-pack-50ep-v1",
+    "giorgosi/biohub-divnet-v2",
+    "aaaa1597/biohub-domain-adapted-weights"
+  ],
+  "competition_sources": [
+    "biohub-cell-tracking-during-development"
+  ]
+}
