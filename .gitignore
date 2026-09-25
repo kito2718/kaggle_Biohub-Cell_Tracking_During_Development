@@ -1,230 +1,467 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[codz]
-*$py.class
-
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# PyInstaller
-#   Usually these files are written by a python script from a template
-#   before PyInstaller builds the exe, so as to inject date/other infos into it.
-*.manifest
-*.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py.cover
-.hypothesis/
-.pytest_cache/
-cover/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-#   For a library or package, you might want to ignore these files since the code is
-#   intended to run in multiple environments; otherwise, check them in:
-# .python-version
-
-# pipenv
-#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
-#   However, in case of collaboration, if having platform-specific dependencies or dependencies
-#   having no cross-platform support, pipenv may install dependencies that don't work, or not
-#   install all needed dependencies.
-# Pipfile.lock
-
-# UV
-#   Similar to Pipfile.lock, it is generally recommended to include uv.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-# uv.lock
-
-# poetry
-#   Similar to Pipfile.lock, it is generally recommended to include poetry.lock in version control.
-#   This is especially recommended for binary packages to ensure reproducibility, and is more
-#   commonly ignored for libraries.
-#   https://python-poetry.org/docs/basic-usage/#commit-your-poetrylock-file-to-version-control
-# poetry.lock
-# poetry.toml
-
-# pdm
-#   Similar to Pipfile.lock, it is generally recommended to include pdm.lock in version control.
-#   pdm recommends including project-wide configuration in pdm.toml, but excluding .pdm-python.
-#   https://pdm-project.org/en/latest/usage/project/#working-with-version-control
-# pdm.lock
-# pdm.toml
-.pdm-python
-.pdm-build/
-
-# pixi
-#   Similar to Pipfile.lock, it is generally recommended to include pixi.lock in version control.
-# pixi.lock
-#   Pixi creates a virtual environment in the .pixi directory, just like venv module creates one
-#   in the .venv directory. It is recommended not to include this directory in version control.
-.pixi
-
-# PEP 582; used by e.g. github.com/David-OConnor/pyflow and github.com/pdm-project/pdm
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# Redis
-*.rdb
-*.aof
-*.pid
-
-# RabbitMQ
-mnesia/
-rabbitmq/
-rabbitmq-data/
-
-# ActiveMQ
-activemq-data/
-
-# SageMath parsed files
-*.sage.py
-
-# Environments
-.env
-.envrc
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
-# Spyder project settings
-.spyderproject
-.spyproject
-
-# Rope project settings
-.ropeproject
-
-# mkdocs documentation
-/site
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
-# Pyre type checker
-.pyre/
-
-# pytype static type analyzer
-.pytype/
-
-# Cython debug symbols
-cython_debug/
-
-# PyCharm
-#   JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#   be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#   and can be added to the global gitignore or merged into this file.  For a more nuclear
-#   option (not recommended) you can uncomment the following to ignore the entire idea folder.
-# .idea/
-
-# Abstra
-#   Abstra is an AI-powered process automation framework.
-#   Ignore directories containing user credentials, local state, and settings.
-#   Learn more at https://abstra.io/docs
-.abstra/
-
-# Visual Studio Code
-#   Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
-#   that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#   and can be added to the global gitignore or merged into this file. However, if you prefer, 
-#   you could uncomment the following to ignore the entire vscode folder
-# .vscode/
-# Temporary file for partial code execution
-tempCodeRunnerFile.py
-
-# Ruff stuff:
-.ruff_cache/
-
-# PyPI configuration file
-.pypirc
-
-# Marimo
-marimo/_static/
-marimo/_lsp/
-__marimo__/
-
-# Streamlit
-.streamlit/secrets.toml
-
-# === Biohub Cell Tracking Custom Ignores ===
-/input/
-/outputs/
-/working/kaggle_cell_tracking_competition/
-.lock
-*.parquet
-
-
-/working/s6_027-UNET_ILP_095_ALL199_eda_edge_features.csv
-/working/s6_027-UNET_ILP_095_ALL199_eda_node_features.csv
-/working/s6_027-UNET_ILP_095_ALL199_eda_track_features.csv
+/__履歴__/260905_001_動き出したっぽい_recall0.59_recall0.38.txt
+/__履歴__/260905_001_動き出したっぽい_s3_02_check_nodes_summary_unet3d_btrack.csv
+/__履歴__/260905_001_動き出したっぽい_s3_04_check_edges_summary_unet3d_btrack.csv
+/__履歴__/260906_001A_p32x64x64_sig4.0x1.0_lr0.001_s3_02_check_nodes_summary_unet3d_5dmahalanobis.csv
+/__履歴__/260906_001A_p32x64x64_sig4.0x1.0_lr0.001_s3_04_check_edges_summary_unet3d_5dmahalanobis.csv
+/__履歴__/260906_002D_p32x64x64_sig1.5x1.0_lr0.001_s3_02_check_nodes_summary_unet3d_btrack.csv
+/__履歴__/260906_002D_p32x64x64_sig1.5x1.0_lr0.001_s3_04_check_edges_summary_unet3d_btrack.csv
+/__履歴__/s4_001_candidate_grid_search_summary.csv
+/__履歴__/s4_001_dataset_optical_analysis.png
+/__履歴__/s4_001_dataset_optical_profiles.csv
+/__履歴__/s4_001_dynamic_parameters_validation_results.csv
+/__履歴__/s4_001_dynamic_parameters_validation_results.xlsx
+/__履歴__/s4_001_extract_and_analyze_profiles.py
+/__履歴__/s4_001_optimal_parameters_all199_summary.csv
+/__履歴__/s4_001_optimal_parameters_all199_summary.xlsx
+/__履歴__/s4_001_pe_ratio_control_results.csv
+/__履歴__/s4_001_pe_ratio_control_results.xlsx
+/__履歴__/s4_001_run_full_199_datasets_optimal.py
+/__履歴__/s4_001_run_pe_control_experiment.py
+/__履歴__/s4_001_verify_dynamic_parameters.py
+/__履歴__/s4_002_edge_weight_optimization_all199.csv
+/__履歴__/s4_002_edge_weight_optimization_all199.xlsx
+/__履歴__/s4_002_edge_weight_sweep_curve.png
+/__履歴__/s4_002_isolated_node_filtering_all199.csv
+/__履歴__/s4_002_isolated_node_filtering_all199.xlsx
+/__履歴__/s4_002_optimize_5dmahalanobis_all199.py
+/__履歴__/s4_002_pe_ratio_before_after_filtering.png
+/__履歴__/s4_002_track_length_distribution.png
+/__履歴__/s4_003_feature_ablation_5dmahalanobis_all199.py
+/__履歴__/s4_003_feature_ablation_all199.csv
+/__履歴__/s4_003_feature_ablation_all199.xlsx
+/__履歴__/s4_003_feature_ablation_all_configs.png
+/__履歴__/s4_003_feature_ablation_leave_one_out.png
+/__履歴__/s4_999_LightGBM_implementation_plan.md
+/__履歴__/s4_999_pe_ratio_control_report.md
+/__履歴__/スコアの観点.xlsx
+/checkpoints/s2_00/3dunet_center_heatmap.pth
+/checkpoints/s2_00/train_checkpoint.json
+/s5_analysys_data/lightgbm_adaptive_th.txt
+/s5_analysys_data/lightgbm_edge_classifier.txt
+/s5_analysys_data/lightgbm_th=0.005.joblib
+/s5_analysys_data/s5_001_e2e_test_evidence.csv
+/s5_analysys_data/s5_001_e2e_test_submission.csv
+/s5_analysys_data/s5_001_step1_test_evidence_5datasets.csv
+/s5_analysys_data/s5_001_test_e2e_pipeline.py
+/s5_analysys_data/s5_001_test_notebook_step1.py
+/s5_analysys_data/s5_002_generate_lgbm_pairs.py
+/s5_analysys_data/s5_002_test_pair_dataset.py
+/s5_analysys_data/s5_002_train_pairs_5datasets.parquet
+/s5_analysys_data/s5_002_train_pairs_evidence.csv
+/s5_analysys_data/s5_002_train_pairs_sample.csv
+/s5_analysys_data/s5_003_lgbm_feature_importance.png
+/s5_analysys_data/s5_003_lgbm_roc_pr_curve.png
+/s5_analysys_data/s5_003_threshold_analysis.csv
+/s5_analysys_data/s5_003_tracking_edge_lgbm.joblib
+/s5_analysys_data/s5_003_tracking_edge_lgbm.txt
+/s5_analysys_data/s5_003_train_evidence.csv
+/s5_analysys_data/s5_003_train_lgbm_model.py
+/s5_analysys_data/s5_004_lgbm_vs_mahalanobis_evidence.csv
+/s5_analysys_data/s5_004_test_lgbm_vs_mahalanobis.py
+/s5_analysys_data/s5_005_test_gpu_vs_skimage_exact_diff.py
+/s5_analysys_data/s5_006_analyze_dynamic_lgbm_threshold.py
+/s5_analysys_data/s5_006_dynamic_threshold_evidence.csv
+/s5_analysys_data/s5_006_meta_feature_importance.png
+/s5_analysys_data/s5_011_all199_meta_feature_importance.png
+/s5_analysys_data/s5_011_all199_optimal_thresholds.csv
+/s5_analysys_data/s5_011_all199_threshold_evidence.csv
+/s5_analysys_data/s5_011_sweep_all_199_datasets.py
+/s5_analysys_data/s5_014_all199_meta_features.csv
+/s5_analysys_data/s5_014_lightgbm_adaptive_th_validation.csv
+/s5_analysys_data/s5_014_predicted_vs_optimal_thresholds.png
+/s5_analysys_data/s5_014_test_dual_gpu_cpu.py
+/s5_analysys_data/s5_014_train_lightgbm_adaptive_th.py
+/s5_analysys_data/s5_015_all199_inter_frame_speeds.csv
+/s5_analysys_data/s5_015_all199_movement_distribution.png
+/s5_analysys_data/s5_015_dynamic_search_radius_validation.csv
+/s5_analysys_data/s5_015_evaluate_dynamic_search_radius_199.py
+/s5_analysys_data/s5_015_sweep_10ds_radius.csv
+/s5_analysys_data/s5_015_test_dual_gpu_cpu.py
+/s5_analysys_data/s5_016_analyze_worst_recall_datasets.py
+/s5_analysys_data/s5_016_edge_recall_full_ranking.csv
+/s5_analysys_data/s5_016_feature_importance.csv
+/s5_analysys_data/s5_016_generate_full199_pairs.py
+/s5_analysys_data/s5_016_gt_mitosis_blinking_stats.csv
+/s5_analysys_data/s5_016_investigate_gt_mitosis_and_blinking.py
+/s5_analysys_data/s5_016_tracking_edge_lgbm.txt
+/s5_analysys_data/s5_016_train_full199_evidence.csv
+/s5_analysys_data/s5_016_train_full199_lgbm.py
+/s5_analysys_data/s5_016_train_pairs_all199_evidence.csv
+/s5_analysys_data/s5_017_analyze_node_detection_failure_cause.py
+/s5_analysys_data/s5_017_below_average_datasets.csv
+/s5_analysys_data/s5_017_node_failure_analysis.csv
+/s5_analysys_data/s5_018_bg_subtraction_simulation_results.csv
+/s5_analysys_data/s5_018_simulate_bg_subtraction_all63.py
+/s5_analysys_data/s5_019_bg_subtraction_evidence.png
+/s5_analysys_data/s5_019_optical_features_vs_recall.csv
+/s5_analysys_data/s5_020_all199_bg_subtraction_evidence.png
+/s5_analysys_data/s5_020_all199_bg_subtraction_results.csv
+/s5_analysys_data/s5_020_analyze_bg_subtraction_all199.py
+/s5_analysys_data/s5_021_all199_hybrid_filter_evidence.png
+/s5_analysys_data/s5_021_all199_hybrid_filter_results.csv
+/s5_analysys_data/s5_021_verify_hybrid_filter_all199.py
+/s5_analysys_data/s5_022_update_notebook_hybrid_filter.py
+/s5_analysys_data/s5_023_all199_edge_bottlenecks.csv
+/s5_analysys_data/s5_023_analyze_edge_bottlenecks_all199.py
+/s5_analysys_data/s5_023_edge_bottleneck_evidence.png
+/s5_analysys_data/s5_024_diagnose_all_fn_edges.py
+/s5_analysys_data/s5_024_fn_edge_breakdown_all199.csv
+/s5_analysys_data/s5_025_analyze_temporal_motion_vectors.py
+/s5_analysys_data/s5_025_temporal_motion_analysis.csv
+/s5_analysys_data/s5_025_temporal_motion_evidence.png
+/s5_analysys_data/s5_026_fp_nature_and_motion_evidence.png
+/s5_analysys_data/s5_026_investigate_fp_nodes_and_motion_vectors.py
+/s5_analysys_data/s5_026_real_motion_separation.csv
+/s5_analysys_data/s5_027_fp_longevity.csv
+/s5_analysys_data/s5_027_fp_longevity_analysis.py
+/s5_analysys_data/s5_028_advanced_features_auc.csv
+/s5_analysys_data/s5_028_gap_closing_and_features_evidence.png
+/s5_analysys_data/s5_028_gap_closing_and_features_simulation.py
+/s5_analysys_data/s5_028_gap_closing_potential.csv
+/s5_analysys_data/s5_029_3stage_tracker_comparison.csv
+/s5_analysys_data/s5_029_3stage_tracker_evidence.png
+/s5_analysys_data/s5_029_prototype_3stage_tracker.py
+/s5_analysys_data/s5_030_all199_3stage_evidence.png
+/s5_analysys_data/s5_030_all199_3stage_tracker_results.csv
+/s5_analysys_data/s5_030_verify_3stage_tracker_all199.py
+/s5_analysys_data/s5_032_baseline_gap_closing_evidence.png
+/s5_analysys_data/s5_032_baseline_plus_gap_closing_all199.csv
+/s5_analysys_data/s5_032_verify_all199_baseline_gap_closing.py
+/s5_analysys_data/s5_034_all199_multistage_evidence.png
+/s5_analysys_data/s5_034_all199_multistage_pipeline_results.csv
+/s5_analysys_data/s5_034_verify_all199_multistage_pipeline.py
+/s5_analysys_data2/s5_021HYBRIDFILTER2_verify_summary_all199.csv
+/s5_analysys_data2/s5_021_014_verify_hybridfilter2_all199.py
+/s5_analysys_data2/s5_021_020_export_frame_summary_all199_all100.py
+/s5_analysys_data2/s5_021_verify001_run_radius_analysis.py
+/s5_summary/s5_summary.md
+/s5_summary/s5_summary2.md
+/s5_summary/s5_summary3.md
+/working/s6_026-UNET_ILP_095_eda_edge_features.csv
+/working/s6_026-UNET_ILP_095_eda_features_metrics.csv
+/working/s6_026-UNET_ILP_095_eda_features_metrics.xlsx
+/working/s6_026-UNET_ILP_095_eda_frame_summary.csv
+/working/s6_026-UNET_ILP_095_eda_node_features.csv
+/working/s6_026-UNET_ILP_095_eda_track_features.csv
+/working/s6_026-UNET_ILP_095_pipeline_details.csv
+/working/s6_026-UNET_ILP_095_pipeline_summary.csv
+/working/s6_026_try_and_error.ipynb
+/working/s6_026_try_and_error.py
+/working/s6_027-UNET_ILP_095_ALL199_eda_edge_features.7z
+/working/s6_027-UNET_ILP_095_ALL199_eda_features_metrics.csv
+/working/s6_027-UNET_ILP_095_ALL199_eda_features_metrics.xlsx
+/working/s6_027-UNET_ILP_095_ALL199_eda_frame_summary.csv
+/working/s6_027-UNET_ILP_095_ALL199_eda_node_features.7z.001
+/working/s6_027-UNET_ILP_095_ALL199_eda_node_features.7z.002
+/working/s6_027-UNET_ILP_095_ALL199_eda_track_features.7z
+/working/s6_027-UNET_ILP_095_ALL199_pipeline_details.csv
+/working/s6_027-UNET_ILP_095_ALL199_pipeline_summary.csv
+/working/s6_028-DUAL_ILP_0965_eda_edge_features.csv
+/working/s6_028-DUAL_ILP_0965_eda_features_metrics.csv
+/working/s6_028-DUAL_ILP_0965_eda_features_metrics.xlsx
+/working/s6_028-DUAL_ILP_0965_eda_frame_summary.csv
+/working/s6_028-DUAL_ILP_0965_eda_node_features.csv
+/working/s6_028-DUAL_ILP_0965_eda_track_features.csv
+/working/s6_028-DUAL_ILP_0965_pipeline_details.csv
+/working/s6_028-DUAL_ILP_0965_pipeline_summary.csv
+/working/s6_028-FACTS_ONLY_0965_eda_edge_features.csv
+/working/s6_028-FACTS_ONLY_0965_eda_features_metrics.csv
+/working/s6_028-FACTS_ONLY_0965_eda_features_metrics.xlsx
+/working/s6_028-FACTS_ONLY_0965_eda_frame_summary.csv
+/working/s6_028-FACTS_ONLY_0965_eda_node_features.csv
+/working/s6_028-FACTS_ONLY_0965_eda_track_features.csv
+/working/s6_028-FACTS_ONLY_0965_pipeline_details.csv
+/working/s6_028-FACTS_ONLY_0965_pipeline_summary.csv
+/working/s6_028_det_threshold_sweep_details.csv
+/working/s6_028_det_threshold_sweep_summary.csv
+/working/s6_028_try_and_error.ipynb
+/working/s6_028_try_and_error.py
+/working/s6_029_try_and_error.ipynb
+/working/s6_029_try_and_error.py
+/resume/s3_100/3dunet_p32x64x64_sig1.5x1.0_lr0.001.pth
+/resume/s3_100/3dunet_p32x64x64_sig2.0x1.0_lr0.0005.pth
+/resume/s3_100/3dunet_p32x64x64_sig4.0x1.0_lr0.001.pth
+/resume/s3_100/3dunet_p48x96x96_sig3.0x1.0_lr0.0005.pth
+/resume/s3_100/train_resume_p32x64x64_sig1.5x1.0_lr0.001.json
+/resume/s3_100/train_resume_p32x64x64_sig2.0x1.0_lr0.0005.json
+/resume/s3_100/train_resume_p32x64x64_sig4.0x1.0_lr0.001.json
+/resume/s3_100/train_resume_p48x96x96_sig3.0x1.0_lr0.0005.json
+/s6_analysys_data/s6_026_setup_local_env.py
+/s6_analysys_data/s6_026_validate_unet_ilp.py
+/s6_analysys_data/s6_026_validation_results.csv
+/s6_summary/s6_summary.md
+260905_001_動き出したっぽい_recall0.59_recall0.38.txt
+260905_001_動き出したっぽい_s3_02_check_nodes_summary_unet3d_btrack.csv
+260905_001_動き出したっぽい_s3_04_check_edges_summary_unet3d_btrack.csv
+260906_001A_p32x64x64_sig4.0x1.0_lr0.001_s3_02_check_nodes_summary_unet3d_5dmahalanobis.csv
+260906_001A_p32x64x64_sig4.0x1.0_lr0.001_s3_04_check_edges_summary_unet3d_5dmahalanobis.csv
+260906_002D_p32x64x64_sig1.5x1.0_lr0.001_s3_02_check_nodes_summary_unet3d_btrack.csv
+260906_002D_p32x64x64_sig1.5x1.0_lr0.001_s3_04_check_edges_summary_unet3d_btrack.csv
+s4_001_candidate_grid_search_summary.csv
+s4_001_dataset_optical_analysis.png
+s4_001_dataset_optical_profiles.csv
+s4_001_dynamic_parameters_validation_results.csv
+s4_001_dynamic_parameters_validation_results.xlsx
+s4_001_extract_and_analyze_profiles.py
+s4_001_optimal_parameters_all199_summary.csv
+s4_001_optimal_parameters_all199_summary.xlsx
+s4_001_pe_ratio_control_results.csv
+s4_001_pe_ratio_control_results.xlsx
+s4_001_run_full_199_datasets_optimal.py
+s4_001_run_pe_control_experiment.py
+s4_001_verify_dynamic_parameters.py
+s4_002_edge_weight_optimization_all199.csv
+s4_002_edge_weight_optimization_all199.xlsx
+s4_002_edge_weight_sweep_curve.png
+s4_002_isolated_node_filtering_all199.csv
+s4_002_isolated_node_filtering_all199.xlsx
+s4_002_optimize_5dmahalanobis_all199.py
+s4_002_pe_ratio_before_after_filtering.png
+s4_002_track_length_distribution.png
+s4_003_feature_ablation_5dmahalanobis_all199.py
+s4_003_feature_ablation_all199.csv
+s4_003_feature_ablation_all199.xlsx
+s4_003_feature_ablation_all_configs.png
+s4_003_feature_ablation_leave_one_out.png
+s4_999_LightGBM_implementation_plan.md
+s4_999_pe_ratio_control_report.md
+スコアの観点.xlsx
+3dunet_center_heatmap.pth
+train_checkpoint.json
+3dunet_p32x64x64_sig1.5x1.0_lr0.001.pth
+3dunet_p32x64x64_sig2.0x1.0_lr0.0005.pth
+3dunet_p32x64x64_sig4.0x1.0_lr0.001.pth
+3dunet_p48x96x96_sig3.0x1.0_lr0.0005.pth
+train_resume_p32x64x64_sig1.5x1.0_lr0.001.json
+train_resume_p32x64x64_sig2.0x1.0_lr0.0005.json
+train_resume_p32x64x64_sig4.0x1.0_lr0.001.json
+train_resume_p48x96x96_sig3.0x1.0_lr0.0005.json
+lightgbm_adaptive_th.txt
+lightgbm_edge_classifier.txt
+lightgbm_th=0.005.joblib
+s5_001_e2e_test_evidence.csv
+s5_001_e2e_test_submission.csv
+s5_001_step1_test_evidence_5datasets.csv
+s5_001_test_e2e_pipeline.py
+s5_001_test_notebook_step1.py
+s5_002_generate_lgbm_pairs.py
+s5_002_test_pair_dataset.py
+s5_002_train_pairs_5datasets.parquet
+s5_002_train_pairs_evidence.csv
+s5_002_train_pairs_sample.csv
+s5_003_lgbm_feature_importance.png
+s5_003_lgbm_roc_pr_curve.png
+s5_003_threshold_analysis.csv
+s5_003_tracking_edge_lgbm.joblib
+s5_003_tracking_edge_lgbm.txt
+s5_003_train_evidence.csv
+s5_003_train_lgbm_model.py
+s5_004_lgbm_vs_mahalanobis_evidence.csv
+s5_004_test_lgbm_vs_mahalanobis.py
+s5_005_test_gpu_vs_skimage_exact_diff.py
+s5_006_analyze_dynamic_lgbm_threshold.py
+s5_006_dynamic_threshold_evidence.csv
+s5_006_meta_feature_importance.png
+s5_011_all199_meta_feature_importance.png
+s5_011_all199_optimal_thresholds.csv
+s5_011_all199_threshold_evidence.csv
+s5_011_sweep_all_199_datasets.py
+s5_014_all199_meta_features.csv
+s5_014_lightgbm_adaptive_th_validation.csv
+s5_014_predicted_vs_optimal_thresholds.png
+s5_014_test_dual_gpu_cpu.py
+s5_014_train_lightgbm_adaptive_th.py
+s5_015_all199_inter_frame_speeds.csv
+s5_015_all199_movement_distribution.png
+s5_015_dynamic_search_radius_validation.csv
+s5_015_evaluate_dynamic_search_radius_199.py
+s5_015_sweep_10ds_radius.csv
+s5_015_test_dual_gpu_cpu.py
+s5_016_analyze_worst_recall_datasets.py
+s5_016_edge_recall_full_ranking.csv
+s5_016_feature_importance.csv
+s5_016_generate_full199_pairs.py
+s5_016_gt_mitosis_blinking_stats.csv
+s5_016_investigate_gt_mitosis_and_blinking.py
+s5_016_tracking_edge_lgbm.txt
+s5_016_train_full199_evidence.csv
+s5_016_train_full199_lgbm.py
+s5_016_train_pairs_all199_evidence.csv
+s5_017_analyze_node_detection_failure_cause.py
+s5_017_below_average_datasets.csv
+s5_017_node_failure_analysis.csv
+s5_018_bg_subtraction_simulation_results.csv
+s5_018_simulate_bg_subtraction_all63.py
+s5_019_bg_subtraction_evidence.png
+s5_019_optical_features_vs_recall.csv
+s5_020_all199_bg_subtraction_evidence.png
+s5_020_all199_bg_subtraction_results.csv
+s5_020_analyze_bg_subtraction_all199.py
+s5_021_all199_hybrid_filter_evidence.png
+s5_021_all199_hybrid_filter_results.csv
+s5_021_verify_hybrid_filter_all199.py
+s5_022_update_notebook_hybrid_filter.py
+s5_023_all199_edge_bottlenecks.csv
+s5_023_analyze_edge_bottlenecks_all199.py
+s5_023_edge_bottleneck_evidence.png
+s5_024_diagnose_all_fn_edges.py
+s5_024_fn_edge_breakdown_all199.csv
+s5_025_analyze_temporal_motion_vectors.py
+s5_025_temporal_motion_analysis.csv
+s5_025_temporal_motion_evidence.png
+s5_026_fp_nature_and_motion_evidence.png
+s5_026_investigate_fp_nodes_and_motion_vectors.py
+s5_026_real_motion_separation.csv
+s5_027_fp_longevity.csv
+s5_027_fp_longevity_analysis.py
+s5_028_advanced_features_auc.csv
+s5_028_gap_closing_and_features_evidence.png
+s5_028_gap_closing_and_features_simulation.py
+s5_028_gap_closing_potential.csv
+s5_029_3stage_tracker_comparison.csv
+s5_029_3stage_tracker_evidence.png
+s5_029_prototype_3stage_tracker.py
+s5_030_all199_3stage_evidence.png
+s5_030_all199_3stage_tracker_results.csv
+s5_030_verify_3stage_tracker_all199.py
+s5_032_baseline_gap_closing_evidence.png
+s5_032_baseline_plus_gap_closing_all199.csv
+s5_032_verify_all199_baseline_gap_closing.py
+s5_034_all199_multistage_evidence.png
+s5_034_all199_multistage_pipeline_results.csv
+s5_034_verify_all199_multistage_pipeline.py
+s5_021HYBRIDFILTER2_verify_summary_all199.csv
+s5_021_014_verify_hybridfilter2_all199.py
+s5_021_020_export_frame_summary_all199_all100.py
+s5_021_verify001_run_radius_analysis.py
+s5_summary.md
+s5_summary2.md
+s5_summary3.md
+s6_026_setup_local_env.py
+s6_026_validate_unet_ilp.py
+s6_026_validation_results.csv
+s6_summary.md
+blobdog_threshold_sweep_results.csv
+run_threshold_sweep.py
+baseline_pipeline.ipynb
+generate_s6_026_notebook.py
+gt_all_datas.xlsx
+gt_edges_eda_plot.png
+s00_generate_mips.ipynb
+s1_01_detection_cv.ipynb
+s1_05_stardist_btrack_pipeline.ipynb
+s1_06_stardist_btrack_pipeline.ipynb
+s1_07_gt_edge_analysis.ipynb
+s3_02_check_nodes_summary_blobdog_5dmahalanobis.csv
+s3_02_check_nodes_summary_blobdog_btrack.csv
+s3_02_check_nodes_summary_unet3d_5dmahalanobis.csv
+s3_02_check_nodes_summary_unet3d_btrack.csv
+s3_04_check_edges_summary_blobdog_5dmahalanobis.csv
+s3_04_check_edges_summary_blobdog_btrack.csv
+s3_04_check_edges_summary_unet3d_5dmahalanobis.csv
+s3_04_check_edges_summary_unet3d_btrack.csv
+s3_100_results_integration_and_submission.ipynb
+s3_100_train_3dunet.ipynb
+s3_pred_edges.csv
+s5_001_try_and_error.ipynb
+s5_002-2SPDUP(CCC)_FIXTRACKANDCULL_02_check_nodes_summary_blobdog_lgbm.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_44b6_0113de3b-44b6_5f15d135.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_44b6_668e0cc7-44b6_a21120c2.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_44b6_a2bb48bb-44b6_e31261b4.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_44b6_e35b117d-6bba_5c039895.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_6bba_5c824876-6bba_cf35214c.csv
+s5_015DYNRADIUS_01_detect_nodes_pred_blobdog_lgbm_6bba_cff5865f-6bba_fe670320.csv
+s5_015DYNRADIUS_02_check_nodes_details_blobdog_lgbm_44b6_0113de3b-44b6_996155de.csv
+s5_015DYNRADIUS_02_check_nodes_details_blobdog_lgbm_44b6_9be80b04-6bba_3a1849c2.csv
+s5_015DYNRADIUS_02_check_nodes_details_blobdog_lgbm_6bba_3abfe10a-6bba_fbc898dc.csv
+s5_015DYNRADIUS_02_check_nodes_details_blobdog_lgbm_6bba_fc516dc6-6bba_fe670320.csv
+s5_015DYNRADIUS_02_check_nodes_summary_blobdog_lgbm.csv
+s5_015DYNRADIUS_03_detect_edges_pred_blobdog_lgbm.csv
+s5_015DYNRADIUS_04_check_edges_details_blobdog_lgbm_44b6_0113de3b-6bba_969618f6.csv
+s5_015DYNRADIUS_04_check_edges_details_blobdog_lgbm_6bba_971fa5e0-6bba_fe670320.csv
+s5_015DYNRADIUS_04_check_edges_summary_blobdog_lgbm.csv
+s5_015DYNRADIUS_05_pe_ratio_summary.csv
+s5_021_02_check_nodes_summary_hybridfilter2.csv
+s5_021_frame_summary_all199_all100.csv
+s5_021_frame_summary_all199_all100.xlsx
+s5_021_try_and_error.ipynb
+s5_021_verify001_gt_edge_distance_distribution.csv
+s5_021_verify001_high_mobility_datasets.csv
+s5_021_verify001_multistage_simulation.csv
+s5_021_verify001_radius_tradeoff_metrics.csv
+s5_022_gt_pairs_summary_all199.csv
+s5_022_summary_features_eda_metrics_all199_all100.csv
+s5_022_summary_features_eda_metrics_all199_all100.xlsx
+s5_022_try_and_error.ipynb
+s5_022_verify001_dataset_details_all199_all100.csv
+s5_022_verify001_summary_metrics_all199_all100.csv
+s5_022_verify001_try_and_error.ipynb
+s5_023_002_pipeline_details.csv
+s5_023_002_pipeline_summary.csv
+s5_023_pipeline_summary.csv
+s5_023_try_and_error.ipynb
+s5_024-001-DOGMNNPECULLING__pipeline_details.csv
+s5_024-001-DOGMNNPECULLING__pipeline_summary.csv
+s5_024-002-STATICPURGECULLING__pipeline_details.csv
+s5_024-002-STATICPURGECULLING__pipeline_summary.csv
+s5_024_eda_3features_summary.csv
+s5_024_eda_3features_tracks.csv
+s5_024_eda_all199_series_summary.csv
+s5_024_eda_all199_summary.csv
+s5_024_try_and_error.ipynb
+s5_025-001-AUTONOMOUS_STATICPURGE__pipeline_details.csv
+s5_025-001-AUTONOMOUS_STATICPURGE__pipeline_summary.csv
+s5_025_build_train_dataset.py
+s5_025_eda_blob_morphology_19900.xlsx
+s5_025_eda_track_geometry_19900.xlsx
+s5_025_evaluate_culling_oof.py
+s5_025_lightgbm_track_model.txt
+s5_025_oof_threshold_sweep.csv
+s5_025_train_lightgbm.py
+s5_025_try_and_error.ipynb
+s5_ADDLGBM_02_check_nodes_summary_blobdog_lgbm.csv
+s5_ADDLGBM_04_check_edges_summary_blobdog_lgbm.csv
+s5_gt_edges.csv
+s5_gt_nodes.csv
+s5_gt_summary.csv
+s6_026-UNET_ILP_095_eda_edge_features.csv
+s6_026-UNET_ILP_095_eda_features_metrics.csv
+s6_026-UNET_ILP_095_eda_features_metrics.xlsx
+s6_026-UNET_ILP_095_eda_frame_summary.csv
+s6_026-UNET_ILP_095_eda_node_features.csv
+s6_026-UNET_ILP_095_eda_track_features.csv
+s6_026-UNET_ILP_095_pipeline_details.csv
+s6_026-UNET_ILP_095_pipeline_summary.csv
+s6_026_try_and_error.ipynb
+s6_026_try_and_error.py
+s6_027-UNET_ILP_095_ALL199_eda_edge_features.7z
+s6_027-UNET_ILP_095_ALL199_eda_features_metrics.csv
+s6_027-UNET_ILP_095_ALL199_eda_features_metrics.xlsx
+s6_027-UNET_ILP_095_ALL199_eda_frame_summary.csv
+s6_027-UNET_ILP_095_ALL199_eda_node_features.7z.001
+s6_027-UNET_ILP_095_ALL199_eda_node_features.7z.002
+s6_027-UNET_ILP_095_ALL199_eda_track_features.7z
+s6_027-UNET_ILP_095_ALL199_pipeline_details.csv
+s6_027-UNET_ILP_095_ALL199_pipeline_summary.csv
+s6_028-DUAL_ILP_0965_eda_edge_features.csv
+s6_028-DUAL_ILP_0965_eda_features_metrics.csv
+s6_028-DUAL_ILP_0965_eda_features_metrics.xlsx
+s6_028-DUAL_ILP_0965_eda_frame_summary.csv
+s6_028-DUAL_ILP_0965_eda_node_features.csv
+s6_028-DUAL_ILP_0965_eda_track_features.csv
+s6_028-DUAL_ILP_0965_pipeline_details.csv
+s6_028-DUAL_ILP_0965_pipeline_summary.csv
+s6_028-FACTS_ONLY_0965_eda_edge_features.csv
+s6_028-FACTS_ONLY_0965_eda_features_metrics.csv
+s6_028-FACTS_ONLY_0965_eda_features_metrics.xlsx
+s6_028-FACTS_ONLY_0965_eda_frame_summary.csv
+s6_028-FACTS_ONLY_0965_eda_node_features.csv
+s6_028-FACTS_ONLY_0965_eda_track_features.csv
+s6_028-FACTS_ONLY_0965_pipeline_details.csv
+s6_028-FACTS_ONLY_0965_pipeline_summary.csv
+s6_028_det_threshold_sweep_details.csv
+s6_028_det_threshold_sweep_summary.csv
+s6_028_try_and_error.ipynb
+s6_028_try_and_error.py
+s6_029_try_and_error.ipynb
+s6_029_try_and_error.py
