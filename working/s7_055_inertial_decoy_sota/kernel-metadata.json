@@ -1,0 +1,22 @@
+{
+  "id": "aaaa1597/s7-055-inertial-decoy-sota-ipynb",
+  "title": "s7-055-inertial-decoy-sota-ipynb",
+  "code_file": "s7_055_inertial_decoy_sota.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": "true",
+  "enable_gpu": "true",
+  "enable_tpu": "false",
+  "enable_internet": "false",
+  "dataset_sources": [
+    "pilkwang/biohub-tracking-support-pack-50ep-v1",
+    "pilkwang/biohub-temporal-unet3d-seed314159-v1",
+    "pilkwang/biohub-deepcenter-unet3d-center-prior-v1",
+    "pilkwang/biohub-mitosis-detector-pack-v1"
+  ],
+  "competition_sources": [
+    "biohub-cell-tracking-during-development"
+  ],
+  "kernel_sources": [],
+  "model_sources": []
+}
