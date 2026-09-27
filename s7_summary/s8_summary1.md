@@ -869,6 +869,9 @@ $$\text{ROI} = \frac{2 \times \text{期待される Node TP 改善量}}{\text{�
 
 ---
 
+**[第2部 (61章〜) はこちら: s8_summary2.md](./s8_summary2.md)**
+
+---
 お役に立てれば。
 
 
