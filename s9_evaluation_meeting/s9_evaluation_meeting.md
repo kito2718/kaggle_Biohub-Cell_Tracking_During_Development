@@ -141,28 +141,122 @@
 **[EN]** The overview can also be seen in the image below.  
 **[JA]** 全体像は下の画像でも確認できます。
 
-![Overview of the pipeline](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F4abea4f187321ef24dfb75b917e5f285%2Foverview.png?generation=1790815299517442&alt=media)
+![Overview of the pipeline](001_overview.png)
 
-> ### [図: パイプライン概要 (Overview of the pipeline) の欄外和訳]
-> - **Input**: 3D+time microscopy frames (3次元＋時間軸の蛍光顕微鏡フレーム画像)
-> - **Stage 1 (Detection)**:
->   - 3D U-Net (Cellpose-style head): Cellpose風の3D U-Net検出器
->   - MAE pretraining: Masked Autoencoderによる自己教師あり事前学習
->   - Foreground prob & Flow field: 前景確率マップおよび中心を指す3Dベクトル場
->   - Detections / Centroids (x, y, z): 検出された細胞の中心座標
-> - **Stage 2 (Soon Net / Visual Tracking)**:
->   - 3-frame crops (16x64x64): 各細胞周辺の3フレーム局所クロップ
->   - Small CNN + Transformer: 小型CNN ＋ Transformer構成
->   - Division state: 分裂状態 (Interphase: 間期 / Soon-to-divide: もうすぐ分裂 / Just-divided: 分裂直後)
->   - Occupancy maps: 占有マップ (Continuation: 継続 / Division: 分裂)
-> - **Stage 3 (Learned Linker)**:
->   - LightGlue-inspired Transformer: LightGlue風のクロスアテンションTransformer
->   - Candidate selection: 半径30µm以内 ＋ 最近傍16個の候補ペア選定
->   - Node features (Geometry + FoV) & Pair features (Heatmap reads + Motion): ノード特徴量とペア特徴量
->   - Pair head & Fork head (Kind step / Who step): ペアヘッドおよびフォークヘッド
-> - **Decoding**:
->   - Greedy decode: 貪欲探索による線形制約付きエッジ確定
->   - Lineages: 最終的な細胞系譜・追跡結果
+> ### [図: Overview of the pipeline(パイプライン概要) の和訳]
+> #### **Inference**: 推論
+>   - **Raw movie**: $T \times 64 \times 256 \times 256$ (生データ動画: 時間=$T$, Z=64, Y=256, X=256)
+>   - **1 Detector**: 検出フェーズ
+>     - **3D U-Net: foreground + flow to the cell center → instance masks**: 3D U-Net (前景 ＋ 細胞中心へのフロー → インスタンスマスク)
+>     - **detections(instance masks)**: 検出結果(instance masks)
+>     - foregroundで前景の予測を実施、flow to the cell center(細胞中心へのフローベクトル)で「細胞の中心点はどの方向(dx, dy, dz)にあるか」を示すベクトル(矢印)を予測
+>   - **2 Soon net**: Soon netと命名した独自の学習フェーズ
+>     - **3-frame crop per cell → division state + occupancy maps**: 細胞ごとの3フレーム切り出し($t-1, t, t+1$) → 分裂状態 ＋ 占有マップ
+>     - **class probs + maps**: クラス確率 ＋ 占有マップ
+>   - **3 Learned linker**: 学習リンカー フェーズ
+>     - input: **detections + geometry (volume, shape, position, drift)**: 検出結果 ＋ 幾何学的特徴(体積, 形状, 位置, ドリフト)
+>     - input: **class probs + maps**: クラス確率 ＋ 占有マップ
+>     - **cross-attention $t ⇔ t+1$ edge scores ＋**: 相互参照(時刻 $t ⇔ t+1$)のエッジスコア ＋
+>     - **fork head $p(\text{kind}) \quad p(\text{who} \mid \text{kind})$**:  分岐ヘッド(分岐を予測するモデルの出力部分)の種別確率および条件(種別確率)付き確率
+>   - **4 Decode**:
+>     - **greedy configurations**: 貪欲構成
+>     - **division refractory, gap closing, line-fit**: 分裂不応期、欠損補填、直線フィッティング
+>     - **time →**: 時間軸
+>     ※ division refractory(分裂不応期) ... 刺激に対して反応しなくなる「不応性の時期」という意味。細胞分裂直後は当分は分裂しないはずという考えから。
+>     ※ gap closing(ギャップを埋める) ... 一時的に検出できなかった細胞を、前後のフレームの情報からつなぎ直す処理。
+>     ※ line-fit(直線近似) ... 細胞の位置の時間変化に直線を当てはめ、移動軌跡や位置の整合性を評価する処理。
+>   - **Output**:
+>     - **Lineages (nodes + edges) (submission)**: 追跡線譜(ノード ＋ エッジ) → 提出データ(submission.csv)
+> #### **Training**: 学習
+>   - **1 Detector**: 検出フェーズ
+>     - **MAE pretraining**: MAE(Masked Autoencoder:大量の画像を使って、画像の一部を隠し、隠された部分を復元する学習をさせる)の事前学習
+>       ○ なぜ「pretraining（事前学習）」なのか？
+>         通常、学習には大量の画像と正解ラベルを用意する必要が準備するには限界がある。そこで、まず MAE で画像の特徴を学習しておき、その後に本来のタスクを学習させる手法をとる。MAE の事前学習では、元画像そのものから復元のための教師信号を作れるため、人手で作ったラベルが不要(自己教師あり学習(Self-supervised Learning))になる。
+>        - **MAE pretraining と通常の学習の違い**
+> ```text
+>          | 比較      | MAE pretraining      | 通常の教師あり学習           |
+>          |------     |----------------      |-------------------         |
+>          | 教師信号   | 画像の元データから作る | 人手などで用意した正解ラベル |
+>          | 学習の目的 | 画像の特徴を学ぶ       | 特定のタスクを解く          |
+>          | 例        | 隠した画像を復元する   | 細胞を検出・分類する         |
+>          | 位置づけ   | 本番学習の前段階      | 本番タスクの学習など         |
+> 
+>          ※MAEで学習したモデルはそのまま細胞追跡はできず、通常、その後に検出や追跡のための学習(Fine tuning)が必要。
+> ```
+>   - 
+>     - 
+>       - **Kaggle の細胞追跡コンペで考えると**
+>       例えば、細胞追跡コンペで MAE pretraining を使うなら、次のような構成を想定できる。
+>         - 事前学習：ラベルのない顕微鏡画像を大量に使い、細胞の形状や画像の特徴を学ぶ。
+>         - タスク学習：正解データを使い、細胞の位置・分裂状態・追跡関係などを学ぶ。
+>         - 推論：未知の画像から細胞を検出し、追跡する。
+>       ※ただし、事前学習に使う画像が本番データと大きく異なると効果は限定的となる。顕微鏡画像に適した事前学習ができるかどうかがポイント。
+>     - **R1: GT stamps + painted masks**: ラウンド1(正解スタンプ ＋ ペイント済みマスク)
+>         → 正解スタンプとペイント済みマスクを入力に学習するフェーズと思われ。ペイント済みマスクはまだしも、正解スタンプが何者かが不明。
+>     - **R2: teacher pseudo-labels**: ラウンド2(教師モデルによる疑似ラベル)
+>         → 正教師モデルが生成した疑似ラベルを利用して学習するフェーズと思われ。なぜ疑似ラベルを使用するかは不明(量を増やす目的の可能性あり)。
+>     - **OOF dets**(Out Of Fold detections): 交差検証(CV)で、自分自身を学習に使っていないfoldで生成した検出結果
+>   - **2 Soon net**: Soon netと命名した独自の学習フェーズ
+>     - **GT + reviewed divisions**: 正解 ＋ 確認済み分裂データ
+>     - **out-of-fold hard negatives**: OOFの難易度の高い陰性例
+>     - **CE + occupancy-map loss**: クロスエントロピー ＋ 占有マップ損失
+>       ※ ・ エントロピー：結果の予測しにくさ、不確実性。
+>       ※ ・ クロスエントロピー：正解に対して、モデルがどれくらい適切な確率を割り当てたかを評価する量。
+>       ※ ・ 損失関数としての役割：クロスエントロピーを小さくすることで、モデルの予測を改善する。
+>     - **OOF sidecars**: OOFでの補助データ
+>   - **3 Learned linker**: 学習リンカー フェーズ
+>     - **NLL on annotated edges only**: アノテーション済みエッジのみでの負の対数尤度損失
+>       ※NLL ...Negative Log-Likelihood(負の対数尤度：ふのたいすうゆうど) の略。説明は下記参照。
+>     - **fork configuration loss**: 分岐構成損失。説明は下記参照。
+>     - **divisions oversampled $8\times$**: 分裂データの8倍オーバーサンプリング
+>     - **Cross-Validation & Metric (交差検証と評価指標)**:
+>   - **5 folds, strictly out-of-fold (detector $k → soon net $k → linker $k$); all folds averaged at inference**: 厳密なアウトオブフォールドによる5分割交差検証 (検出器 $k → Soon net $k → リンカー $k$)。推論時は全フォールドを平均化
+>       ※ strictly ... 厳密に
+>   - **score = adjusted edge Jaccard + $0.1 \times$ division Jaccard**: 評価スコア = 調整済みエッジJaccard係数 ＋ $0.1 \times$ 分裂Jaccard係数
+>
+> ---
+> ◆機械学習での「損失（Loss / 損失関数）」は、一言で言うと「モデルがどれくらい間違っているか（ヘマをしているか）を表す点数（ペナルティ）」のこと。
+> 「モデルのパラメータ（重み）を理想的な状態へ自動で調整・修正するための『基準・目印』となる数字」のイメージ。
+>   - ① 負の対数尤度損失（NLL Loss / Cross-Entropy Loss）... 「正解の選択肢にどれだけ自信を持っているか」を測るペナルティ。例：「本当は接続する（エッジがある）」という正解に対して、モデルが「接続する確率10%」と予測したら、激しく怒られる（Lossが跳ね上がる）。「接続する確率99%」ならLossはほぼゼロ。
+>   - ② 占有マップ損失（Occupancy-Map Loss）... 「あるエリア（ボクセル）の中に、細胞が『何個詰まっているか（占有しているか）』の予測間違い」に対するペナルティ。   役割：細胞同士が押し合いへし合いして重なっている領域で、カウントミスや領域の重なりミスを防ぐために特別に設計された損失。
+>   - ③ 分岐構成損失（Fork Configuration Loss）... 「細胞の分裂パターン（1つの親細胞から2つの子細胞に分かれる構造）が、生物学的に正しく繋がっているか」に対するペナルティ。   役割：ただ単に点と点を繋ぐだけでなく、「1つの親細胞から3つに分裂する」ような不自然なグラフ（構成）を作ってしまった場合に「その分裂構造はおかしい！」と大きなペナルティを与えて矯正する。
+> 
+> ◆**instance masks** ... 画像内に存在する個々の細胞（オブジェクト）を1つずつ区別して識別・分離された領域(ラベルマップ)のこと。単なる「領域の検出(セマンティックセグメンテーション:意味マスク)」との違いは下記の通り。
+>   1. 「セマンティックマスク:意味マスク」との違い
+>     - **セマンティックマスク(背景 vs 前景)**
+>     画像内のピクセル（ボクセル）を「背景（0）」か「細胞（1）」の2種類だけに分類します。この場合、細胞どうしが接触・隣接していると、全て1つの大きな塊として繋がってしまいます。
+>     - **インスタンスマスク(個体識別)**
+>     「細胞A（値1）」「細胞B（値2）」「細胞C（値3）」のように、接触している細胞どうしでも1個1個に固有のID（番号）を割り当てて独立したオブジェクトとして区別した結果(マスク)です。
+> 例えば、画像に車が3台写っていた場合は以下のような違いになります。
+> ```text
+> | タスク                         | 車の扱い                   |
+> |  ------------                 |  ------------              |
+> | 物体検出                       | 3台の矩形を検出             |
+> | セマンティックセグメンテーション | 3台とも「車」という同じクラス |
+> | インスタンスセグメンテーション   | 車1・車2・車3を個別に識別    |
+> ```
+> ◆**occupancy maps** ... 占有マップ
+> 例えば、占有マップが二値画像なら、次のようなイメージ。
+> ```text
+> 入力画像                占有マップ
+>   ┌─────────┐           0 0 0 0 0
+>   │   ●     │           0 0 1 0 0
+>   │  ●●●    │           0 1 1 1 0
+>   │    ●    │           0 0 0 1 0
+>   └─────────┘           0 0 0 0 0
+> ```
+> ◆**MAE pretraining** ... MAEでの事前学習
+> MAE は Masked Autoencoders（マスク付きオートエンコーダ） の略。大量の画像を使って、画像の一部を隠し、隠された部分を復元しながら符号化する練習をモデルにさせる。MAE自体はEncoder→Decoderを内在するけど、今回は Encoder のみを使う。
+> ```text
+> | 項目                                           | Input(入力)             | Output(出力)                      |
+> |  ---                                           |  ---                   |  ---                              |
+> | 1. Encoder(符号化器)                            | 画像                   | 特徴表現                           |
+> | 2. Decoder(復号化器)                            | 特徴表現               | 画像                               |
+> | 3. Autoencoder(自己符号化器)                    | 画像(または破損した画像) | 入力画像の再構成画像(学習で能力獲得)  | 
+> |    ↑ Encoderといいながら 入力画像 → Encoder(符号化) → 特徴表現 → Decoder(復号化) → 再構成画像 のフルスペックを持つ |
+> | 4. Masked Autoencoder(マスク付きオートエンコーダ)| 学習時：マスク済み画像   | 学習時：元画像の再構成画像(学習で能力獲得)|
+> |    ↑ もフルスペックを持つが、今回はEncoder(符号化器)を取り出し使う                                                |
+> ```
 
 ---
 
