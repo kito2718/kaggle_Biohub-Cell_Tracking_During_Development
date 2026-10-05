@@ -48,121 +48,121 @@
 
 ### ■ 導入と背景 (Introduction & Motivation)
 
-**[EN]** Thanks to BioHub and Kaggle for hosting such an amazing competition.  
-**[JA]** このような素晴らしいコンペティションを開催してくださったBioHubとKaggleに感謝します。
+Thanks to BioHub and Kaggle for hosting such an amazing competition.  
+このような素晴らしいコンペティションを開催してくださったBioHubとKaggleに感謝します。
 
-**[EN]** When I started participating in Kaggle competitions 2 years ago I could have never imagined coming this far.  
-**[JA]** 2年前にKaggleのコンペに参加し始めた頃は、ここまで来られるとは夢にも思っていませんでした。
+When I started participating in Kaggle competitions 2 years ago I could have never imagined coming this far.  
+2年前にKaggleのコンペに参加し始めた頃は、ここまで来られるとは夢にも思っていませんでした。
 
-**[EN]** Really proud of this first solo gold and 1st place.  
-**[JA]** 初めてのソロ金メダル、そして1位を獲得できたことを心から誇りに思います。
-
----
-
-**[EN]** When reading the solution, bear in mind that it was not designed from scratch.  
-**[JA]** この解法を読む際は、これが最初からゼロベースで設計されたものではないということを心に留めておいてください。
-
-**[EN]** It grew as ideas came up and were added along the way, and they didn't come in a straight line, I tried a lot of stuff.  
-**[JA]** それはアイデアが浮かぶたびに途中で追加されながら成長していったものであり、一直線に進んだわけではなく、私は非常に多くの試行錯誤を行いました。
-
-**[EN]** So there are some parts that could perhaps be simplified and made more elegant without losing score, maybe even improving it.  
-**[JA]** そのため、スコアを落とすことなく、あるいは改善すらさせながら、もっと単純化してエレガントにできる部分もあるかもしれません。
+Really proud of this first solo gold and 1st place.  
+初めてのソロ金メダル、そして1位を獲得できたことを心から誇りに思います。
 
 ---
 
-**[EN]** I entered the competition just 4h after it was launched.  
-**[JA]** 私はコンペ開始からわずか4時間後に参加しました。
+When reading the solution, bear in mind that it was not designed from scratch.  
+この解法を読む際は、これが最初からゼロベースで設計されたものではないということを心に留めておいてください。
 
-**[EN]** I didn't know much about tracking in general, much less cell tracking.  
-**[JA]** 一般的なトラッキングについてあまりよく知らず、細胞トラッキングについてはなおさら知りませんでした。
+It grew as ideas came up and were added along the way, and they didn't come in a straight line, I tried a lot of stuff.  
+それはアイデアが浮かぶたびに途中で追加されながら成長していったものであり、一直線に進んだわけではなく、私は非常に多くの試行錯誤を行いました。
 
-**[EN]** But I wanted to try for a solo gold, so I was very invested in learning the subject.  
-**[JA]** しかしソロ金メダルに挑戦したかったので、このテーマを学ぶことに全力を注ぎました。
-
----
-
-**[EN]** At the beginning of the competition, while I was trying to get more acquainted with the task, I was very intrigued that, contrary to other fields of computer vision, cell tracking was not following the trend of 'let's just scale things up', as a matter of fact, it mostly uses "hand-made" features like geometry, intensity, velocity and so on, and these features are blind, they never look at the cell itself.  
-**[JA]** コンペの序盤、タスクに慣れようとしていたとき、コンピュータビジョンの他の分野とは異なり、細胞トラッキングが「とにかくモデルを大規模化(スケールアップ)しよう」というトレンドに従っていないことに強い興味を惹かれました。実際、この分野では幾何学的特徴、輝度、速度といった「手作業の特徴量(hand-made features)」が主流であり、それらの特徴量は盲目的で、細胞そのものを直接見ていませんでした。
-
-**[EN]** This was one of the things that stayed in my mind throughout the competition, and one of the things my ideas wandered around.  
-**[JA]** これはコンペ期間中ずっと私の頭の中に残り続けたことの1つであり、私のアイデアが巡る原点となったことの1つでした。
+So there are some parts that could perhaps be simplified and made more elegant without losing score, maybe even improving it.  
+そのため、スコアを落とすことなく、あるいは改善すらさせながら、もっと単純化してエレガントにできる部分もあるかもしれません。
 
 ---
 
-**[EN]** The second main driver, which helped me with ideas (not so much with improving the scores), was a quote from an ultrack presentation that I watched on [YouTube](https://www.youtube.com/watch?v=98dahngkNOI), where Jordão Bragantini (one of the hosts) [1] says "tracking is hard, because segmentation is hard. If segmentation was solved, tracking would be much easier...".  
-**[JA]** アイデアを得るのに役立った(スコア向上にはあまり役立ちませんでしたが)2つ目の主な原動力は、[YouTube](https://www.youtube.com/watch?v=98dahngkNOI)で見たultrackのプレゼンテーションの中で、主催者の1人であるJordão Bragantini氏[1]が語った「セグメンテーションが難しいからこそトラッキングは難しい。もしセグメンテーションが解決されれば、トラッキングはずっと容易になるだろう……」という言葉でした。
+I entered the competition just 4h after it was launched.  
+私はコンペ開始からわずか4時間後に参加しました。
 
-**[EN]** Because of this, in the first half of the competition I tried mainly to improve the detection part, with little to no progress.  
-**[JA]** この言葉があったため、コンペの前半では主に検出(detection)パートの改善を試みましたが、進捗はほとんど、あるいは全くありませんでした。
+I didn't know much about tracking in general, much less cell tracking.  
+一般的なトラッキングについてあまりよく知らず、細胞トラッキングについてはなおさら知りませんでした。
 
-**[EN]** This month and a half of attacking the segmentation part led me to try the desperate measure of manually annotating cells.  
-**[JA]** セグメンテーションの改善に挑み続けたこの1か月半の末、私は手動で細胞をアノテーションするという必死の手段を試みるに至りました。
-
-**[EN]** I'm used to doing this kind of manual work from my undergraduate research and my master's, but man, annotating 3D cells is very hard.  
-**[JA]** 学部時代の研究や修士課程でこうした手作業には慣れていましたが、いやはや、3D細胞のアノテーションは途方もなく大変でした。
-
-**[EN]** I spent a lot of time on it and only managed to annotate about 1,800 cells, less than 2% of what was already provided, so it was too much effort for almost nothing in the detection part.  
-**[JA]** 膨大な時間を費やしたにもかかわらず、アノテーションできたのは約1,800個の細胞に過ぎず、これはすでに提供されていたデータの2%未満だったため、検出パートにおいては多大な労力に対してほぼ何の成果も得られませんでした。
+But I wanted to try for a solo gold, so I was very invested in learning the subject.  
+しかしソロ金メダルに挑戦したかったので、このテーマを学ぶことに全力を注ぎました。
 
 ---
 
-**[EN]** Still, I don't regret doing it, because spending dozens of hours looking at cells gave me a lot of ideas for moving away from the hand-made features that are so dominant.  
-**[JA]** それでも、この作業を行ったことを後悔はしていません。何十時間も細胞を見つめ続けたことで、支配的だった手作業の特徴量から脱却するためのアイデアを数多く得られたからです。
+At the beginning of the competition, while I was trying to get more acquainted with the task, I was very intrigued that, contrary to other fields of computer vision, cell tracking was not following the trend of 'let's just scale things up', as a matter of fact, it mostly uses "hand-made" features like geometry, intensity, velocity and so on, and these features are blind, they never look at the cell itself.  
+コンペの序盤、タスクに慣れようとしていたとき、コンピュータビジョンの他の分野とは異なり、細胞トラッキングが「とにかくモデルを大規模化(スケールアップ)しよう」というトレンドに従っていないことに強い興味を惹かれました。実際、この分野では幾何学的特徴、輝度、速度といった「手作業の特徴量(hand-made features)」が主流であり、それらの特徴量は盲目的で、細胞そのものを直接見ていませんでした。
 
-**[EN]** Yes, tracking is hard, cells are extremely similar to each other, they constantly change and, worse, they DIVIDE.  
-**[JA]** 確かにトラッキングは難しく、細胞同士は極めて似通っており、絶えず変化し、さらに悪いことに「分裂(DIVIDE)」します。
-
-**[EN]** But that doesn't stop me, a human who had never tracked cells before, from looking at 3 frames and saying with confidence, this is cell X in frame t-1, this is cell X in t, and here are its daughter cells in t+1.  
-**[JA]** しかし、細胞を一度もトラッキングしたことがなかった人間である私でさえ、連続する3フレームを見れば「これはフレームt-1の細胞Xであり、これがフレームtの細胞Xであり、そしてこれがフレームt+1におけるその娘細胞たちだ」と自信を持って言えるのです。
-
-**[EN]** So a machine should be able to learn this somehow.  
-**[JA]** であるならば、機械も何らかの方法でこれを学習できるはずです。
+This was one of the things that stayed in my mind throughout the competition, and one of the things my ideas wandered around.  
+これはコンペ期間中ずっと私の頭の中に残り続けたことの1つであり、私のアイデアが巡る原点となったことの1つでした。
 
 ---
 
-**[EN]** Here's the 1st place solution for Biohub - Cell Tracking During Development.  
-**[JA]** ここに、「Biohub - Cell Tracking During Development」の1位解法を提示します。
+The second main driver, which helped me with ideas (not so much with improving the scores), was a quote from an ultrack presentation that I watched on [YouTube](https://www.youtube.com/watch?v=98dahngkNOI), where Jordão Bragantini (one of the hosts) [1] says "tracking is hard, because segmentation is hard. If segmentation was solved, tracking would be much easier...".  
+アイデアを得るのに役立った(スコア向上にはあまり役立ちませんでしたが)2つ目の主な原動力は、[YouTube](https://www.youtube.com/watch?v=98dahngkNOI)で見たultrackのプレゼンテーションの中で、主催者の1人であるJordão Bragantini氏[1]が語った「セグメンテーションが難しいからこそトラッキングは難しい。もしセグメンテーションが解決されれば、トラッキングはずっと容易になるだろう……」という言葉でした。
+
+Because of this, in the first half of the competition I tried mainly to improve the detection part, with little to no progress.  
+この言葉があったため、コンペの前半では主に検出(detection)パートの改善を試みましたが、進捗はほとんど、あるいは全くありませんでした。
+
+This month and a half of attacking the segmentation part led me to try the desperate measure of manually annotating cells.  
+セグメンテーションの改善に挑み続けたこの1か月半の末、私は手動で細胞をアノテーションするという必死の手段を試みるに至りました。
+
+I'm used to doing this kind of manual work from my undergraduate research and my master's, but man, annotating 3D cells is very hard.  
+学部時代の研究や修士課程でこうした手作業には慣れていましたが、いやはや、3D細胞のアノテーションは途方もなく大変でした。
+
+I spent a lot of time on it and only managed to annotate about 1,800 cells, less than 2% of what was already provided, so it was too much effort for almost nothing in the detection part.  
+膨大な時間を費やしたにもかかわらず、アノテーションできたのは約1,800個の細胞に過ぎず、これはすでに提供されていたデータの2%未満だったため、検出パートにおいては多大な労力に対してほぼ何の成果も得られませんでした。
+
+---
+
+Still, I don't regret doing it, because spending dozens of hours looking at cells gave me a lot of ideas for moving away from the hand-made features that are so dominant.  
+それでも、この作業を行ったことを後悔はしていません。何十時間も細胞を見つめ続けたことで、支配的だった手作業の特徴量から脱却するためのアイデアを数多く得られたからです。
+
+Yes, tracking is hard, cells are extremely similar to each other, they constantly change and, worse, they DIVIDE.  
+確かにトラッキングは難しく、細胞同士は極めて似通っており、絶えず変化し、さらに悪いことに「分裂(DIVIDE)」します。
+
+But that doesn't stop me, a human who had never tracked cells before, from looking at 3 frames and saying with confidence, this is cell X in frame t-1, this is cell X in t, and here are its daughter cells in t+1.  
+しかし、細胞を一度もトラッキングしたことがなかった人間である私でさえ、連続する3フレームを見れば「これはフレームt-1の細胞Xであり、これがフレームtの細胞Xであり、そしてこれがフレームt+1におけるその娘細胞たちだ」と自信を持って言えるのです。
+
+So a machine should be able to learn this somehow.  
+であるならば、機械も何らかの方法でこれを学習できるはずです。
+
+---
+
+Here's the 1st place solution for Biohub - Cell Tracking During Development.  
+ここに、「Biohub - Cell Tracking During Development」の1位解法を提示します。
 
 ---
 
 # Overview of the approach
 # アプローチの概要
 
-**[EN]** My solution follows the tracking-by-detection paradigm and has 3 main stages plus decoding.  
-**[JA]** 私の解法は「検出ベース追跡(tracking-by-detection)」のパラダイムに従っており、3つのメインステージとデコード処理で構成されています。
+My solution follows the tracking-by-detection paradigm and has 3 main stages plus decoding.  
+私の解法は「検出ベース追跡(tracking-by-detection)」のパラダイムに従っており、3つのメインステージとデコード処理で構成されています。
 
-**[EN]** The first stage, the detection part, is a vanilla U-Net with a Cellpose-style head [2], which predicts a foreground probability and a flow field pointing to each cell's center.  
-**[JA]** 第1ステージである検出パートは、Cellposeスタイルの出力ヘッド[2]を備えた標準的なU-Netであり、前景確率と、各細胞の中心を指し示すベクトル場(flow field)を予測します。
+The first stage, the detection part, is a vanilla U-Net with a Cellpose-style head [2], which predicts a foreground probability and a flow field pointing to each cell's center.  
+第1ステージである検出パートは、Cellposeスタイルの出力ヘッド[2]を備えた標準的なU-Netであり、前景確率と、各細胞の中心を指し示すベクトル場(flow field)を予測します。
 
-**[EN]** The model was pretrained with MAE [3], finetuned with manual annotations + 4.305 µm stamps on GT nodes, and then retrained on pseudo labels generated by that first model.  
-**[JA]** このモデルはMAE[3]で事前学習され、手動アノテーション ＋ 正解ノードを中心とした4.305µmの球状スタンプでファインチューニングされ、その後、その最初のモデルによって生成された擬似ラベル(pseudo labels)を用いて再学習されました。
-
----
-
-**[EN]** The second stage is the fun part of the approach, here I'll call it Soon Net.  
-**[JA]** 第2ステージはこのアプローチの中で最も面白い部分であり、ここでは「Soon Net」と呼ぶことにします。
-
-**[EN]** It looks at 3 frames cropped around each cell and tries to predict its division state (interphase, soon to divide, just divided), where it was and where it went.  
-**[JA]** これは各細胞の周囲から切り取られた3つのフレームを見つめ、その分裂状態(間期、もうすぐ分裂、分裂直後)と、その細胞が以前どこにいて、どこへ向かったのかを予測しようとします。
-
-**[EN]** The architecture is a very small CNN encoder (236K parameters) + transformer (508K parameters) .  
-**[JA]** アーキテクチャは、非常に小型のCNNエンコーダ(パラメータ数236K) ＋ Transformer(パラメータ数508K)です。
+The model was pretrained with MAE [3], finetuned with manual annotations + 4.305 µm stamps on GT nodes, and then retrained on pseudo labels generated by that first model.  
+このモデルはMAE[3]で事前学習され、手動アノテーション ＋ 正解ノードを中心とした4.305µmの球状スタンプでファインチューニングされ、その後、その最初のモデルによって生成された擬似ラベル(pseudo labels)を用いて再学習されました。
 
 ---
 
-**[EN]** The third stage is a learned linker, also a transformer, with some LightGlue [4] inspirations.  
-**[JA]** 第3ステージは学習型リンカー(learned linker)であり、こちらもLightGlue[4]に着想を得たTransformerです。
+The second stage is the fun part of the approach, here I'll call it Soon Net.  
+第2ステージはこのアプローチの中で最も面白い部分であり、ここでは「Soon Net」と呼ぶことにします。
 
-**[EN]** It scores the edges between frames t and t+1 and decides divisions, using the detector's geometry and the Soon Net's outputs.  
-**[JA]** これは検出器の幾何学的情報とSoon Netの出力を用いて、フレームtとt+1の間のエッジをスコアリングし、分裂を決定します。
+It looks at 3 frames cropped around each cell and tries to predict its division state (interphase, soon to divide, just divided), where it was and where it went.  
+これは各細胞の周囲から切り取られた3つのフレームを見つめ、その分裂状態(間期、もうすぐ分裂、分裂直後)と、その細胞が以前どこにいて、どこへ向かったのかを予測しようとします。
+
+The architecture is a very small CNN encoder (236K parameters) + transformer (508K parameters) .  
+アーキテクチャは、非常に小型のCNNエンコーダ(パラメータ数236K) ＋ Transformer(パラメータ数508K)です。
 
 ---
 
-**[EN]** Finally, a greedy decode turns the linker scores into lineages.  
-**[JA]** 最後に、貪欲デコード(greedy decode)がリンカーのスコアを細胞系列(lineage)へと変換します。
+The third stage is a learned linker, also a transformer, with some LightGlue [4] inspirations.  
+第3ステージは学習型リンカー(learned linker)であり、こちらもLightGlue[4]に着想を得たTransformerです。
 
-**[EN]** The overview can also be seen in the image below.  
-**[JA]** 全体像は下の画像でも確認できます。
+It scores the edges between frames t and t+1 and decides divisions, using the detector's geometry and the Soon Net's outputs.  
+これは検出器の幾何学的情報とSoon Netの出力を用いて、フレームtとt+1の間のエッジをスコアリングし、分裂を決定します。
+
+---
+
+Finally, a greedy decode turns the linker scores into lineages.  
+最後に、貪欲デコード(greedy decode)がリンカーのスコアを細胞系列(lineage)へと変換します。
+
+The overview can also be seen in the image below.  
+全体像は下の画像でも確認できます。
 
 ![Overview of the pipeline](001_overview.png)
 
@@ -287,44 +287,44 @@
 
 ## Detection Summary(検出の概要)
 
-**[EN]** The detector is a vanilla 3D U-Net with a Cellpose-style head.  
-**[JA]** 検出器は、Cellposeスタイルのヘッドを備えた標準的な3D U-Netです。
+The detector is a vanilla 3D U-Net with a Cellpose-style head.  
+検出器は、Cellposeスタイルのヘッドを備えた標準的な3D U-Netです。
 
-**[EN]** It has about 3.1M parameters and was trained on crops of size 128×128×64.  
-**[JA]** パラメータ数は約3.1Mであり、サイズ128×128×64のクロップ領域で学習されました。
+It has about 3.1M parameters and was trained on crops of size 128×128×64.  
+パラメータ数は約3.1Mであり、サイズ128×128×64のクロップ領域で学習されました。
 
-**[EN]** The encoder has 3 downsampling stages (24, 48 and 96 channels) followed by a 192-channel bottleneck, and each block is 2 × (3×3×3 conv + BatchNorm + ReLU).  
-**[JA]** エンコーダは3段階のダウンサンプリングステージ(24、48、96チャンネル)とそれに続く192チャンネルのボトルネックを持ち、各ブロックは2組の(3×3×3畳み込み ＋ BatchNorm ＋ ReLU)で構成されています。
+The encoder has 3 downsampling stages (24, 48 and 96 channels) followed by a 192-channel bottleneck, and each block is 2 × (3×3×3 conv + BatchNorm + ReLU).  
+エンコーダは3段階のダウンサンプリングステージ(24、48、96チャンネル)とそれに続く192チャンネルのボトルネックを持ち、各ブロックは2組の(3×3×3畳み込み ＋ BatchNorm ＋ ReLU)で構成されています。
 
-**[EN]** Pooling is anisotropic, (1,2,2), (1,2,2), (2,2,2).  
-**[JA]** プーリングは異方性(anisotropic)であり、(1,2,2)、(1,2,2)、(2,2,2)となっています。
+Pooling is anisotropic, (1,2,2), (1,2,2), (2,2,2).  
+プーリングは異方性(anisotropic)であり、(1,2,2)、(1,2,2)、(2,2,2)となっています。
 
-**[EN]** At the end of the decoder, two 1×1×1 heads predict a foreground probability and a 3-channel flow field pointing to the cell center.  
-**[JA]** デコーダの末端で、2つの1×1×1ヘッドが前景確率と、細胞中心を指す3チャンネルのフロー場を予測します。
+At the end of the decoder, two 1×1×1 heads predict a foreground probability and a 3-channel flow field pointing to the cell center.  
+デコーダの末端で、2つの1×1×1ヘッドが前景確率と、細胞中心を指す3チャンネルのフロー場を予測します。
 
-**[EN]** I also use deep supervision at ½ and ¼ resolution.  
-**[JA]** 私はまた、1/2および1/4解像度でのDeep Supervision(深層監視)も使用しています。
+I also use deep supervision at ½ and ¼ resolution.  
+私はまた、1/2および1/4解像度でのDeep Supervision(深層監視)も使用しています。
 
 
-**[EN]** To get the instances, like in Cellpose, every voxel with probability > 0.5 follows the flow until it stops at a cell center, and voxels that end up at the same place (within 3 µm) become one instance.  
-**[JA]** 個々の細胞インスタンスを取得するために、Cellposeと同様に、確率が0.5を超えるすべてのボクセルが細胞中心で停止するまでフローを追跡し、同じ場所(3µm以内)に到達したボクセル群が1つのインスタンスになります。
+To get the instances, like in Cellpose, every voxel with probability > 0.5 follows the flow until it stops at a cell center, and voxels that end up at the same place (within 3 µm) become one instance.  
+個々の細胞インスタンスを取得するために、Cellposeと同様に、確率が0.5を超えるすべてのボクセルが細胞中心で停止するまでフローを追跡し、同じ場所(3µm以内)に到達したボクセル群が1つのインスタンスになります。
 
-**[EN]** Instances smaller than 10 voxels are dropped.  
-**[JA]** 10ボクセル未満の微小インスタンスは破棄されます。
+Instances smaller than 10 voxels are dropped.  
+10ボクセル未満の微小インスタンスは破棄されます。
 
-**[EN]** The anisotropic pooling is one of the parameters I'm not so sure about.  
-**[JA]** 異方性プーリングは、私自身があまり確信を持てていないパラメータの1つです。
+The anisotropic pooling is one of the parameters I'm not so sure about.  
+異方性プーリングは、私自身があまり確信を持てていないパラメータの1つです。
 
-**[EN]** I tried it as a way of handling the anisotropy of the data in Z, and the loss curves were a little lower with it, so I kept it.  
-**[JA]** Z軸方向におけるデータの異方性に対処する方法として試してみたところ、損失曲線(loss curve)がわずかに低くなったため、そのまま採用しました。
+I tried it as a way of handling the anisotropy of the data in Z, and the loss curves were a little lower with it, so I kept it.  
+Z軸方向におけるデータの異方性に対処する方法として試してみたところ、損失曲線(loss curve)がわずかに低くなったため、そのまま採用しました。
 
-**[EN]** Anyway, it's probably not doing much...  
-**[JA]** とはいえ、おそらくそれほど大きな効果は発揮していないでしょう……。
+Anyway, it's probably not doing much...  
+とはいえ、おそらくそれほど大きな効果は発揮していないでしょう……。
 
 ---
 
-**[EN]** The architecture can be seen in the figure below.  
-**[JA]** アーキテクチャは下図で確認できます。
+The architecture can be seen in the figure below.  
+アーキテクチャは下図で確認できます。
 
 ![Detector, a Cellpose-style 3D U-Net](002_inbox_unet.png)
 
@@ -492,8 +492,8 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** I chose to try a mask output instead of a Gaussian blob, which was the dominant strategy in other competitions like CZII and BYU, because many tracking papers like HOCT [5] use geometric features and Ultrack [6] also needs masks, and a simple Gaussian blob would not be able to provide them.  
-**[JA]** CZIIやBYUなどの他のコンペで支配的な戦略だった「ガウス・ブロブ(Gaussian blob)」ではなく「マスク出力」を採用したのは、HOCT[5]などの多くの追跡論文が幾何学的特徴量を使用しており、Ultrack[6]もまたマスクを必要とするためであり、単純なガウス・ブロブではそれらを提供できないからです。
+I chose to try a mask output instead of a Gaussian blob, which was the dominant strategy in other competitions like CZII and BYU, because many tracking papers like HOCT [5] use geometric features and Ultrack [6] also needs masks, and a simple Gaussian blob would not be able to provide them.  
+CZIIやBYUなどの他のコンペで支配的な戦略だった「ガウス・ブロブ(Gaussian blob)」ではなく「マスク出力」を採用したのは、HOCT[5]などの多くの追跡論文が幾何学的特徴量を使用しており、Ultrack[6]もまたマスクを必要とするためであり、単純なガウス・ブロブではそれらを提供できないからです。
 
 ![Detector output](003_segmentation_z.gif)
 
@@ -501,25 +501,25 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 > - **Z-stack Slices**: Z軸方向(深さ方向)にスライスを連続表示した様子
 > - **Colors**: 検出・分離された個々の細胞インスタンスが固有のカラーで塗り分けられており、密に接触した細胞同士もフロー場によって1個ずつ正確に分離されていることを示しています。
 
-**[EN]** The model was first pretrained with a very "light" MAE (Masked Autoencoder).  
-**[JA]** このモデルは、まず非常に「軽量(light)」なMAE(Masked Autoencoder)で事前学習されました。
+The model was first pretrained with a very "light" MAE (Masked Autoencoder).  
+このモデルは、まず非常に「軽量(light)」なMAE(Masked Autoencoder)で事前学習されました。
 
-**[EN]** Normally, MAE masks a big portion of the frame with large blocks.  
-**[JA]** 通常のMAEは、フレームの大部分を大きなブロック単位でマスクします。
+Normally, MAE masks a big portion of the frame with large blocks.  
+通常のMAEは、フレームの大部分を大きなブロック単位でマスクします。
 
-**[EN]** I opted for a much lighter version, masking 50% of the volume in tiny blocks of 2×4×4 voxels (about 3.25 µm on each side, roughly a third of a nucleus).  
-**[JA]** 私ははるかに軽量なバージョンを選択し、2×4×4ボクセル(各辺約3.25µm、細胞核のおよそ3分の1のサイズ)という極めて小さなブロックでボリュームの50%をマスクしました。
+I opted for a much lighter version, masking 50% of the volume in tiny blocks of 2×4×4 voxels (about 3.25 µm on each side, roughly a third of a nucleus).  
+私ははるかに軽量なバージョンを選択し、2×4×4ボクセル(各辺約3.25µm、細胞核のおよそ3分の1のサイズ)という極めて小さなブロックでボリュームの50%をマスクしました。
 
-**[EN]** Since the cells are very small, it didn't make sense to me to use large blocks, the model would have to completely hallucinate the cells.  
-**[JA]** 細胞が非常に小さいため、大きなブロックを使うのは理にかなっておらず、もしそうすればモデルは細胞を完全に捏造(ハルシネーション)しなければならなくなります。
+Since the cells are very small, it didn't make sense to me to use large blocks, the model would have to completely hallucinate the cells.  
+細胞が非常に小さいため、大きなブロックを使うのは理にかなっておらず、もしそうすればモデルは細胞を完全に捏造(ハルシネーション)しなければならなくなります。
 
-**[EN]** With a light MAE it could learn useful features without having to hallucinate.  
-**[JA]** 軽量なMAEを用いることで、捏造することなく有用な特徴を学習することができました。
+With a light MAE it could learn useful features without having to hallucinate.  
+軽量なMAEを用いることで、捏造することなく有用な特徴を学習することができました。
 
 ---
 
-**[EN]** I used 180 movies from the competition (18,000 frames, 15 more held out to check the reconstruction) and 1,500 external frames (150 crops × 10 time points) from the ultrack zebrafish embryo, and trained for 30 epochs.  
-**[JA]** 私はコンペの180本の動画(18,000フレーム、さらに再構成を確認するために15本の動画をホールドアウト)と、ultrackのゼブラフィッシュ胚からの外部データ1,500フレーム(150クロップ×10タイムポイント)を使用し、30エポック学習させました。
+I used 180 movies from the competition (18,000 frames, 15 more held out to check the reconstruction) and 1,500 external frames (150 crops × 10 time points) from the ultrack zebrafish embryo, and trained for 30 epochs.  
+私はコンペの180本の動画(18,000フレーム、さらに再構成を確認するために15本の動画をホールドアウト)と、ultrackのゼブラフィッシュ胚からの外部データ1,500フレーム(150クロップ×10タイムポイント)を使用し、30エポック学習させました。
   - **18,000フレームの使われ方**:
     (コンペデータの)18,000フレームは、MAEだけで終わりではなく、その後のすべての学習(ファインチューニング、疑似ラベル学習、Soon NetのR1/R2など)で徹底的にフル活用されている。
     ```text
@@ -545,28 +545,28 @@ output: torch.Tensor(5次元テンソル) = conv(x)
     18,000フレームは「MAEで下地を作り → 検出器で細胞を見つけ → 擬似ラベルを生成して → 再学習する」というように、Detection工程の最初から最後までメインの学習データとしてフル稼働しています。
   「データが限られているからこそ、同じ18,000フレームから自己教師学習、擬似ラベル、再学習などを駆使して、限界まで情報を搾り取って勝つ」というのが、まさに1位の圧倒的なデータ活用力でした。
 
-**[EN]** Honestly, I can't say how much it improved the metrics, or even if it improved them at all.  
-**[JA]** 正直なところ、これが評価指標をどれほど向上させたのか、あるいは向上させたのかどうかすら断言はできません。
+Honestly, I can't say how much it improved the metrics, or even if it improved them at all.  
+正直なところ、これが評価指標をどれほど向上させたのか、あるいは向上させたのかどうかすら断言はできません。
 
-**[EN]** In earlier experiments, I was working with an out-of-embryo split and saw a small improvement in recall, so I kept using it.  
-**[JA]** 初期の実験において胚ごとの分割(out-of-embryo split)で作業していた際、Recall(再現率)にわずかな改善が見られたため、使い続けました。
+In earlier experiments, I was working with an out-of-embryo split and saw a small improvement in recall, so I kept using it.  
+初期の実験において胚ごとの分割(out-of-embryo split)で作業していた際、Recall(再現率)にわずかな改善が見られたため、使い続けました。
 
-**[EN]** I just wanted to make sure my detector would be more robust against the embryo variety it may encounter in the private LB.  
-**[JA]** 私は単に、プライベートLeaderboardで直面する可能性のある胚の多様性に対して、自分の検出器がより頑健であることを確実にしたかったのです。
+I just wanted to make sure my detector would be more robust against the embryo variety it may encounter in the private LB.  
+私は単に、プライベートLeaderboardで直面する可能性のある胚の多様性に対して、自分の検出器がより頑健であることを確実にしたかったのです。
 
-**[EN]** And finally, even if it doesn't improve the scores, it helped my models converge much faster, which cannot be a bad thing.  
-**[JA]** そして最後に、仮にスコアを改善しなかったとしても、モデルの収束を大幅に早めるのに役立ったので、それが悪い選択であるはずがありません。
+And finally, even if it doesn't improve the scores, it helped my models converge much faster, which cannot be a bad thing.  
+そして最後に、仮にスコアを改善しなかったとしても、モデルの収束を大幅に早めるのに役立ったので、それが悪い選択であるはずがありません。
 
-**[EN]** This decision was also supported by the literature, the FOCUS-3D paper [7] that @hengck23 shared in the discussions uses MAE pretraining.  
-**[JA]** この決定は文献的にも支持されており、ディスカッションで@hengck23氏が共有してくださったFOCUS-3D論文[7]でもMAE事前学習が採用されていました。
+This decision was also supported by the literature, the FOCUS-3D paper [7] that @hengck23 shared in the discussions uses MAE pretraining.  
+この決定は文献的にも支持されており、ディスカッションで@hengck23氏が共有してくださったFOCUS-3D論文[7]でもMAE事前学習が採用されていました。
 
 ---
 
-**[EN]** The code for MAE is from the amazing MIC-DKFZ group and can be found in their [github](https://github.com/MIC-DKFZ/nnssl) [8].  
-**[JA]** MAEのコードは素晴らしいMIC-DKFZグループのものであり、彼らの[GitHub](https://github.com/MIC-DKFZ/nnssl)[8]で見つけることができます。
+The code for MAE is from the amazing MIC-DKFZ group and can be found in their [github](https://github.com/MIC-DKFZ/nnssl) [8].  
+MAEのコードは素晴らしいMIC-DKFZグループのものであり、彼らの[GitHub](https://github.com/MIC-DKFZ/nnssl)[8]で見つけることができます。
 
-**[EN]** In the figure below we can see the MAE reconstruction, showing that it did in fact learn to reconstruct.  
-**[JA]** 下の図ではMAEの再構成結果を見ることができ、実際に再構成を学習できていることが示されています。
+In the figure below we can see the MAE reconstruction, showing that it did in fact learn to reconstruct.  
+下の図ではMAEの再構成結果を見ることができ、実際に再構成を学習できていることが示されています。
 
 ![MAE reconstruction](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2Ffa1d421cac80a45072517c19e85e1668%2Fmae_reconstruction.png?generation=1790815735073254&alt=media)
 
@@ -578,11 +578,11 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The first finetune uses my hand-painted masks (~1,800 cells over 583 frames) and 4.305 µm stamps on the 133k annotated GT cells.  
-**[JA]** 初回のファインチューニングでは、私が手動でペイントしたマスク(583フレームにわたる約1,800個の細胞)と、133,000個のアノテーション済み正解細胞に対する4.305µmの球状スタンプを使用しています。
+The first finetune uses my hand-painted masks (~1,800 cells over 583 frames) and 4.305 µm stamps on the 133k annotated GT cells.  
+初回のファインチューニングでは、私が手動でペイントしたマスク(583フレームにわたる約1,800個の細胞)と、133,000個のアノテーション済み正解細胞に対する4.305µmの球状スタンプを使用しています。
 
-**[EN]** Models were trained for 40 epochs, using heavy augmentation and EMA.  
-**[JA]** モデルは強力なデータ拡張(heavy augmentation)とEMA(指数移動平均)を用いて40エポック学習されました。
+Models were trained for 40 epochs, using heavy augmentation and EMA.  
+モデルは強力なデータ拡張(heavy augmentation)とEMA(指数移動平均)を用いて40エポック学習されました。
   - **データ拡張とは**:
     データ拡張とは、画像を少し回転させたり反転させたりして「データの水増し」をする処理ですが、「Heavy (強力な)」 とついている場合は、AIを過酷な環境で徹底的にしごくような激しい変形を加えます。
     - **3次元の空間変形**:
@@ -612,83 +612,82 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** After the first finetune, I generated pseudo labels for all 195 movies + the 150 external crops using a 5-fold average + 4x flip TTA.  
-**[JA]** 初回のファインチューニング(R1)後、5-foldの平均 ＋ 4倍の反転TTA(Test-Time Augmentation)を用いて、全195本の動画と150個の外部クロップに対して擬似ラベルを生成しました。
+After the first finetune, I generated pseudo labels for all 195 movies + the 150 external crops using a 5-fold average + 4x flip TTA.  
+初回のファインチューニング(R1)後、5-foldの平均 ＋ 4倍の反転TTA(Test-Time Augmentation)を用いて、全195本の動画と150個の外部クロップに対して擬似ラベルを生成しました。
 
-**[EN]** After this, I kept only high-confidence detections, generated tracks with the public twoPass tracker and filtered for min length > 3 to help me keep only high-confidence detections.  
-**[JA]** その後、高信頼度の検出のみを保持し、公開されているtwoPassトラッカーでトラックを生成した上で、長さ3以上のトラックのみにフィルタリングすることで、高信頼度の検出だけを手元に残すようにしました。
+After this, I kept only high-confidence detections, generated tracks with the public twoPass tracker and filtered for min length > 3 to help me keep only high-confidence detections.  
+その後、高信頼度の検出のみを保持し、公開されているtwoPassトラッカーでトラックを生成した上で、長さ3以上のトラックのみにフィルタリングすることで、高信頼度の検出だけを手元に残すようにしました。
 
-**[EN]** Yes, this leaks into CV, so Round 2 validation scores are optimistic, but since GT was sparse and I could visually see improvements I accepted the trade.  
-**[JA]** 確かにこれはCV(交差検証)へのリークを引き起こすため、Round 2の検証スコアは楽観的なものになりますが、正解データが極めてスパースであり、視覚的にも改善が確認できたため、私はそのトレードオフを受け入れました。
-
----
-
-**[EN]** For the final submission, 5 folds × 4x TTA were used, resulting in 20 forward passes per frame.  
-**[JA]** 最終サブミッションでは、5フォールド × 4倍TTAが使用され、1フレームあたり20回のフォワードパス(推論計算)が実行されました。
+Yes, this leaks into CV, so Round 2 validation scores are optimistic, but since GT was sparse and I could visually see improvements I accepted the trade.  
+確かにこれはCV(交差検証)へのリークを引き起こすため、Round 2の検証スコアは楽観的なものになりますが、正解データが極めてスパースであり、視覚的にも改善が確認できたため、私はそのトレードオフを受け入れました。
 
 ---
 
-# Soon to Divide / Visual Tracking
-# 分裂直前 / ビジュアルトラッキング
-
-**[EN]** In the middle of the competition, when looking at the detections, I noticed that the public baseline (twoPass + kalman) was doing a decent job with the tracks, but it was having a hard time with the divisions.  
-**[JA]** コンペの中盤、検出結果を眺めていたとき、公開ベースライン(twoPass ＋ カルマンフィルタ)は通常のトラックについてはそこそこ良好に機能しているものの、分裂(division)の検出には非常に苦戦していることに気づきました。
-
-**[EN]** Divisions in cell tracking are usually resolved by looking at the geometry of the candidate cells (distance, velocity agreement, daughter sizes and so on).  
-**[JA]** 細胞追跡における分裂は通常、候補細胞の幾何学的情報(距離、速度の一致度、娘細胞のサイズなど)を精査することによって解決されます。
-
-**[EN]** But this was one of the things that bothered me, these features don't look at the cell, they are blind.  
-**[JA]** しかし、これこそが私を悩ませていたことの1つでした。これらの特徴量は細胞そのものを全く見ておらず、盲目的だったのです。
+For the final submission, 5 folds × 4x TTA were used, resulting in 20 forward passes per frame.  
+最終サブミッションでは、5フォールド × 4倍TTAが使用され、1フレームあたり20回のフォワードパス(推論計算)が実行されました。
 
 ---
 
-**[EN]** In reality, before dividing, a cell changes its appearance in a visible way, so a human can easily tell if it's about to divide.  
-**[JA]** 実際には、細胞は分裂する前に目に見える形で外見を変化させるため、人間が見れば「もうすぐ分裂する」かどうかを容易に見分けることができます。
+# Soon to Divide / Visual Tracking<br/>分裂直前 / ビジュアルトラッキング
 
-**[EN]** So I tried to train a small model to predict this "soon to divide" state.  
-**[JA]** そこで私は、この「もうすぐ分裂する(soon to divide)」状態を予測するための小型モデルを学習させようと試みました。
+In the middle of the competition, when looking at the detections, I noticed that the public baseline (twoPass + kalman) was doing a decent job with the tracks, but it was having a hard time with the divisions.  
+コンペの中盤、検出結果を眺めていたとき、公開ベースライン(twoPass ＋ カルマンフィルタ)は通常のトラックについてはそこそこ良好に機能しているものの、分裂(division)の検出には非常に苦戦していることに気づきました。
 
-**[EN]** It was a classification model, looking at crops around the cell in t-1, t and t+1, with 3 classes: interphase, soon-to-divide and just divided.  
-**[JA]** それは、t-1、t、t+1における細胞周囲のクロップ画像を観察する分類モデルであり、間期(interphase)、もうすぐ分裂(soon-to-divide)、分裂直後(just divided)の3つのクラスを分類するものでした。
+Divisions in cell tracking are usually resolved by looking at the geometry of the candidate cells (distance, velocity agreement, daughter sizes and so on).  
+細胞追跡における分裂は通常、候補細胞の幾何学的情報(距離、速度の一致度、娘細胞のサイズなど)を精査することによって解決されます。
 
-**[EN]** The model learned it and the results were encouraging, so I kept working on it.  
-**[JA]** モデルはこれをしっかりと学習し、有望な結果が得られたため、私はこの方向性の開発を続けました。
-
----
-
-**[EN]** That's when I started attacking the second thing that bothered me about tracking.  
-**[JA]** そのとき、私はトラッキングに関して私を悩ませていた2つ目の問題への取り組みを開始しました。
-
-**[EN]** By adding an FPN head, my model no longer only said the state of the cell, it could also say where the cell was and where it went, just by looking at it.  
-**[JA]** FPN(Feature Pyramid Network)ヘッドを追加することにより、私のモデルは単に細胞の状態を答えるだけでなく、画像を見るだけで「細胞が以前どこにいて、どこへ移動したのか」まで答えることができるようになりました。
-
-**[EN]** The FPN takes the encoder features of each frame and the transformer tokens, and predicts two occupancy maps for each of the 3 frames, one for continuation and one for division.  
-**[JA]** FPNは各フレームのエンコーダ特徴量とTransformerトークンを受け取り、3つのフレームそれぞれに対して「継続(continuation)」と「分裂(division)」という2種類の占有マップ(occupancy maps)を予測します。
+But this was one of the things that bothered me, these features don't look at the cell, they are blind.  
+しかし、これこそが私を悩ませていたことの1つでした。これらの特徴量は細胞そのものを全く見ておらず、盲目的だったのです。
 
 ---
 
-**[EN]** The targets are small spheres at the positions of the query cell and its relatives.  
-**[JA]** 学習ターゲットは、クエリされた細胞およびその血縁細胞の位置に配置された小さな球体です。
+In reality, before dividing, a cell changes its appearance in a visible way, so a human can easily tell if it's about to divide.  
+実際には、細胞は分裂する前に目に見える形で外見を変化させるため、人間が見れば「もうすぐ分裂する」かどうかを容易に見分けることができます。
 
-**[EN]** For an ordinary cell, its position in t-1, t and t+1 lights up in the continuation maps, so the map for t+1 says "this is where this cell will be in the next frame", which is exactly the question the linker has to answer.  
-**[JA]** 通常の細胞の場合、t-1、t、t+1におけるその位置が継続マップ上で点灯(発火)するため、t+1のマップは「この細胞は次のフレームでここに存在する」と伝えてくれます。これこそが、リンカーが答えなければならない問いそのものです。
+So I tried to train a small model to predict this "soon to divide" state.  
+そこで私は、この「もうすぐ分裂する(soon to divide)」状態を予測するための小型モデルを学習させようと試みました。
 
-**[EN]** For a mother, both daughters light up in the division map of t+1, and for a newborn daughter, its mother lights up in the division map of t-1.  
-**[JA]** 母細胞の場合、t+1の分裂マップ上で両方の娘細胞が点灯し、生まれたばかりの娘細胞の場合、t-1の分裂マップ上でその母細胞が点灯します。
+It was a classification model, looking at crops around the cell in t-1, t and t+1, with 3 classes: interphase, soon-to-divide and just divided.  
+それは、t-1、t、t+1における細胞周囲のクロップ画像を観察する分類モデルであり、間期(interphase)、もうすぐ分裂(soon-to-divide)、分裂直後(just divided)の3つのクラスを分類するものでした。
+
+The model learned it and the results were encouraging, so I kept working on it.  
+モデルはこれをしっかりと学習し、有望な結果が得られたため、私はこの方向性の開発を続けました。
 
 ---
 
-**[EN]** The architecture is shown below.  
-**[JA]** アーキテクチャは下図に示されています。
+That's when I started attacking the second thing that bothered me about tracking.  
+そのとき、私はトラッキングに関して私を悩ませていた2つ目の問題への取り組みを開始しました。
 
-**[EN]** A lot of it comes from Primus [10] by MIC-DKFZ (yup, them again).  
-**[JA]** その多くの部分は、MIC-DKFZによるPrimus[10]に由来しています(そうです、またしても彼らです)。
+By adding an FPN head, my model no longer only said the state of the cell, it could also say where the cell was and where it went, just by looking at it.  
+FPN(Feature Pyramid Network)ヘッドを追加することにより、私のモデルは単に細胞の状態を答えるだけでなく、画像を見るだけで「細胞が以前どこにいて、どこへ移動したのか」まで答えることができるようになりました。
 
-**[EN]** The idea of using a small CNN as a tokenizer before a transformer is something I first learned from them, but their tokenizer is much larger and was overfitting easily, so I simplified it as much as I could and ended up with this small CNN.  
-**[JA]** Transformerの前に小型CNNをトークナイザーとして使用するというアイデアは彼らから初めて学んだものですが、彼らのトークナイザーははるかに巨大で過学習を起こしやすかったため、私は可能な限りそれを簡略化し、最終的にこの小型CNNへと行き着きました。
+The FPN takes the encoder features of each frame and the transformer tokens, and predicts two occupancy maps for each of the 3 frames, one for continuation and one for division.  
+FPNは各フレームのエンコーダ特徴量とTransformerトークンを受け取り、3つのフレームそれぞれに対して「継続(continuation)」と「分裂(division)」という2種類の占有マップ(occupancy maps)を予測します。
 
-**[EN]** The EVA [11] blocks also come from Primus, and here I have to be honest, I used them just because they did, there was no proper ablation against plain transformer blocks.  
-**[JA]** EVA[11]ブロックもPrimusに由来していますが、ここで正直に告白すると、彼らが使っていたからという理由だけで採用したに過ぎず、プレーンなTransformerブロックとの厳密なアブレーション実験(比較検証)は行っていません。
+---
+
+The targets are small spheres at the positions of the query cell and its relatives.  
+学習ターゲットは、クエリされた細胞およびその血縁細胞の位置に配置された小さな球体です。
+
+For an ordinary cell, its position in t-1, t and t+1 lights up in the continuation maps, so the map for t+1 says "this is where this cell will be in the next frame", which is exactly the question the linker has to answer.  
+通常の細胞の場合、t-1、t、t+1におけるその位置が継続マップ上で点灯(発火)するため、t+1のマップは「この細胞は次のフレームでここに存在する」と伝えてくれます。これこそが、リンカーが答えなければならない問いそのものです。
+
+For a mother, both daughters light up in the division map of t+1, and for a newborn daughter, its mother lights up in the division map of t-1.  
+母細胞の場合、t+1の分裂マップ上で両方の娘細胞が点灯し、生まれたばかりの娘細胞の場合、t-1の分裂マップ上でその母細胞が点灯します。
+
+---
+
+The architecture is shown below.  
+アーキテクチャは下図に示されています。
+
+A lot of it comes from Primus [10] by MIC-DKFZ (yup, them again).  
+その多くの部分は、MIC-DKFZによるPrimus[10]に由来しています(そうです、またしても彼らです)。
+
+The idea of using a small CNN as a tokenizer before a transformer is something I first learned from them, but their tokenizer is much larger and was overfitting easily, so I simplified it as much as I could and ended up with this small CNN.  
+Transformerの前に小型CNNをトークナイザーとして使用するというアイデアは彼らから初めて学んだものですが、彼らのトークナイザーははるかに巨大で過学習を起こしやすかったため、私は可能な限りそれを簡略化し、最終的にこの小型CNNへと行き着きました。
+
+The EVA [11] blocks also come from Primus, and here I have to be honest, I used them just because they did, there was no proper ablation against plain transformer blocks.  
+EVA[11]ブロックもPrimusに由来していますが、ここで正直に告白すると、彼らが使っていたからという理由だけで採用したに過ぎず、プレーンなTransformerブロックとの厳密なアブレーション実験(比較検証)は行っていません。
 
 ![Soon Net architecture](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F3af8b495e801e29a98e53116ffe14c9b%2Fsoon_net.png?generation=1790816031116397&alt=media)
 
@@ -707,22 +706,22 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The idea of the occupancy maps is simple, but the training recipe needed a couple of tweaks to make it work.  
-**[JA]** 占有マップのアイデア自体はシンプルですが、それをうまく機能させるためには訓練レシピにいくつかの工夫が必要でした。
+The idea of the occupancy maps is simple, but the training recipe needed a couple of tweaks to make it work.  
+占有マップのアイデア自体はシンプルですが、それをうまく機能させるためには訓練レシピにいくつかの工夫が必要でした。
 
-**[EN]** I couldn't always put the query cell at the center of the crop, because the model would get lazy and predict occupancy for the cell in the center instead of the queried one.  
-**[JA]** クエリ対象の細胞を常にクロップの中心に配置するわけにはいきませんでした。なぜなら、モデルが怠惰になり、クエリされた細胞ではなく「中心にある細胞」に対する占有を予測してしまうようになるからです。
+I couldn't always put the query cell at the center of the crop, because the model would get lazy and predict occupancy for the cell in the center instead of the queried one.  
+クエリ対象の細胞を常にクロップの中心に配置するわけにはいきませんでした。なぜなら、モデルが怠惰になり、クエリされた細胞ではなく「中心にある細胞」に対する占有を予測してしまうようになるからです。
 
-**[EN]** So I use a very large FOV jitter (±3 px in z, ±16 px in xy).  
-**[JA]** そこで私は、非常に大きな視野ジッター(FOV jitter: Z方向に±3ピクセル、XY方向に±16ピクセルのランダムシフト)を適用しました。
+So I use a very large FOV jitter (±3 px in z, ±16 px in xy).  
+そこで私は、非常に大きな視野ジッター(FOV jitter: Z方向に±3ピクセル、XY方向に±16ピクセルのランダムシフト)を適用しました。
 
-**[EN]** I also use a kind of time-step augmentation for interphase cells, frame t-1 is sometimes actually t-2 or t-3, and t+1 is sometimes t+2 or t+3, so the model learns that cells can move far.  
-**[JA]** また、間期の細胞に対しては一種のタイムステップ拡張(time-step augmentation)を使用し、フレームt-1が実際にはt-2やt-3であったり、t+1がt+2やt+3であったりするようにすることで、細胞が遠くまで移動し得ることをモデルに学習させました。
+I also use a kind of time-step augmentation for interphase cells, frame t-1 is sometimes actually t-2 or t-3, and t+1 is sometimes t+2 or t+3, so the model learns that cells can move far.  
+また、間期の細胞に対しては一種のタイムステップ拡張(time-step augmentation)を使用し、フレームt-1が実際にはt-2やt-3であったり、t+1がt+2やt+3であったりするようにすることで、細胞が遠くまで移動し得ることをモデルに学習させました。
 
 ---
 
-**[EN]** The examples below query a cell and move the FOV around it, and as can be seen, the occupancy maps and class probabilities stay consistent.  
-**[JA]** 以下の例では、1つの細胞をクエリしながらその周囲でFOV(視野)を動かしていますが、ご覧の通り、占有マップとクラス確率は一貫性を保ち続けています。
+The examples below query a cell and move the FOV around it, and as can be seen, the occupancy maps and class probabilities stay consistent.  
+以下の例では、1つの細胞をクエリしながらその周囲でFOV(視野)を動かしていますが、ご覧の通り、占有マップとクラス確率は一貫性を保ち続けています。
 
 ![Soon Net outputs](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F61d1182625f817a8a1c291cef2089689%2Fsoon_camera_k1.gif?generation=1790816056993625&alt=media)
 
@@ -732,47 +731,47 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** I used early versions of the Soon Net to mine divisions and visually checked a couple hundred of them.  
-**[JA]** 私は初期バージョンのSoon Netを使用して分裂イベントをマイニング(発掘)し、それらのうち数百個を目視で確認しました。
+I used early versions of the Soon Net to mine divisions and visually checked a couple hundred of them.  
+私は初期バージョンのSoon Netを使用して分裂イベントをマイニング(発掘)し、それらのうち数百個を目視で確認しました。
 
-**[EN]** In the final version I had 515 divisions to train with, against the 151 in the original GT.  
-**[JA]** 最終バージョンでは、オリジナルの正解データにあった151個の分裂に対し、学習用として515個の分裂を用意することができました。
-
----
-
-**[EN]** The class head uses a cross-entropy over the 3 classes with label smoothing of 0.1.  
-**[JA]** クラス分類ヘッドには、ラベル平滑化(label smoothing)0.1を適用した3クラスのクロスエントロピーを使用しています。
-
-**[EN]** The occupancy maps use a BCE with foreground and background weighted equally, plus a Focal-Tversky term on the maps that have spheres.  
-**[JA]** 占有マップには、前景と背景を等しく重み付けしたBCE(バイナリクロスエントロピー)に加え、球体が存在するマップに対してFocal-Tversky損失項を付加しています。
-
-**[EN]** Maps of the wrong type, like the division map of an interphase cell, get an extra BCE on their 512 highest voxels to avoid ghost blobs.  
-**[JA]** 間期細胞の分裂マップのような「誤ったタイプのマップ」には、ゴースト・ブロブ(虚偽の発火)を防ぐために、上位512個の最高値ボクセルに対して追加のBCEを課しています。
-
-**[EN]** The total loss is the class loss + 2 × the map loss.  
-**[JA]** 総損失(Total Loss)は、クラス損失 ＋ 2 × マップ損失です。
+In the final version I had 515 divisions to train with, against the 151 in the original GT.  
+最終バージョンでは、オリジナルの正解データにあった151個の分裂に対し、学習用として515個の分裂を用意することができました。
 
 ---
 
-**[EN]** Training consisted of two rounds.  
-**[JA]** 学習は2つのラウンドで構成されました。
+The class head uses a cross-entropy over the 3 classes with label smoothing of 0.1.  
+クラス分類ヘッドには、ラベル平滑化(label smoothing)0.1を適用した3クラスのクロスエントロピーを使用しています。
 
-**[EN]** Round 1 was trained for 100 epochs, showing about 6650 crops per epoch with a balanced 1:1:1 split (interphase, soon-to-divide, just divided).  
-**[JA]** Round 1は100エポック学習され、各エポックでバランスの取れた1:1:1の比率(間期、もうすぐ分裂、分裂直後)で約6,650個のクロップを提示しました。
+The occupancy maps use a BCE with foreground and background weighted equally, plus a Focal-Tversky term on the maps that have spheres.  
+占有マップには、前景と背景を等しく重み付けしたBCE(バイナリクロスエントロピー)に加え、球体が存在するマップに対してFocal-Tversky損失項を付加しています。
 
-**[EN]** In round 2 I used round 1 to mine hard interphases, i.e. cells in interphase tracks that round 1 scored as soon-to-divide (p ≥ 0.5) or just divided (p ≥ 0.3), out-of-fold, which gave 2492 hard negatives.  
-**[JA]** Round 2では、Round 1モデルを用いて「ハードな間期細胞(hard interphases)」、すなわちRound 1がOut-of-foldで「もうすぐ分裂(p ≥ 0.5)」または「分裂直後(p ≥ 0.3)」と誤判定した間期トラック内の細胞をマイニングし、2,492個のハードネガティブ(判別困難な負例)を得ました。
+Maps of the wrong type, like the division map of an interphase cell, get an extra BCE on their 512 highest voxels to avoid ghost blobs.  
+間期細胞の分裂マップのような「誤ったタイプのマップ」には、ゴースト・ブロブ(虚偽の発火)を防ぐために、上位512個の最高値ボクセルに対して追加のBCEを課しています。
 
-**[EN]** The second version was again trained for 100 epochs, with 6600 crops per epoch and a 1:1:1:1 split (random interphase, hard interphase, soon-to-divide, just divided).  
-**[JA]** 第2バージョンは再び100エポック学習され、エポックあたり6,600クロップ、1:1:1:1の比率(ランダム間期、ハード間期、もうすぐ分裂、分裂直後)で実施されました。
+The total loss is the class loss + 2 × the map loss.  
+総損失(Total Loss)は、クラス損失 ＋ 2 × マップ損失です。
 
 ---
 
-**[EN]** By itself, the Soon Net can already track, using a greedy decode on the occupancy fields.  
-**[JA]** Soon Netはそれ単体でも、占有フィールドに対して貪欲デコードを行うことで、すでにトラッキングを実行可能です。
+Training consisted of two rounds.  
+学習は2つのラウンドで構成されました。
 
-**[EN]** I haven't submitted it, but here are the scores in my 5-fold CV, on the original tracks and on my augmented tracks with manual annotations, mined divisions and a couple of corrections where the original tracks were missing a division annotation.  
-**[JA]** これ単体での提出はしていませんが、オリジナルのトラック、および手動アノテーション、マイニングされた分裂、元トラックで欠落していた分裂アノテーションの修正を加えた「拡張トラック」における私の5-fold CVスコアを以下に示します。
+Round 1 was trained for 100 epochs, showing about 6650 crops per epoch with a balanced 1:1:1 split (interphase, soon-to-divide, just divided).  
+Round 1は100エポック学習され、各エポックでバランスの取れた1:1:1の比率(間期、もうすぐ分裂、分裂直後)で約6,650個のクロップを提示しました。
+
+In round 2 I used round 1 to mine hard interphases, i.e. cells in interphase tracks that round 1 scored as soon-to-divide (p ≥ 0.5) or just divided (p ≥ 0.3), out-of-fold, which gave 2492 hard negatives.  
+Round 2では、Round 1モデルを用いて「ハードな間期細胞(hard interphases)」、すなわちRound 1がOut-of-foldで「もうすぐ分裂(p ≥ 0.5)」または「分裂直後(p ≥ 0.3)」と誤判定した間期トラック内の細胞をマイニングし、2,492個のハードネガティブ(判別困難な負例)を得ました。
+
+The second version was again trained for 100 epochs, with 6600 crops per epoch and a 1:1:1:1 split (random interphase, hard interphase, soon-to-divide, just divided).  
+第2バージョンは再び100エポック学習され、エポックあたり6,600クロップ、1:1:1:1の比率(ランダム間期、ハード間期、もうすぐ分裂、分裂直後)で実施されました。
+
+---
+
+By itself, the Soon Net can already track, using a greedy decode on the occupancy fields.  
+Soon Netはそれ単体でも、占有フィールドに対して貪欲デコードを行うことで、すでにトラッキングを実行可能です。
+
+I haven't submitted it, but here are the scores in my 5-fold CV, on the original tracks and on my augmented tracks with manual annotations, mined divisions and a couple of corrections where the original tracks were missing a division annotation.  
+これ単体での提出はしていませんが、オリジナルのトラック、および手動アノテーション、マイニングされた分裂、元トラックで欠落していた分裂アノテーションの修正を加えた「拡張トラック」における私の5-fold CVスコアを以下に示します。
 
 ---
 
@@ -795,59 +794,59 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** It's a decent score, but still not enough to be competitive, so we still need a linker to learn how to better use these features.  
-**[JA]** これはまずまずのスコアですが、コンペで勝つにはまだ不十分であるため、これらの特徴量をより上手に活用する方法を学習するリンカー(linker)がやはり必要となります。
+It's a decent score, but still not enough to be competitive, so we still need a linker to learn how to better use these features.  
+これはまずまずのスコアですが、コンペで勝つにはまだ不十分であるため、これらの特徴量をより上手に活用する方法を学習するリンカー(linker)がやはり必要となります。
 
-**[EN]** Note that the Soon Net was the last piece to appear, the early experiments were just detection + learned linker, and this model came much later.  
-**[JA]** なお、Soon Netはパイプラインの中で最後に登場したピースであり、初期の実験は「検出 ＋ 学習型リンカー」だけで行われていて、このモデルが登場したのはずっと後だったことに留意してください。
+Note that the Soon Net was the last piece to appear, the early experiments were just detection + learned linker, and this model came much later.  
+なお、Soon Netはパイプラインの中で最後に登場したピースであり、初期の実験は「検出 ＋ 学習型リンカー」だけで行われていて、このモデルが登場したのはずっと後だったことに留意してください。
 
 ---
 
 # Linker
 # リンカー (Learned Linker)
 
-**[EN]** Finally, we have the learned linker.  
-**[JA]** 最後に、学習型リンカー(learned linker)についてです。
+Finally, we have the learned linker.  
+最後に、学習型リンカー(learned linker)についてです。
 
-**[EN]** Its job is to look at two consecutive frames at a time and decide which cell goes where, and which cell divided.  
-**[JA]** その仕事は、一度に連続する2フレームを観察し、どの細胞がどこへ移動したか、そしてどの細胞が分裂したかを決定することです。
+Its job is to look at two consecutive frames at a time and decide which cell goes where, and which cell divided.  
+その仕事は、一度に連続する2フレームを観察し、どの細胞がどこへ移動したか、そしてどの細胞が分裂したかを決定することです。
 
-**[EN]** The main inspiration is LightGlue, which matches keypoints between two images, and matching cells between two frames is kind of the same problem.  
-**[JA]** 主な着想源は2枚の画像間でキーポイントをマッチングするLightGlueであり、2つのフレーム間で細胞をマッチングすることは、ある種これと同じ問題です。
-
----
-
-**[EN]** The linker uses two kinds of features.  
-**[JA]** リンカーは2種類の特徴量を使用します。
-
-**[EN]** Node features describe a single cell and go through the transformer.  
-**[JA]** ノード特徴量(Node features)は単一の細胞を表現し、Transformerへと入力されます。
-
-**[EN]** Pair features describe a candidate link between two cells and are only used later, in the MLP heads.  
-**[JA]** ペア特徴量(Pair features)は2つの細胞間の候補リンクを表現し、後段のMLPヘッドにおいてのみ使用されます。
+The main inspiration is LightGlue, which matches keypoints between two images, and matching cells between two frames is kind of the same problem.  
+主な着想源は2枚の画像間でキーポイントをマッチングするLightGlueであり、2つのフレーム間で細胞をマッチングすることは、ある種これと同じ問題です。
 
 ---
 
-**[EN]** Starting with the node features, each detection becomes a token built from 42 hand-made features.  
-**[JA]** ノード特徴量から説明すると、各検出は42個の手作業特徴量から構築された1つのトークンになります。
+The linker uses two kinds of features.  
+リンカーは2種類の特徴量を使用します。
 
-**[EN]** The first 39 go through a linear layer, and the 3 distances to the edge of the field of view go through their own small linear layer that is added to the same token (this is the "FoV embedding" in the figure).  
-**[JA]** 最初の39個の特徴量は1つの線形層を通過し、視野の境界までの3つの距離は独自の小さな線形層を通過して同一のトークンに加算されます(これが図中の「FoV embedding」です)。
+Node features describe a single cell and go through the transformer.  
+ノード特徴量(Node features)は単一の細胞を表現し、Transformerへと入力されます。
 
-**[EN]** Yes, after all my talk about hand-made features, the linker still uses them.  
-**[JA]** ええ、手作業の特徴量についてあれこれ語っておきながら、リンカーは依然としてそれらを使っています。
+Pair features describe a candidate link between two cells and are only used later, in the MLP heads.  
+ペア特徴量(Pair features)は2つの細胞間の候補リンクを表現し、後段のMLPヘッドにおいてのみ使用されます。
 
-**[EN]** I looked down on them at the beginning of the competition, but I can't argue with the results, they work hehe.  
-**[JA]** コンペの最初期にはそれらを見下していましたが、結果には逆らえません、実際に効くのですから(笑)。
+---
 
-**[EN]** But there is one difference with the occupancy ones.  
-**[JA]** しかし、占有マップに関する特徴量には決定的な違いがあります。
+Starting with the node features, each detection becomes a token built from 42 hand-made features.  
+ノード特徴量から説明すると、各検出は42個の手作業特徴量から構築された1つのトークンになります。
 
-**[EN]** They are also kind of hand-made, I'm the one deciding to read the parent's heatmap at the child's center, but they are not blind, the heatmap comes from a model that looked at the 3 frames.  
-**[JA]** それらも「子の中心における親のヒートマップ値を読み取る」と決定したのは私自身であるという意味では一種の手作業ですが、盲目的ではなく、ヒートマップ自体は3つのフレームを直接観察したモデルから生み出されたものです。
+The first 39 go through a linear layer, and the 3 distances to the edge of the field of view go through their own small linear layer that is added to the same token (this is the "FoV embedding" in the figure).  
+最初の39個の特徴量は1つの線形層を通過し、視野の境界までの3つの距離は独自の小さな線形層を通過して同一のトークンに加算されます(これが図中の「FoV embedding」です)。
 
-**[EN]** So if the Soon Net gets better, with more data or a bigger model, these features get better too, and I think this is the part that could be scaled.  
-**[JA]** したがって、より多くのデータや大規模なモデルによってSoon Netが賢くなれば、これらの特徴量も向上するため、スケールアップが可能なのはこの部分だと考えています。
+Yes, after all my talk about hand-made features, the linker still uses them.  
+ええ、手作業の特徴量についてあれこれ語っておきながら、リンカーは依然としてそれらを使っています。
+
+I looked down on them at the beginning of the competition, but I can't argue with the results, they work hehe.  
+コンペの最初期にはそれらを見下していましたが、結果には逆らえません、実際に効くのですから(笑)。
+
+But there is one difference with the occupancy ones.  
+しかし、占有マップに関する特徴量には決定的な違いがあります。
+
+They are also kind of hand-made, I'm the one deciding to read the parent's heatmap at the child's center, but they are not blind, the heatmap comes from a model that looked at the 3 frames.  
+それらも「子の中心における親のヒートマップ値を読み取る」と決定したのは私自身であるという意味では一種の手作業ですが、盲目的ではなく、ヒートマップ自体は3つのフレームを直接観察したモデルから生み出されたものです。
+
+So if the Soon Net gets better, with more data or a bigger model, these features get better too, and I think this is the part that could be scaled.  
+したがって、より多くのデータや大規模なモデルによってSoon Netが賢くなれば、これらの特徴量も向上するため、スケールアップが可能なのはこの部分だと考えています。
 
 ---
 
@@ -875,25 +874,25 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The tokens of both frames go through 4 cross-attention blocks, where each cell only looks at nearby cells in the other frame, every cell within 30 µm plus its 16 nearest ones, so even cells in sparse regions always have candidates.  
-**[JA]** 両フレームのトークンは4層のクロスアテンション(Cross-Attention)ブロックを通過します。ここでは、各細胞は他方フレームの近傍細胞のみを注視し、30µm以内にあるすべての細胞に加えて直近16個の最近傍細胞が含まれるため、細胞密度の疎な領域にある細胞でも常に候補を持つことができます。
+The tokens of both frames go through 4 cross-attention blocks, where each cell only looks at nearby cells in the other frame, every cell within 30 µm plus its 16 nearest ones, so even cells in sparse regions always have candidates.  
+両フレームのトークンは4層のクロスアテンション(Cross-Attention)ブロックを通過します。ここでは、各細胞は他方フレームの近傍細胞のみを注視し、30µm以内にあるすべての細胞に加えて直近16個の最近傍細胞が含まれるため、細胞密度の疎な領域にある細胞でも常に候補を持つことができます。
 
 ---
 
-**[EN]** Then come the pair features, computed for every candidate link (parent at t, child at t+1).  
-**[JA]** 続いて、すべての候補リンク(フレームtの親、フレームt+1の子)に対して計算されるペア特徴量が現れます。
+Then come the pair features, computed for every candidate link (parent at t, child at t+1).  
+続いて、すべての候補リンク(フレームtの親、フレームt+1の子)に対して計算されるペア特徴量が現れます。
 
-**[EN]** Most of them are simple differences between the two cells.  
-**[JA]** それらの大部分は、2つの細胞間の単純な差分です。
+Most of them are simple differences between the two cells.  
+それらの大部分は、2つの細胞間の単純な差分です。
 
-**[EN]** The occupancy ones come from the Soon Net maps (the heatmaps shown in the Soon Net figure).  
-**[JA]** 占有に関連するものは、Soon Netのマップ(Soon Netの図に示されているヒートマップ)に由来します。
+The occupancy ones come from the Soon Net maps (the heatmaps shown in the Soon Net figure).  
+占有に関連するものは、Soon Netのマップ(Soon Netの図に示されているヒートマップ)に由来します。
 
-**[EN]** For a candidate link, we ask the parent "where do you think you'll be at t+1?" and read its heatmap at the child's center, then ask the child "where were you at t-1?" and read its heatmap at the parent's center.  
-**[JA]** 候補リンクについて、親に対して「t+1でどこにいると思うか？」と問いかけて子の中心座標における親のヒートマップ値を読み取り、次に子に対して「t-1でどこにいたか？」と問いかけて親の中心座標における子のヒートマップ値を読み取ります。
+For a candidate link, we ask the parent "where do you think you'll be at t+1?" and read its heatmap at the child's center, then ask the child "where were you at t-1?" and read its heatmap at the parent's center.  
+候補リンクについて、親に対して「t+1でどこにいると思うか？」と問いかけて子の中心座標における親のヒートマップ値を読み取り、次に子に対して「t-1でどこにいたか？」と問いかけて親の中心座標における子のヒートマップ値を読み取ります。
 
-**[EN]** If both answers are high, it's probably the right link.  
-**[JA]** もし両方の答えが高い値を示していれば、それはおそらく正しいリンクです。
+If both answers are high, it's probably the right link.  
+もし両方の答えが高い値を示していれば、それはおそらく正しいリンクです。
 
 ---
 
@@ -929,53 +928,53 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The linker has two heads, a pair head and a fork head.  
-**[JA]** リンカーには2つのヘッドが存在します。「ペアヘッド(pair head)」と「フォークヘッド(fork head: 分岐ヘッド)」です。
+The linker has two heads, a pair head and a fork head.  
+リンカーには2つのヘッドが存在します。「ペアヘッド(pair head)」と「フォークヘッド(fork head: 分岐ヘッド)」です。
 
-**[EN]** The pair head scores every candidate link, using the two cell embeddings plus the pair features.  
-**[JA]** ペアヘッドは、2つの細胞の埋め込み表現にペア特徴量を加えたものを使用して、すべての候補リンクをスコアリングします。
-
----
-
-**[EN]** The fork head makes the final decision for each parent, no child, one child, or two children.  
-**[JA]** フォークヘッドは各親細胞に対して、「子なし」「子1つ(継続)」「子2つ(分裂)」の最終決定を下します。
-
-**[EN]** The pair scores pick the 16 best candidate children, and every option is scored, no child (1), a single child (16) or a pair of children (16×15/2 = 120), which gives 137 options per parent.  
-**[JA]** ペアスコアによって最良の候補となる16個の子細胞が選ばれ、「子なし(1通り)」「単一の子(16通り)」「子のペア(16×15/2 ＝ 120通り)」という、親1つあたり合計137通りの選択肢すべてがスコアリングされます。
+The pair head scores every candidate link, using the two cell embeddings plus the pair features.  
+ペアヘッドは、2つの細胞の埋め込み表現にペア特徴量を加えたものを使用して、すべての候補リンクをスコアリングします。
 
 ---
 
-**[EN]** The decision is split in two steps.  
-**[JA]** この決定は2つのステップに分割されています。
+The fork head makes the final decision for each parent, no child, one child, or two children.  
+フォークヘッドは各親細胞に対して、「子なし」「子1つ(継続)」「子2つ(分裂)」の最終決定を下します。
 
-**[EN]** First, a "kind" step decides if the parent divides at all.  
-**[JA]** まず「種類(kind)」ステップが、その親細胞がそもそも分裂するかどうかを決定します。
-
-**[EN]** Then, a "who" step picks the children.  
-**[JA]** 次に「誰(who)」ステップが、どの子細胞たちを選ぶかを決定します。
-
-**[EN]** I split it because these are two different questions.  
-**[JA]** 私がこれを分割したのは、これらが本質的に2つの異なる問いだからです。
-
-**[EN]** "Is this cell dividing?" depends mostly on the cell itself, what the Soon Net says about it, but also on whether there is a good pair of daughters in the next frame, so the kind step also looks at how good the best candidate pairs are.  
-**[JA]** 「この細胞は分裂するか？」という問いは、主として細胞自身やSoon Netが下す判定に依存しますが、次フレームに適切な娘細胞のペアが存在するかどうかにも依存するため、「kind」ステップは最良の候補ペアがどれほど優れているかも参照します。
-
-**[EN]** "Which cells are the daughters?" is about choosing between the candidates.  
-**[JA]** 「どの細胞が娘細胞なのか？」という問いは、候補の中から選別することに関わります。
-
-**[EN]** Here the who step uses the Soon Net division maps (the mother points at both daughters and both point back at the mother), the pair scores, intensity, and some geometry, like the distance between the sisters, if their volumes add up to the mother, and if the split happens along the mother's main axis.  
-**[JA]** ここで「who」ステップは、Soon Netの分裂マップ(母細胞が両方の娘を指し、両娘が母細胞を指し返す)、ペアスコア、輝度、そして姉妹細胞間の距離、それらの体積の合計が母細胞と一致するかどうか、分裂が母細胞の主軸に沿って起きているかといった幾何学的情報を使用します。
-
-**[EN]** When everything was in a single softmax, the 120 pair options drowned the rare division decision and the model produced too many false divisions.  
-**[JA]** すべてを単一のソフトマックス関数に組み込んでいたときは、120通りものペアの選択肢が稀少な分裂決定をかき消してしまい、モデルはあまりにも多くの偽陽性分裂(false divisions)を生成してしまいました。
-
-**[EN]** With the split, the division decision gets its own small head, and the final probability is just p(kind) × p(who | kind).  
-**[JA]** 分割を導入したことで、分裂決定は独自の小さなヘッドを獲得し、最終的な確率は単純に $p(	ext{kind}) 	imes p(	ext{who} \mid 	ext{kind})$ となりました。
+The pair scores pick the 16 best candidate children, and every option is scored, no child (1), a single child (16) or a pair of children (16×15/2 = 120), which gives 137 options per parent.  
+ペアスコアによって最良の候補となる16個の子細胞が選ばれ、「子なし(1通り)」「単一の子(16通り)」「子のペア(16×15/2 ＝ 120通り)」という、親1つあたり合計137通りの選択肢すべてがスコアリングされます。
 
 ---
 
-**[EN]** It's kind of complex to follow everything that is going on, so the figure below tries to illustrate it better.  
-**[JA]** 起きていることのすべてを追うのは少々複雑なため、下図でより分かりやすく図示することを試みています。
+The decision is split in two steps.  
+この決定は2つのステップに分割されています。
+
+First, a "kind" step decides if the parent divides at all.  
+まず「種類(kind)」ステップが、その親細胞がそもそも分裂するかどうかを決定します。
+
+Then, a "who" step picks the children.  
+次に「誰(who)」ステップが、どの子細胞たちを選ぶかを決定します。
+
+I split it because these are two different questions.  
+私がこれを分割したのは、これらが本質的に2つの異なる問いだからです。
+
+"Is this cell dividing?" depends mostly on the cell itself, what the Soon Net says about it, but also on whether there is a good pair of daughters in the next frame, so the kind step also looks at how good the best candidate pairs are.  
+「この細胞は分裂するか？」という問いは、主として細胞自身やSoon Netが下す判定に依存しますが、次フレームに適切な娘細胞のペアが存在するかどうかにも依存するため、「kind」ステップは最良の候補ペアがどれほど優れているかも参照します。
+
+"Which cells are the daughters?" is about choosing between the candidates.  
+「どの細胞が娘細胞なのか？」という問いは、候補の中から選別することに関わります。
+
+Here the who step uses the Soon Net division maps (the mother points at both daughters and both point back at the mother), the pair scores, intensity, and some geometry, like the distance between the sisters, if their volumes add up to the mother, and if the split happens along the mother's main axis.  
+ここで「who」ステップは、Soon Netの分裂マップ(母細胞が両方の娘を指し、両娘が母細胞を指し返す)、ペアスコア、輝度、そして姉妹細胞間の距離、それらの体積の合計が母細胞と一致するかどうか、分裂が母細胞の主軸に沿って起きているかといった幾何学的情報を使用します。
+
+When everything was in a single softmax, the 120 pair options drowned the rare division decision and the model produced too many false divisions.  
+すべてを単一のソフトマックス関数に組み込んでいたときは、120通りものペアの選択肢が稀少な分裂決定をかき消してしまい、モデルはあまりにも多くの偽陽性分裂(false divisions)を生成してしまいました。
+
+With the split, the division decision gets its own small head, and the final probability is just p(kind) × p(who | kind).  
+分割を導入したことで、分裂決定は独自の小さなヘッドを獲得し、最終的な確率は単純に $p(	ext{kind}) 	imes p(	ext{who} \mid 	ext{kind})$ となりました。
+
+---
+
+It's kind of complex to follow everything that is going on, so the figure below tries to illustrate it better.  
+起きていることのすべてを追うのは少々複雑なため、下図でより分かりやすく図示することを試みています。
 
 ![Learned linker architecture](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F924ff6702eaf16c18eefcdf17cd4cd1d%2Flinker.png?generation=1790816456944552&alt=media)
 
@@ -998,55 +997,55 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The linker has 3 losses with equal weights.  
-**[JA]** リンカーには、等しい重みを持つ3つの損失関数(Loss)があります。
+The linker has 3 losses with equal weights.  
+リンカーには、等しい重みを持つ3つの損失関数(Loss)があります。
 
-**[EN]** The pair head uses a dual-softmax NLL, like LightGlue.  
-**[JA]** ペアヘッドは、LightGlueと同様のDual-softmax NLL(負の対数尤度)を使用します。
+The pair head uses a dual-softmax NLL, like LightGlue.  
+ペアヘッドは、LightGlueと同様のDual-softmax NLL(負の対数尤度)を使用します。
 
-**[EN]** The fork head uses an NLL over the 137 options of each parent, which trains the kind and who steps together.  
-**[JA]** フォークヘッドは各親の137個の選択肢にわたるNLLを使用し、これにより「kind」ステップと「who」ステップが同時に学習されます。
+The fork head uses an NLL over the 137 options of each parent, which trains the kind and who steps together.  
+フォークヘッドは各親の137個の選択肢にわたるNLLを使用し、これにより「kind」ステップと「who」ステップが同時に学習されます。
 
-**[EN]** The third loss goes the other way, it is also an NLL, where each child has to pick its right parent, or no parent, among all the options that claim it.  
-**[JA]** 3つ目の損失は逆方向に向かうものであり、これも同様にNLLであり、自身を主張するすべての選択肢の中から、各子細胞が正しい親を選ぶか、あるいは「親なし」を選択しなければなりません。
-
----
-
-**[EN]** Training was done for 10 epochs on the augmented GT, with divisions oversampled 8 times.  
-**[JA]** 学習は拡張正解データに対して10エポック行われ、分裂イベントは8倍にオーバーサンプリングされました。
-
-**[EN]** I also use the time-step augmentation, so there is a 25% chance of seeing a (t, t+2) pair.  
-**[JA]** 私はここでもタイムステップ拡張を使用しており、25%の確率で(t, t+2)のペアが出現するようになっています。
+The third loss goes the other way, it is also an NLL, where each child has to pick its right parent, or no parent, among all the options that claim it.  
+3つ目の損失は逆方向に向かうものであり、これも同様にNLLであり、自身を主張するすべての選択肢の中から、各子細胞が正しい親を選ぶか、あるいは「親なし」を選択しなければなりません。
 
 ---
 
-**[EN]** At inference, the 5 fold linkers are averaged, and the links come from a greedy decode, no threshold on the edge scores.  
-**[JA]** 推論時には5フォールドのリンカーが平均化され、エッジスコアに対する固定閾値を用いない貪欲デコード(greedy decode)によってリンクが決定されます。
+Training was done for 10 epochs on the augmented GT, with divisions oversampled 8 times.  
+学習は拡張正解データに対して10エポック行われ、分裂イベントは8倍にオーバーサンプリングされました。
 
-**[EN]** For every parent and every option, the decode computes how much better it is than "no child", log p(option) − log p(no child), and keeps only the ones above 0.  
-**[JA]** すべての親とすべての選択肢について、デコード処理はそれが「子なし」よりもどれだけ優れているか($\log p(	ext{option}) - \log p(	ext{no child})$)を計算し、0を上回るものだけを残します。
+I also use the time-step augmentation, so there is a 25% chance of seeing a (t, t+2) pair.  
+私はここでもタイムステップ拡張を使用しており、25%の確率で(t, t+2)のペアが出現するようになっています。
 
-**[EN]** These are sorted and accepted from the best down, where each parent takes at most one option and each child can only have one parent.  
-**[JA]** これらはソートされ、スコアの最も良いものから順に承認されていきます。その際、各親は最大1つの選択肢しか取れず、各子は親を1つしか持てません。
+---
 
-**[EN]** Children left without a parent start new tracks.  
-**[JA]** 親を持たずに残された子細胞は、新たなトラックを開始します。
+At inference, the 5 fold linkers are averaged, and the links come from a greedy decode, no threshold on the edge scores.  
+推論時には5フォールドのリンカーが平均化され、エッジスコアに対する固定閾値を用いない貪欲デコード(greedy decode)によってリンクが決定されます。
+
+For every parent and every option, the decode computes how much better it is than "no child", log p(option) − log p(no child), and keeps only the ones above 0.  
+すべての親とすべての選択肢について、デコード処理はそれが「子なし」よりもどれだけ優れているか($\log p(	ext{option}) - \log p(	ext{no child})$)を計算し、0を上回るものだけを残します。
+
+These are sorted and accepted from the best down, where each parent takes at most one option and each child can only have one parent.  
+これらはソートされ、スコアの最も良いものから順に承認されていきます。その際、各親は最大1つの選択肢しか取れず、各子は親を1つしか持てません。
+
+Children left without a parent start new tracks.  
+親を持たずに残された子細胞は、新たなトラックを開始します。
 
 ---
 
 # Post Processing
 # 後処理 (Post Processing)
 
-**[EN]** I tried to keep the post-processing as simple as possible.  
-**[JA]** 私は後処理を可能な限りシンプルに保つよう努めました。
+I tried to keep the post-processing as simple as possible.  
+私は後処理を可能な限りシンプルに保つよう努めました。
 
-**[EN]** There is a line-fit smoothing that was shared in the public notebooks, just adjusted to not smooth divisions into their mothers, a division refractory rule that does not allow a newborn daughter to divide again in the next frame (conflicts are resolved from the most confident division down, otherwise a weak early fork could block the real division one frame later), a 1-frame gap closing, and a pruning of tracks shorter than 3 frames.  
-**[JA]** 公開ノートブックで共有されていた線形フィッティング平滑化(分裂を母細胞へと平滑化してしまわないよう調整済み)、生まれたばかりの娘細胞が次のフレームですぐに再分裂することを禁止する分裂不応期ルール(信頼度の高い分裂から優先して競合を解決します。さもないと早い段階の弱い分岐が1フレーム後の真の分裂をブロックしてしまうためです)、1フレームのギャップ補完(gap closing)、そして3フレーム未満の短いトラックの枝刈り(pruning)を採用しました。
+There is a line-fit smoothing that was shared in the public notebooks, just adjusted to not smooth divisions into their mothers, a division refractory rule that does not allow a newborn daughter to divide again in the next frame (conflicts are resolved from the most confident division down, otherwise a weak early fork could block the real division one frame later), a 1-frame gap closing, and a pruning of tracks shorter than 3 frames.  
+公開ノートブックで共有されていた線形フィッティング平滑化(分裂を母細胞へと平滑化してしまわないよう調整済み)、生まれたばかりの娘細胞が次のフレームですぐに再分裂することを禁止する分裂不応期ルール(信頼度の高い分裂から優先して競合を解決します。さもないと早い段階の弱い分岐が1フレーム後の真の分裂をブロックしてしまうためです)、1フレームのギャップ補完(gap closing)、そして3フレーム未満の短いトラックの枝刈り(pruning)を採用しました。
 
 ---
 
-**[EN]** The final 5-fold CV of the full pipeline (detector + Soon Net + linker, greedy decode) is shown below.  
-**[JA]** フルパイプライン(検出器 ＋ Soon Net ＋ リンカー、貪欲デコード)の最終的な5-fold CVを以下に示します。
+The final 5-fold CV of the full pipeline (detector + Soon Net + linker, greedy decode) is shown below.  
+フルパイプライン(検出器 ＋ Soon Net ＋ リンカー、貪欲デコード)の最終的な5-fold CVを以下に示します。
 
 ---
 
@@ -1070,16 +1069,16 @@ output: torch.Tensor(5次元テンソル) = conv(x)
 
 ---
 
-**[EN]** The final score is 0.976 on the public LB and 0.977 on the private LB.  
-**[JA]** 最終スコアは、パブリックLBで0.976、プライベートLBで0.977でした。
+The final score is 0.976 on the public LB and 0.977 on the private LB.  
+最終スコアは、パブリックLBで0.976、プライベートLBで0.977でした。
 
 ---
 
 ## Code
 ## コード
 
-**[EN]** To be released  
-**[JA]** 近日公開予定
+To be released  
+近日公開予定
 
 ---
 
