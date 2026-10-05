@@ -1,4 +1,4 @@
-# 全文ブラッシュアップ版 (対訳)
+# 2nd Place Solution<br/><font size="4" style="font-style: italic;">From Microscopy to Lineage Graphs</font>
 
 First, I would like to thank the organizers and hosts for creating an opportunity to compete and, more importantly, to learn.  
 まず、競い合い、そして何より深く学ぶ機会を提供してくださった主催者と運営の皆様に感謝申し上げます。
@@ -48,6 +48,8 @@ A faint point may be unconvincing in one frame but useful when it persists along
 
 The final recovery stage revisited unused detections and checked the original images, restoring supported paths without another detector pass.  
 最終的な復元(リカバリー)段階では、過去の判定で使われなかった検出候補を再走査し、元画像と照合することで、検出器を再実行することなく確証のあるパスを復元しました。
+
+![](201_1_alt.png)
 
 The V numbers are internal experiment labels.  
 「V〜」という番号は実験管理用の内部ラベルです。
@@ -370,6 +372,8 @@ They show training-movie crops with saved validation predictions.
 Yellow crosses mark annotated centers, orange circles show V507 centers, and blue circles show V533 centers.  
 黄色の十字は正解アノテーション、オレンジの円はV507の予測中心、青の円はV533の予測中心を示しています。
 
+![](202_2.png)
+
 Figure 1. Movie 44b6_5f15d135, frame 73.  
 図1. 動画 44b6_5f15d135、フレーム 73。
 
@@ -384,6 +388,8 @@ V533 adds a prediction 0.91 μm away using a candidate still available in the de
 
 Distances are measured in 3D.  
 なお、距離はすべて3次元空間上で計測されています。
+
+![](203_3.png)
 
 Figure 2. Movie 6bba_57b7cc1e, frames 45–47.  
 図2. 動画 6bba_57b7cc1e、フレーム 45〜47。
@@ -442,6 +448,8 @@ Raw edge Jaccard also improved, so the gain was not solely due to the cell-count
 
 The ablation separates faint-track recovery, labeled “add-back” below, from border trimming and their combination.  
 アブレーション分析では、以下で「add-back(再追加)」と表記されている「微弱トラック復元」と、「境界トリミング」、およびその併用効果を分解して検証しています。
+
+![](204_4.png)
 
 Figure 3. Changes relative to V507.  
 図3. V507を基準とした変化量。
@@ -585,6 +593,8 @@ acq_01は評価全体のエッジ重みとしては32.6%に過ぎないにもか
 
 The examples below show annotations still unmatched after recovery.  
 以下の図4は、復元処理を経てもなお検出できなかったアノテーションの具体例です。
+
+![](205_5.png)
 
 Figure 4.  
 図4。
