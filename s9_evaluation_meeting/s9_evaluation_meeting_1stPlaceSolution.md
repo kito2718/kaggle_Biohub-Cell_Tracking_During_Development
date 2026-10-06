@@ -689,9 +689,9 @@ Transformerの前に小型CNNをトークナイザーとして使用するとい
 The EVA [11] blocks also come from Primus, and here I have to be honest, I used them just because they did, there was no proper ablation against plain transformer blocks.  
 EVA[11]ブロックもPrimusに由来していますが、ここで正直に告白すると、彼らが使っていたからという理由だけで採用したに過ぎず、プレーンなTransformerブロックとの厳密なアブレーション実験(比較検証)は行っていません。
 
-![Soon Net architecture](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F3af8b495e801e29a98e53116ffe14c9b%2Fsoon_net.png?generation=1790816031116397&alt=media)
+![Soon Net architecture](004_soon_net.png)
 
-> ### [図: Soon Net アーキテクチャ (Soon Net architecture) の欄外和訳]
+> ### [図: Soon Net アーキテクチャ (Soon Net architecture) の和訳]
 > - **Input Crops (3 frames)**: $t-1, t, t+1$ の各時点におけるサイズ 16×64×64 の局所3Dボリューム
 > - **Small CNN Tokenizer (236K params)**:
 >   - 3D Conv層を重ねて特徴マップを抽出・トークン化
@@ -723,7 +723,7 @@ I also use a kind of time-step augmentation for interphase cells, frame t-1 is s
 The examples below query a cell and move the FOV around it, and as can be seen, the occupancy maps and class probabilities stay consistent.  
 以下の例では、1つの細胞をクエリしながらその周囲でFOV(視野)を動かしていますが、ご覧の通り、占有マップとクラス確率は一貫性を保ち続けています。
 
-![Soon Net outputs](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F2221915%2F61d1182625f817a8a1c291cef2089689%2Fsoon_camera_k1.gif?generation=1790816056993625&alt=media)
+![Soon Net outputs](005_soon_camera_k1.gif)
 
 > ### [図: Soon Net 出力GIF (Soon Net outputs GIF) の欄外和訳]
 > - **Camera Motion (FOV Jitter)**: クロップのカメラ視野を中心から大きく揺らして動かしている様子
