@@ -1,6 +1,7 @@
 # 2nd Place Solution<br/><font size="4" style="font-style: italic;">From Microscopy to Lineage Graphs</font>
+url: https://www.kaggle.com/competitions/biohub-cell-tracking-during-development/writeups/2nd-place-solution
+notebook: https://www.kaggle.com/code/soheilayati/biohub-2nd-place-notebook
 
-https://www.kaggle.com/competitions/biohub-cell-tracking-during-development/writeups/2nd-place-solution
 
 First, I would like to thank the organizers and hosts for creating an opportunity to compete and, more importantly, to learn.  
 まず、競い合い、そして何より深く学ぶ機会を提供してくださった主催者と運営の皆様に感謝申し上げます。
