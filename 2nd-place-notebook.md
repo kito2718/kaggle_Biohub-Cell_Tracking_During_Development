@@ -367,18 +367,18 @@ sequenceDiagram
 
 ---
 
-
-- 時系列スタックの作成（ステップ 2〜3）:
-指定したバッチの時刻 ts に対して、前後1フレームを含む時系列ボリューム（3フレーム分）を GPU に転送します。
-- 通常推論と回転推論の並行実行（ステップ 5〜7）:
-同じバッチ x に対して、通常画像と 180度回転画像（torch.flip）の両方をモデルに入力します。
-回転側の予測を元の向きに戻して通常側と足し合わせ、回転アンサンブルヒートマップ（rotated_heat）を計算します。
-- 2系統の候補テーブル化（ステップ 12〜15）:
-_append_rows() を 2回呼び出し、
-通常ヒートマップから抽出した候補（c21_count）
-回転TTAヒートマップから抽出した候補（c21） を同時に生成します。
-- 一括返却（ステップ 16〜17）:
-c21_count、c21、および途切れた軌跡の接続に使う運動ベクトル場 original_flow の 3点をまとめて呼び出し元に返します。
+- 時系列スタックの作成（ステップ2〜3）:
+指定したバッチの時刻 ts に対して、前後1フレームを含む時系列ボリューム（3フレーム分）を GPU に転送、入力テンソル x を構築。
+- 通常推論と回転推論の累積加算（ステップ4〜12）:
+同じバッチ x に対して、通常画像と 180度回転画像(torch.flip)の両方をモデルに入力。
+得られた出力から、通常ヒートマップ(heat)、元画像と回転画像をTTA平均化したヒートマップ(rotated_heat)、移動ベクトル(flow)、不確実性(flow_logvar)、サブボクセルオフセット(offset)、および細胞識別特徴量(features)をそれぞれ取り出してモデル間で累積加算(+=)。
+- モデルアンサンブルの平均化(ステップ 13〜18):
+累積加算した各テンソルをモデル数 $k$ で除算し、モデル間のアンサンブル平均値を算出。
+- 2系統の候補テーブル化(ステップ 19〜28):
+zip(rows, (heat, rotated_heat)) により _append_rows() を2回呼び出す。
+内部ではピーク検出・座標補正・細胞識別特徴量(48次元)のサンプリング等(ステップ 20〜25)を行い、通常ヒートマップ由来の候補(c21_count 相当: ステップ 26)と、回転TTAヒートマップ由来の候補(c21 相当: ステップ 27〜28)の2系統の DataFrame を同時に生成する。
+- 一括返却(ステップ 29):
+c21_count、c21、および途切れた軌跡の接続に使う運動ベクトル original_flow の3点をまとめて呼び出し元に返却。
 
 ```mermaid
 sequenceDiagram
@@ -397,39 +397,64 @@ sequenceDiagram
         Stacks-->>Func: 前後フレームを重ねた3D入力テンソル(x[8, 3, 64, 64, 64])
 
         loop 各モデルごとの推論 (for model in models)
-            Note over Func,GPU: 1. 通常と180度回転の2通りで推論
+            Note over Func,GPU: 1. 通常と180度回転の2通りで推論<br/>with torch.autocast("cuda", dtype=amp_dtype,enabled=amp_dtype is not None and device.type == "cuda"):の効果(自動混合精度を有効)範囲内。
             Func->>GPU: original = model(x)
             Func->>GPU: rotated = model(torch.flip(x, dims=(-2, -1)))
             GPU-->>Func: 各モデルの出力辞書 (heatmap, flow, offset, features)
 
-            Note over Func: 戻り値計算
-            Func->>Func: 2. ヒートマップの抽出と回転TTA計算
-            Func->>Func: h: 通常ヒートマップ(sigmoid※)
-            Note over Func: ・rh: 180度回転を逆回転させて平均したTTAヒートマップ<br/>・flow, offset, features を累積加算
+            Note over Func: 2. 戻り値整形
+            Func->>Func: 戻り値1(heat)の累積加算: 通常ヒートマップの正規化(0-1: from sigmoid())
+            Func->>Func: 戻り値2(rotated_heat)※の累積加算:回転ヒートマップではなく、「元画像と回転画像をTTAアンサンブル(平均化)したヒートマップ」 が格納される。
+            Func->>Func: 戻り値3(flow)の累積加算
+            Func->>Func: 戻り値4(flow_logvar)の累積加算
+            Func->>Func: 戻り値5(offset)の累積加算
+            Func->>Func: 戻り値6(features)の累積加算
+            Note over Func: heat:(8, Z, Y, X):通常ヒートマップ。<br/> rotated_heat:(8, Z, Y, X):元画像と回転画像をTTAアンサンブル(平均化)したヒートマップ。<br/>flow:(8, 3, Z, Y, X):前後のフレーム間で細胞が移動する「3次元移動量ベクトル(dz, dy, dx)」単位は[μm]。<br/>flow_logvar:(8, Z, Y, X):動きの不確実性(分散の対数)<br/>offset:(8, 3, Z, Y, X):3次元ベクトル(Z, Y, X)方向の移動量・微小ズレ<br/>features:(8, n_emb, Z, Y, X):細胞識別特徴量(n_embは48チャンネル)
         end
 
-        Note over Func: 3. モデル数 k で除算してアンサンブル平均化<br/>heat = heat / k, rotated_heat = rotated_heat / k<br/>flow = flow / k, offset = offset / k など
+        Note over Func: 3. モデル数 k=5 で除算してアンサンブル平均化
+        Func->>Func: 戻り値1(heat)の累積加算 / k
+        Func->>Func: 戻り値2(rotated_heat)の累積加算 / k
+        Func->>Func: 戻り値3(flow)の累積加算 / k
+        Func->>Func: 戻り値4(flow_logvar)の累積加算 / k
+        Func->>Func: 戻り値5(offset)の累積加算 / k
+        Func->>Func: 戻り値6(features)の累積加算 / k
 
         opt return_flow == True
             Note over Func: flow_batches に flow を退避
         end
 
         Note over Func,Append: 4. ピーク検出と候補抽出 (2系列)
-        Func->>Append: _append_rows(heat, ...)  # オリジナルヒートマップから
-        Append-->>Func: rows[0] に候補追加 (後の c21_count)
-
-        Func->>Append: _append_rows(rotated_heat, ...)  # 回転TTAヒートマップから
-        Append-->>Func: rows[1] に候補追加 (後の c21)
+        Func->>Append: _append_rows(heat, ...)<br/> 「1行＝1個の細胞」とした検出テーブル(DataFrame)を生成
+        Append->>Append: ステップ1：細胞中心のピーク検出(L16〜23)
+        Append->>Append: ステップ2：座標の精密補正(サブボクセル化)(29〜32)
+        Append->>Append: ステップ3：動きベクトルと不確実性(標準偏差)の取得(L26〜27)
+        Append->>Append: ステップ4：周囲の環境・幾何特徴の算出(L34〜38)
+        Append->>Append: ステップ5：ピーク位置のボクセルから、48次元の 細胞識別特徴量(Embedding) を抜き出し(L43〜45)
+        Append->>Append: ステップ6：DataFrame化(L47〜64)
+        Note over Append: t, z, y, x ... 時間と精密化された3次元空間座標<br/>score, rank_in_frame	... 確信度スコアと、そのフレーム内での順位<br/>flow_z, flow_y, flow_x ... 次のフレームへの移動量予測ベクトル（$\mu\text{m}$）<br/>flow_sigma_um ... 動き予測の不確実性（標準偏差）<br/>near_um, density_10um ... 周囲の混雑度・最寄りの細胞距離<br/>peak_width_um, boundary_um	... 細胞サイズ・視野境界までの距離<br/>emb_0 〜 emb_47 ... 細胞識別特徴量(48次元ベクトル)
+        Append-->>Func: rows[0] に候補追加(後の c21_count)
+        Func->>Append: _append_rows(rotated_heat, ...)
+        Append-->>Func: rows[1] に候補追加(後の c21)
     end
-
-    Note over Func: 5. 各バッチの行を結合して DataFrame 化<br/>・banks[0]: c21_count (回転なし)<br/>・banks[1]: c21 (回転TTA適用・メイン)<br/>・flow_tensor: 全バッチの flow を結合
-
     Func-->>Caller: (c21_count, c21, original_flow) を返却
     deactivate Func
 
 ```
 
-※sigmoid ... シグモイド関数(活性化関数)は、勾配消失問題があるが、それは学習時かつ中間層で使用する時に表面化する。今回は推論時かつ最終層で使用するだけなので勾配計算が発生せず問題ない。
+※**sigmoid** ... シグモイド関数(活性化関数)は、勾配消失問題があるが、それは学習時かつ中間層で使用する時に表面化する。今回は推論時かつ最終層で使用するだけなので勾配計算が発生せず問題ない。
+※**戻り値2(rotated_heat)の算出** ...
+  &emsp;・probability = 0.5 * (torch.sigmoid(original["heatmap"].float()) + torch.flip(torch.sigmoid(rotated["heatmap"].float()), dims=(-2, -1)))
+  &emsp;&emsp;→ 元画像と回転画像をシグモイド化 → TTAアンサンブル(平均化)する。
+  &emsp;・averaged_logit = torch.logit(probability.clamp(1e-6, 1.-1e-6))
+  &emsp;&emsp;→ 確率($0 \sim 1$)を、元のモデル出力と同じ形式である Logit(未正規化スコア：$-\infty \sim +\infty$)に逆変換。Logit(ロジット)関数は、シグモイド関数の逆関数で、数式は以下の通り：
+    $$\text{logit}(p) = \log\left(\frac{p}{1 - p}\right)$$
+  &emsp;&emsp;もし確率 $p$ が完全に 0.0 や 1.0 になると：
+  &emsp;&emsp;&emsp;$p = 0 \implies \log(0) \to -\infty$
+  &emsp;&emsp;&emsp;$p = 1 \implies \frac{1}{0} \to +\infty$（ゼロ除算）
+  &emsp;&emsp;となり、オーバーフローや数値計算エラー(NaN や Inf)が発生するため、確率値を $0.000001 \sim 0.999999$ の範囲に強制的に収める(クリッピングする)処理をしている。
+  &emsp;・rh = torch.sigmoid(averaged_logit[:, 0].float()).cpu().numpy()
+  &emsp;&emsp;→ averaged_logitをシグモイド化。sigmoid化 → logitで戻し → またsigmoid化してこの流れは無駄になってる。
 
 ---
 
