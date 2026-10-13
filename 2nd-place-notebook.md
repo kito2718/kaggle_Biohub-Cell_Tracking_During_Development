@@ -365,8 +365,6 @@ sequenceDiagram
 &emsp;&emsp;・引数6 return_flow=True: 真偽値フラグ。モデルが出力する 「細胞の移動ベクトル(flow: 前フレームへの動きの向きと大きさ)」を戻り値に含めるかどうか。True に設定することで、
 &emsp;&emsp;&emsp;関数の3番目の戻り値として original_flowを受け取る。このベクトルは、後段で「途切れた細胞の軌跡を繋ぐ(Gap closure)」際に、細胞がどこから移動してきたかを辿るために再利用する。
 
----
-
 - 時系列スタックの作成（ステップ2〜3）:
 指定したバッチの時刻 ts に対して、前後1フレームを含む時系列ボリューム（3フレーム分）を GPU に転送、入力テンソル x を構築。
 - 通常推論と回転推論の累積加算（ステップ4〜12）:
@@ -455,6 +453,93 @@ sequenceDiagram
   &emsp;&emsp;となり、オーバーフローや数値計算エラー(NaN や Inf)が発生するため、確率値を $0.000001 \sim 0.999999$ の範囲に強制的に収める(クリッピングする)処理をしている。
   &emsp;・rh = torch.sigmoid(averaged_logit[:, 0].float()).cpu().numpy()
   &emsp;&emsp;→ averaged_logitをシグモイド化。sigmoid化 → logitで戻し → またsigmoid化してこの流れは無駄になってる。
+
+### 5.3 retain_original_peaks()のシーケンス
+**概要**: TTA平均化で取りこぼしてしまった細胞を、元画像の候補から3次元空間上で探し出して“救済・合流”させる。3次元の空間幾何計算(KD-Tree)や重複排除(NMS)を使用。
+
+**引数**:
+| **引数名** | **データ型** | **中身（中身の正体）** | 
+|---|---|---|
+| c21 | DataFrame | 「TTA回転アンサンブル」で平均化したヒートマップから検出した細胞候補テーブル(ノイズが少なしメインとなるベース) | 
+| c21_count | DataFrame | 「元画像単体(TTAなし)」のヒートマップから検出した細胞候補テーブル(TTAで消えてしまった細胞をここから探して救済する) | 
+
+**処理概要**:
+- 空き枠の確認(ステップ 4): 1フレームあたりの上限枠(デフォルト3000件)に対して、TTA版(c21)の検出数に余裕があるか確認します。
+- KD-Tree による重複判定(ステップ 5〜8): 元画像側(c21_count)の候補のうち、TTA側の既存細胞から $3.0\ \mu\text{m}$ より離れているものだけ を「見逃し細胞」として抽出します。
+- NMS 間引き(ステップ 9〜11): 救済候補同士が近すぎる場合に共倒れしないよう NMS をかけ、空き枠数(slots)の分だけスコア上位を採用します。
+- コンテキスト再計算(ステップ 14〜16): 細胞が追加されて周囲の配置が変わるため、最寄り細胞距離(near_um)や混雑度(density_10um)を再計算して整合性を保ちます。
+- 返却(ステップ 20): 合成・救済された最終テーブル(result $\to$ 次の c21)と、何件救済されたかを記録した監査辞書(peak_retention_audit)を返します。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as 呼び出し元<br/>(2nd-place-notebook.py)
+    participant Func as retain_original_peaks()<br/>(heat_peak_retention.py)
+    participant KDTree as cKDTree<br/>(3次元空間インデックス)
+    participant NMS as select_frame()<br/>(NMS重複排除)
+    participant NMSSub as NMS重複排除本体
+    participant Feat as _neighbour_features()<br/>(近傍特徴量の再計算)
+
+    Caller->>Func: retain_original_peaks(c21, c21_count)
+    activate Func
+
+    Note over Func: 入力バリデーション(カラム一致・非空チェック)
+
+    loop 各フレームごとの処理 (for t in sorted_times)
+        Note over Func: 当該時刻 t の候補インデックス(s)を取得<br/>hi: c21側(TTA), oi: c21_count側(Original)
+        Func->>Func: 空き枠の確認: slots = TOP_K_PER_FRAME - len(hi)
+
+        alt slots > 0 かつ len(oi) > 0 (空き枠があり、元画像候補が存在)
+            Note over Func,KDTree: 1. 空間的重複の判定(3.0μmチェック)
+            Func->>KDTree: cKDTree(c21の3D実座標 * SCALE_ARR[1.625, 0.40625, 0.40625])
+            Func->>KDTree: query(c21_countの3D実座標 * SCALE_ARR)
+            KDTree-->>Func: 最寄りのc21細胞までの距離 (distance)
+            Func->>Func: distance > 3.0μm の候補のみ抽出 (available)
+
+            opt available な候補が存在する場合
+                Note over Func,NMS: 2. 救済候補内のNMSとスロット割当
+                Func->>NMS: select_frame(座標, スコア, MATCH_UM=3.0)
+                NMS->>NMS: idx = np.arange(len(zyx), スコア, 3μm)
+                NMS->>NMSSub: nms(zyx[idx]*SCALE_ARR,scores[idx],3μm)
+                NMSSub->>NMSSub: aaa
+                NMS-->>Func: 近接重複を除去した上位インデックス (keep)
+                Func->>Func: 空き枠分を採用: selected = oi[available[keep]][:slots]
+            end
+        end
+
+        alt selected が存在する場合 (救済セルがある)
+            Note over Func: 3. テーブル結合とソート
+            Func->>Func: pd.concat([c21の行, 救済されたc21_countの行])
+            Func->>Func: score の降順で安定ソート (sort_values)
+
+            Note over Func,Feat: 4. 周囲環境特徴量の再計算
+            Func->>Feat: _neighbour_features(全セルの3D座標, スコア)
+            Feat-->>Func: 更新された near_um, density_10um
+            Func->>Func: rank_in_frame を 0..N-1 で再採番
+
+            Note over Func: 5. 座標・特徴量フィールドの非改変チェック
+            Func->>Func: assert(元の座標やemb_0..47が破壊されていないこと)
+            Func->>Func: pieces に合成フレームを追加
+        else selected が空の場合 (救済セルなし)
+            Func->>Func: pieces に c21 の行をそのまま追加
+        end
+    end
+
+    Note over Func: 6. 全フレームの結合と最終監査
+    Func->>Func: result = pd.concat(pieces, ignore_index=True)
+    Func->>Func: 総行数の整合性検証 (len(result) == len(c21) + len(additions))
+
+    Func-->>Caller: (result, peak_retention_audit) を返却
+    deactivate Func
+```
+
+- **配列とスカラーの比較(NumPyのブロードキャスト)** ... NumPyは、1次元配列とスカラーを == で比較すると、ブロードキャスト機能によって配列の全要素に対してスカラー t との一致判定が自動的に行われます。
+    ```python
+    heat_times = np.array([0, 0, 1, 2, 1])
+    t = 1  # スカラー値
+    print(heat_times == t)
+    # 出力: array([False, False, True, False, True])
+    ```
 
 ---
 
