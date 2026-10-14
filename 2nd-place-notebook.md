@@ -501,7 +501,7 @@ sequenceDiagram
                 Func->>NMS: select_frame(座標, スコア, MATCH_UM=3.0)
                 NMS->>NMS: idx = np.arange(len(zyx), スコア, 3μm)
                 NMS->>NMSSub: nms(zyx[idx]*SCALE_ARR,scores[idx],3μm)
-                NMSSub->>NMSSub: aaa
+                NMSSub-->>NMS: 一番スコアの高いピークのidxを採用してその近傍を消す
                 NMS-->>Func: 近接重複を除去した上位インデックス (keep)
                 Func->>Func: 空き枠分を採用: selected = oi[available[keep]][:slots]
             end
@@ -510,7 +510,7 @@ sequenceDiagram
         alt selected が存在する場合 (救済セルがある)
             Note over Func: 3. テーブル結合とソート
             Func->>Func: pd.concat([c21の行, 救済されたc21_countの行])
-            Func->>Func: score の降順で安定ソート (sort_values)
+            Func->>Func: score の降順でソート (sort_values)
 
             Note over Func,Feat: 4. 周囲環境特徴量の再計算
             Func->>Feat: _neighbour_features(全セルの3D座標, スコア)
