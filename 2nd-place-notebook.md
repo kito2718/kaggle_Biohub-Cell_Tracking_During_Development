@@ -514,7 +514,10 @@ sequenceDiagram
 
             Note over Func,Feat: 4. 周囲環境特徴量の再計算
             Func->>Feat: _neighbour_features(全セルの3D座標, スコア)
-            Feat-->>Func: 更新された near_um, density_10um
+            Feat->>Feat: cKDTree(全セルの3D座標).query_ball_point(全セルの3D座標, 10μm)<br>各細胞を中心とする「半径 10μm の球」の中に入っている細胞の数を一括カウント<br/>そのまま数えると**「自分自身」も1個としてカウントされてしまう**ため、- 1 する。
+            Feat->>Feat: cKDTree(全セルの3D座標).query(全セルの3D座標, k=min(8, n))<br>各細胞から距離が近い順に最大8個、その距離 d と相手の番号 j を取得。
+            Feat->>Feat: Loop<br/>最近傍距離 near_um の計算
+            Feat-->>Func: 更新された near_um, density_10um<br/>幾何学的な環境特徴量(混雑度と最近傍距離)を返却
             Func->>Func: rank_in_frame を 0..N-1 で再採番
 
             Note over Func: 5. 座標・特徴量フィールドの非改変チェック
