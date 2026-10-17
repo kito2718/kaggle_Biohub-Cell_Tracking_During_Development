@@ -239,6 +239,7 @@ sequenceDiagram
 - **detect_original_and_rotation()** ... メインの細胞検出器(V21モデル群)を実行する際に、「通常画像」と「180度回転させた画像（TTA）」の2通りで推論を行い、2種類の候補テーブルを同時に生成する関数。
 
 ```mermaid
+%%{init: {"sequence": {"noteAlign": "left"}}}%%
 sequenceDiagram
     autonumber
     actor Script as Main Script
@@ -248,29 +249,63 @@ sequenceDiagram
     participant DetectRot as detect_original_and_rotation()
     participant PeakRet as retain_original_peaks()
     participant Scaffold as specialist_scaffold()
-    participant DetectBank as detect() (detect_bank)
+    participant DetectBank as detect_bank()→detect()
     participant RunChain as run_chain() (track_dataset_learned_v8)
 
     Script->>VolZarr: volumes_from_zarr(path)
     VolZarr-->>Script: shared_volumes
+    Note over Script: shared_volumes:np.ndarray[shape=(100,Z,Y,X)]<br/>生データ→正規化→ダウンサンプリング(1:4:4のブロック平均→float16化)
 
     Script->>Quantiles: image_quantiles(path)
     Quantiles-->>Script: shared_quantiles
+    Note over Script: shared_quantiles:主催者提供の分位点データ(明暗,コントラスト高低の判断基準)
 
     Script->>Cluster: v394.acquisition_cluster(path, router)
     Cluster-->>Script: v394_cluster
+    Note over Script: v394_cluster:Dataset単位で、acq_00,acq_01にクラス分け
 
     Script->>DetectRot: detect_original_and_rotation(V21_MODELS, shared_volumes)
     DetectRot-->>Script: c21_count, c21, original_flow
+    Note over Script: 検出本体(t-1,t,t+1)。<br/>c21_count:DataFrame...正面Heatmap※<br/>c21:DataFrame...正面/回転TTAアンサンブルHeatmap※<br/>original_flow:np.ndarray(shape=[100,3,Z,Y,X,float32])...Dataframe毎のFlowベクトル
 
     Script->>PeakRet: retain_original_peaks(c21, c21_count)
-    PeakRet-->>Script: c21 (ピーク保持)
+    PeakRet-->>Script: c21, peak_retention_audit
+    Note over Script: 正面/回転TTAアンサンブル(前処理)で消した正面検出(c21_count)を救済する処理<br/>c21:DataFrame...元c21+救済後の検出結果<br/>peak_retention_audit:dict...救済件数などの監査情報※
 
-    Script->>Scaffold: specialist_scaffold(shared_volumes, c21, ...)
-    Scaffold-->>Script: c21, v343_union
+    rect rgb(240, 240, 260)
+    %% 動画ごとの細胞密度に合わせて、探索・保持する細胞候補の上限枠(キャパシティ)を自動調整している
+    Script-->>Script: specialist_features = features_from(path.stem, shared_quantiles, c21_count)
+    Note over Script: Dataset(=1動画)の特徴量を集計<br/>specialist_features: dict...Dataset(=1動画)の特徴量
 
-    Script->>DetectBank: detect(V24 / Stage6 / V39 / V38, shared_volumes)
-    DetectBank-->>Script: c24, c_stage6, c39, c38
+    Script-->>Script: specialist_per_frame = float(COUNT_MODEL.predict_per_frame(specialist_features)[0])
+    Note over Script: 1フレームあたりの細胞数(予測)を取得
+
+    Script-->>Script: specialist_budget = max(1, int(round(specialist_per_frame * BUDGET_MULT)))
+    Note over Script: 上限細胞数(budget)の算出
+
+    Script-->>Script: specialist_cap = max(1, int(round(specialist_budget * SUPERSET_MULT)))
+    Note over Script: 細胞数の上限キャパの算出(約2倍)
+    end
+
+    Script->>Scaffold: specialist_scaffold(shared_volumes, c21, V343_DIM_MODEL, V343_CELL_MODEL, specialist_cap, max_rank_shift=150, dim_region_threshold=None)
+    Scaffold-->>Script: c21, v343_union, dim_specialist_audit,  
+    Note over Script: 前処理で抽出した検出細胞群(c21)から、“暗いけど細胞の可能性のあるもの”を専門モデルで発掘し、トラックが途切れないための『足場候補』として候補リストに安全に追加・合流させる処理。<br/>scaffoldは足場という意味。specialistは特化したという意味。
+
+    Note over Script, RunChain: c21完成, c24, c_stage6, c39, c38を順次生成
+
+    Script->>DetectBank: detect(V24, shared_volumes)
+    DetectBank-->>Script: c24
+
+    Script->>DetectBank: detect(Stage6, shared_volumes)
+    DetectBank-->>Script: c_stage6
+
+    Script->>DetectBank: detect(V39, shared_volumes)
+    DetectBank-->>Script: c39
+
+    Script->>DetectBank: detect(V38, shared_volumes)
+    DetectBank-->>Script: c38
+
+    Note over Script, RunChain: c21完成, c24, c_stage6, c39, c38を順次生成
 
     par 5系統の並列トラッキング (ThreadPoolExecutor: 3 workers)
         Script->>RunChain: run_chain('v21_track', candidate_override=c21, ...)
@@ -288,7 +323,46 @@ sequenceDiagram
         Script->>RunChain: run_chain('v38_track', candidate_override=c38)
         RunChain-->>Script: v38
     end
+
+    Note over Script, RunChain: 処理A完了<br/>output: c21,  c24,  c_stage6,  c39,  c38
 ```
+
+### ※c21_count:DataFrame(正面Heatmap)、c21:DataFrame(正面/回転TTAアンサンブルHeatmap)の列説明
+|No|列名|説明|
+|---|---|---|
+|1|t|フレーム番号|
+|2,3,4|z,y,x|検出中心座標(voxel)|
+|5|score|検出信頼度(Heatmapピーク値)|
+|6|rank_in_frame|同フレーム内scoreの順位|
+|7,8,9|flow_z,y,x|次フレームへの移動量(Flow予測)|
+|10|flow_sigma_um|当該Flow誤差の標準偏差σ[μm]（大:自信なし,小:自信あり）|
+|11|near_um|最も近い近傍細胞までの距離(μm)|
+|12|density_10um|半径10μm以内の局所細胞密度|
+|13|peek_with_um|Heatmapピーク幅(μm)|
+|14|boundary_um|画像の境界までの距離(μm)|
+|15|emb_0～emb_47|Cell Embedding特徴量(48次元)。ReID、tracking,細胞リンク判定に使用する特徴ベクトル|
+
+### ※peak_retention_audit:dict...救済件数などの監査情報の列説明
+|No|列名|説明|
+|---|---|---|
+|1|heat_rows|元々のx21行数|
+|2|recovered_original_rows|救済した行数|
+|3|rows|最終行数|
+|4|heat_fields_preserved|c21情報が改変されてないことの確認|
+|5|original_fields_preserved|c21_count情報が改変されてないことの確認|
+|6|maximum_frame_rows|frame毎の最大検出数|
+
+### ※specialist_features: dict...Dataset(=1動画)分の特徴量のキー説明
+NMS ... Non-Maximum Suppression(非極大値抑制)。密集した重複予測の中から「最もスコアが高い代表点だけを残し、周囲の重複した候補を間引く」 アルゴリズム。
+|No|列名|説明|
+|---|---|---|
+|1,2|dataset, embryo|メタデータ|
+|3,4,5|nms3.5_per_frame, nms5.0_per_frame, nms7.0_per_frame|NMS後候補数/フレーム|
+|6,7,8|nms3.5_strong_per_frame, nms5.0_strong_per_frame, nms7.0_strong_per_frame|NMS後高スコア候補数/フレーム|
+|9|pool_per_frame|全候補数/フレーム|
+|10,11,12,13|score_p10, score_p50, score_p90, score_p99|スコア分位点|
+|14,15,12,17,18,19,20,21|imq_0.0, imq_0.001, imq_0.01, imq_0.1, imq_0.9, imq_0.99, imq_0.999, imq_1.0|画像分位点統計量|
+|22|n_frames|フレーム数|
 
 ### 5.1 v394.acquisition_cluster()のシーケンス
 
@@ -543,6 +617,131 @@ sequenceDiagram
     print(heat_times == t)
     # 出力: array([False, False, True, False, True])
     ```
+
+### 5.4 specialist_scaffold()でやっていること
+**概要**: c21(検出済全細胞群)の低スコア候補から、“暗いけど細胞として確か”を専用モデルで発掘(救済)し、トラックが途切れないための『足場候補』として候補リストに安全に追加・合流させる。
+※専用モデルの作り方は、v343_models\full.json にレシピあり。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as 呼び出し元 (notebook)
+    participant SS as specialist_scaffold()
+    participant FC as raw_flow_chain_state()
+    participant IF as candidate_image_features()
+    participant MF as candidate_model_features()
+    participant DM as dim_model.predict()
+    participant CM as cell_model.predict()
+    participant BS as bounded_selection_score()
+    participant DU as dim_union_superset()
+
+    Caller->>+SS: specialist_scaffold(volume, candidate, cap, ...)
+    
+    rect rgb(240, 245, 255)
+        Note over SS, MF: 1. 特徴量抽出
+        SS->>+FC: raw_flow_chain_state(candidate)
+        FC-->>-SS: state (Flow残差・追従性)
+        SS->>+IF: candidate_image_features(volume, candidate)
+        IF-->>-SS: image (周辺輝度特徴)
+        SS->>+MF: candidate_model_features(candidate, state, image)
+        MF-->>-SS: features (統合特徴量)
+    end
+
+    rect rgb(245, 255, 245)
+        Note over SS, CM: 2. 専用モデルによる予測
+        SS->>+DM: predict(features)
+        DM-->>-SS: dim_probability (暗い領域確率)
+        SS->>+CM: predict(features)
+        CM-->>-SS: cell_probability (細胞確率)
+    end
+
+    rect rgb(255, 250, 240)
+        Note over SS, BS: 3. スコア計算(暗い細胞のリランキング)
+        SS->>+BS: bounded_selection_score(candidate, dim_weight, cell_prob, ...)
+        BS-->>-SS: selection_score (暗い細胞を加味したスコア)
+    end
+
+    rect rgb(255, 245, 255)
+        Note over SS, DU: 4. 候補の選別と重複排除(足場の合体)
+        SS->>+DU: dim_union_superset(out(=c21), cap)
+        Note over DU: ・control (元の通常上位候補) 抽出<br/>・treatment (専門スコア上位) 抽出<br/>・差分から重複排除 (NMS) して added 決定<br/>・union = concatenate([control, added])
+        DU-->>-SS: control, replacement, added, union
+    end
+
+    Note over SS: 5. 安全装置の適用<br/>out(=c21).loc[added, "solver_selection_score"] = -1.0e6
+
+    SS-->>-Caller: out(=c21), union(v343_union), audit
+```
+
+
+**処理概要**:
+- ① 画像と時系列の局所特徴を抽出
+    各候補点について、3Dボリューム画像から「局所的な明るさ・コントラスト」を取得し、さらに前後のフレームの動きベクトル(Flow)から「前後の点とどの程度きれいに追従しているか(残差)」を計算します。
+
+- ② 2つの専用LightGBMで評価
+    V343_DIM_MODEL: 「ここは暗い細胞が存在しやすい領域か？」を判定。
+    V343_CELL_MODEL: 「ノイズではなく本物の細胞らしい特徴を持っているか？」を判定。
+
+- ③ 通常の候補と「暗い細胞」を合体（Union）
+    c21はそのまま、専用モデルによって高く評価された「暗い細胞候補」の中から、既存候補と被っていない(一定距離以上離れている)ものを追加候補(Added)として抽出→候補プール(v343_union)に追加。
+
+- ④ 安全策：追加ノードのスコアを「-100万点」にする
+``out.loc[added, "solver_selection_score"] = np.float32(-1.0e6)``
+初期スコアをあえて極小値(-1.0e6)に設定。単体ではスコアが極小なので、存在するだけとなり採用されない(ノイズによる過剰検出ペナルティを防ぐ)。後段のトラッキングソルバー(Solver)で「前後のフレームの確実な細胞と強いエッジで繋がっている」と確認された場合のみ、前後のサポート(接続ボーナス点)を受けてトラックの欠損を埋めるため、足場候補から採用される。
+
+- まとめ
+specialist_scaffold() は、 「暗い細胞を、専用モデルでトラックが途切れるのを防ぐ中継ノード(Scaffold)を発掘し、過剰検出リスクをゼロに抑えた状態で後段のトラッカーに託す処理」 を実行する。
+
+
+### 5.5 c21, c24, c_stage6, c39, c38の検出モデルの違い
+この4つのモデル群は、それぞれ **「入力する時間幅」「学習方針」「後段のグラフ統合（アンサンブル）での役割」** が異なる。
+
+|No| モデル | 時間窓 | 特徴 | 主なミッション |
+|---| :--- | :---: | :--- | :--- |
+|1| c21(基準) | 3フレーム | 基準となる基本検出器 | 全体のベースグラフを作る |
+|2| c24 | 3フレーム | V21の別系統モデル | V21が見落としたトラックの補完 |
+|3| c_stage6| 3フレーム | 高精度・強検出器 | V24との合意（Consensus）で確実なエッジを形成 |
+|4| c39 | 5フレーム| 広い時間視野を持つモデル | リスク判定に基づく高品質トラックへの「入れ替え」 |
+|5| c38 | 5フレーム| 5フレームの残差モデル | 最終的な残差補完 ＆ 細胞分裂の多数決投票 |
+
+
+### 1. c21
+細胞検出のベース。
+
+### 2. c24(`V24_MODELS`)
+* **何のモデルか**:
+  主軸のc21と同じ構造を持つ **3フレーム入力（$t-1, t, t+1$）の 3D Temporal U-Net**（5-fold CV モデル）。
+* **どういう学習をさせたか**:
+  c21とはデータ拡張、サンプリング条件、または損失関数のバランスを少し変えて訓練された別バリエーション別系統）のモデル。
+* **狙い(役割)**:
+  - **「見落としの補完」**: V21が検出できなかった完全な細胞の軌跡（full-length track）を、後から安全に追加合成（`add_full_length_segments`）するため。
+  - **「多様性の確保」**: 同じ3フレームモデルでも、V21と微妙に異なる予測を出させることで、アンサンブルの基礎を生成。
+
+### 3. c_stage6(`STRONG_MODELS`)
+* **何のモデルか**:
+  単体性能を極限まで高めた **「強検出器（Strong Detector）」**（5-fold CV モデル）。
+* **どういう学習をさせたか**:
+  バックボーン設定や最適化された学習スケジュールで、検出ミスや位置ズレ（偽陽性・偽陰性）を極小化するように学習した高精度モデル。
+* **狙い(役割)**:
+  - 「高信頼なエッジの合意(Consensus)」: 後段で `add_stage6_v24_consensus_edges` という処理を行い、**「V24とStage6の両方が『この細胞同士は繋がっている』と合意した確実なエッジだけを採用する」** というジャッジに使用する。
+
+### 3. c39(`V39_MODELS[route]`)
+* **何のモデルか**:
+  通常の3フレームではなく、5フレーム（$t-2, t-1, t, t+1, t+2$）を同時に入力する広域時系列 3D U-Net。
+* **どういう学習をさせたか**:
+  時間窓を前後に広げ、急激な移動や長い時間軸での細胞の連続性を捉えられるように5フレームを入力チャネルとして学習。
+* **狙い（役割）**:
+  - 「カウント中立な軌跡の入れ替え(Exchange / Recovery)」: 5フレームの広い視野を持つV39が作ったトラックと、既存のトラックを比較します。
+  - 機械学習モデル（`V57_BOOSTERS`）でリスクを判定し、「既存のトラックよりもc39のトラックの方が確からしい」と判断された部分を、細胞の総数を増やさずに（ペナルティを避けつつ)高品質なトラックへと差し替えるために使用。
+
+### 4. c38 (`V38_MODELS[route]`)
+* **何のモデルか**:
+  V39と同様に 5フレーム入力(`in_frames == 5`) を持つ、残差(Residual)補完用の時系列検出器。
+* **どういう学習をさせたか**:
+  V39とは異なるシード値や学習設定で訓練された、もう一つの5フレーム時系列モデルです。
+* **狙い（役割）**:
+  - **「最後の取りこぼし回収」**: V39の入れ替えを行ってもなお残った欠損部分に対し、最終段で残差トラックを追加合成（`add_full_length_segments`）する。
+  - **「細胞分裂（Division）の多数決投票」**: 直後の処理で、細胞が2つに分裂するポイントを **4者合議（V24, Stage6, V39, V38 の投票 `fork_votes`）** で決定する際の投票役(Witness)。
 
 ---
 
