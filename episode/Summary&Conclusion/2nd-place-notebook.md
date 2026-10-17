@@ -92,7 +92,7 @@ https://www.kaggle.com/code/soheilayati/biohub-2nd-place-notebook
 
 # Biohub V533 シーケンス図 (セル単位)
 
-ノートブックのコードセル(`# %%`)ごとに分割したシーケンス図。5～7が処理の本体。ここを理解するとほぼ網羅できたといっても過言ではない。
+ノートブックのコードセル(`# %%`)ごとに分割したシーケンス図。5〜8が処理の本体。ここを理解するとほぼ網羅できたといっても過言ではない。
 
 ## 1. (cell 1: line 7〜133) パス探索とマニフェスト読み込み
 要は、ローカル環境とKaggle環境とではパスが違うので、それを吸収している処理。
@@ -230,7 +230,7 @@ sequenceDiagram
 
 ---
 
-## 5. (cell 5: line 541〜705) 処理A: ボリューム取得・検出・並列追跡
+## 5. (cell 5: line 541〜669) 処理A: ボリューム取得・細胞検出
 
 - **volumes_from_zarr()** ...処理の一番最初で、ロバスト正規化、等方化ダウンサンプリング(1, 4, 4)、float16 化を実施。
   (このコンペはz,y,xで[1.625μm, 0.40625μm, 0.40625μm]の解像度の違いがある)。
@@ -250,7 +250,6 @@ sequenceDiagram
     participant PeakRet as retain_original_peaks()
     participant Scaffold as specialist_scaffold()
     participant DetectBank as detect_bank()→detect()
-    participant RunChain as run_chain() (track_dataset_learned_v8)
 
     Script->>VolZarr: volumes_from_zarr(path)
     VolZarr-->>Script: shared_volumes
@@ -291,7 +290,7 @@ sequenceDiagram
     Scaffold-->>Script: c21, v343_union, dim_specialist_audit,  
     Note over Script: 前処理で抽出した検出細胞群(c21)から、“暗いけど細胞の可能性のあるもの”を専門モデルで発掘し、トラックが途切れないための『足場候補』として候補リストに安全に追加・合流させる処理。<br/>scaffoldは足場という意味。specialistは特化したという意味。
 
-    Note over Script, RunChain: c21完成, c24, c_stage6, c39, c38を順次生成
+    Note over Script: c21完成、続いて c24, c_stage6, c39, c38 を順次検出
 
     Script->>DetectBank: detect(V24, shared_volumes)
     DetectBank-->>Script: c24
@@ -305,26 +304,7 @@ sequenceDiagram
     Script->>DetectBank: detect(V38, shared_volumes)
     DetectBank-->>Script: c38
 
-    Note over Script, RunChain: c21完成, c24, c_stage6, c39, c38を順次生成
-
-    par 5系統の並列トラッキング (ThreadPoolExecutor: 3 workers)
-        Script->>RunChain: run_chain('v21_track', candidate_override=c21, ...)
-        RunChain-->>Script: v21
-    and
-        Script->>RunChain: run_chain('v24_track', candidate_override=c24)
-        RunChain-->>Script: v24
-    and
-        Script->>RunChain: run_chain('stage6_track', candidate_override=c_stage6)
-        RunChain-->>Script: stage6
-    and
-        Script->>RunChain: run_chain('v39_track', candidate_override=c39)
-        RunChain-->>Script: v39
-    and
-        Script->>RunChain: run_chain('v38_track', candidate_override=c38)
-        RunChain-->>Script: v38
-    end
-
-    Note over Script, RunChain: 処理A完了<br/>output: c21,  c24,  c_stage6,  c39,  c38
+    Note over Script: 処理A完了 (全5系統の検出候補が出揃う)<br/>output: c21(+v343_union), c24, c_stage6, c39, c38
 ```
 
 ### ※c21_count:DataFrame(正面Heatmap)、c21:DataFrame(正面/回転TTAアンサンブルHeatmap)の列説明
@@ -745,7 +725,94 @@ specialist_scaffold() は、 「暗い細胞を、専用モデルでトラック
 
 ---
 
-## 6. (cell 5: line 706〜789) 処理B: グラフ統合・コンセンサス・ギャップ補完
+## 6. (cell 5: line 670〜694) 処理B: 5系統の並列追跡 (トラッキング)
+
+出揃った5つの細胞検出候補テーブル（`c21, c24, c_stage6, c39, c38`）を入力とし、`ThreadPoolExecutor`（3ワーカー）を用いて各モデル系統のトラッキング処理（`run_chain`）をCPUで並列実行する。
+各系統で時系列エッジ確率の計算とソルバー最適化（`track_dataset_learned_v8`）を行い、5つの独立した細胞移動軌跡グラフ（`v21.graph, v24.graph, stage6.graph, v39.graph, v38.graph`）を生成・回収する。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Script as Main Script
+    participant RunChain as run_chain() (track_dataset_learned_v8)
+
+    Note over Script: input: c21(+v343_union), c24, c_stage6, c39, c38
+
+    par 5系統の並列トラッキング (ThreadPoolExecutor: 3 workers)
+        Script->>RunChain: run_chain('v21_track', candidate_override=c21, superset_override=v343_union, ...)
+        RunChain-->>Script: v21
+    and
+        Script->>RunChain: run_chain('v24_track', candidate_override=c24)
+        RunChain-->>Script: v24
+    and
+        Script->>RunChain: run_chain('stage6_track', candidate_override=c_stage6)
+        RunChain-->>Script: stage6
+    and
+        Script->>RunChain: run_chain('v39_track', candidate_override=c39)
+        RunChain-->>Script: v39
+    and
+        Script->>RunChain: run_chain('v38_track', candidate_override=c38)
+        RunChain-->>Script: v38
+    end
+
+    Note over Script: 処理B完了<br/>output: v21, v24, stage6, v39, v38 (各軌跡グラフ)
+```
+
+### 戻り値(メンバ構造とサイズ(次元))
+このフェーズ(処理B)では、アンサンブルは行っていない。アンサンブルの元となるデータを生成している。
+
+`v21`, `v24`, `stage6`, `v39`, `v38` ... NumPy配列やテンソルではなく、トラッキング結果を保持する Python のデータクラス(dataclass)オブジェクト。
+- v21_track    ──> v21.graph （全体の基準ベース）
+- v24_track    ──> v24.graph （取りこぼし補完用）
+- stage6_track ──> stage6.graph （高信頼な強モデル）
+- v39_track    ──> v39.graph （5フレーム広域モデル）
+- v38_track    ──> v38.graph （5フレーム残差モデル）
+
+#### 6.1. 型（Type）
+
+* **型名**: **`biohub.pipeline.learned.TrackResult`**
+  （追跡処理 `track_dataset_learned_v8` の実行結果オブジェクト）
+
+#### 6.2. 内部のデータ構造（Attributes）
+メンバ一覧
+
+| 属性名 | 型 | 説明 |
+| :--- | :--- | :--- |
+| **`.graph`** | **`DatasetGraph`** | **追跡結果の本体（細胞ノードとエッジのグラフ）** |
+| `.n_candidates` | `int` | 元の候補点の総数（例: 数万〜数十万点） |
+| `.budget_per_frame`| `int` | 1フレームあたりに採択した目標細胞数（`budget`） |
+| `.predicted_per_frame`| `float` | モデルが予測した1フレームあたりの平均細胞数 |
+| `.n_selected` | `int` | 最終的にグラフに採択された細胞ノードの総数 |
+| `.n_forks` | `int` | 検出された細胞分裂（1親→2子への分岐）の個数 |
+| `.n_edgeless` | `int` | 前後と繋がらなかった孤立ノードの個数 |
+
+直後の処理（`add_full_length_segments(v21.graph, v24.graph)` など）では、この中の **`.graph`** が使用される。
+
+#### 6.3. 主データである `.graph`（`DatasetGraph`）の構造と Shape（サイズ）
+
+`.graph` は **`biohub.io.submission.DatasetGraph`** 型で、以下の3つの主要データを持つ。
+
+##### ① `graph.nodes`（細胞の位置情報）
+* **型**: `dict[int, tuple[int, int, int, int]]`
+* **構造**: `{ノードID: (t, z, y, x)}`
+* **実質的な Shape**: **`(N, 4)`**（$N$ は採択された細胞の総数）
+  - $N$ の規模：通常 1動画あたり数千〜数万個程度
+  - 4次元の内訳：`t`（フレーム番号: 0〜99）, `z`（深度: 0〜63）, `y`（高さ: 0〜63）, `x`（幅: 0〜63）
+
+##### ② `graph.edges`（細胞同士の繋がり・軌跡）
+* **型**: `list[tuple[int, int, float]]`
+* **構造**: `[(親ノードID, 子ノードID, 信頼度スコア), ...]`
+* **実質的な Shape**: **`(E, 3)`**（$E$ は結ばれたエッジの総数）
+  - $E$ の規模：ほとんどの細胞が前後のフレームと1対1で繋がるため、$E \approx N$（数千〜数万本）
+
+##### ③ `graph.shape`（ボリューム寸法）
+* **型**: `tuple[int, int, int, int]`
+* **値**: **`(T, Z, Y, X)`**（例: `(100, 64, 64, 64)`）
+  - 画像領域のバウンダリチェック（枠外はみ出し防止）に使用。
+
+---
+
+## 7. (cell 5: line 695〜789) 処理C: グラフ統合・コンセンサス・ギャップ補完
 
 ```mermaid
 sequenceDiagram
@@ -803,7 +870,7 @@ sequenceDiagram
 
 ---
 
-## 7. (cell 5: line 790〜887) 処理C: グラフ確定と多段プロテクター後処理
+## 8. (cell 5: line 790〜887) 処理D: グラフ確定と多段プロテクター後処理
 
 ```mermaid
 sequenceDiagram
@@ -844,7 +911,7 @@ sequenceDiagram
 
 ---
 
-## 8. (cell 6: line 891〜911) サブミッションの検証・出力
+## 9. (cell 6: line 891〜911) サブミッションの検証・出力
 submission.csvを生成する処理。大したことはやってない。
 
 ```mermaid
