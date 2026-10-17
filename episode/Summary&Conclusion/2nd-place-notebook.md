@@ -685,7 +685,7 @@ specialist_scaffold() は、 「暗い細胞を、専用モデルでトラック
 |5| c38 | 5フレーム| 5フレームの残差モデル | 最終的な残差補完 ＆ 細胞分裂の多数決投票 |
 
 
-### 1. c21
+### 1. c21(基準)
 細胞検出のベース。
 
 ### 2. c24(`V24_MODELS`)
@@ -831,13 +831,23 @@ sequenceDiagram
     participant MotionSub as apply_motion_substitution()
 
     Script->>AddSeg: add_full_length_segments(v21.graph, v24.graph)
-    AddSeg-->>Script: phase19_raw
+    AddSeg-->>Script: phase19_raw, p19_audit
+    Note over Script: ベース側(v21.graph)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>phase19_raw: DatasetGraph※, p19_audit:dict
 
     Script->>AddSeg: add_full_length_segments(phase19_raw, stage6.graph)
-    AddSeg-->>Script: stage_raw
+    AddSeg-->>Script: stage_raw, stage_audit
+    Note over Script: ベース側(phase19_raw)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>stage_raw: DatasetGraph※, stage_audit:dict
 
     Script->>AddStage6: add_stage6_v24_consensus_edges(stage_raw, stage6.graph, v24.graph)
-    AddStage6-->>Script: v37_raw
+    AddStage6-->>Script: v37_raw, v37_edge_audit, v37_edge_actions
+    Note over Script: 途切れているedgeの隙間を、Stage6とV24の『両モデルが一致して認めたエッジ』で安全に架橋（修復）する処理<br/>v37_raw: DatasetGraph ... 全実データ<br/>v37_edge_audit:dict ... 処理結果と整合性を記録した監査情報。<br/>v37_edge_actions: dictのリスト ... 実際に追加された各エッジの実データ。
+
+    %% --------------------------------------
+    %% --------------------------------------
+    %% --------------------------------------
+    Script->>AddSeg: add_full_length_segments(v37_raw, v39.graph)
+    AddSeg-->>Script: v39_actions
+    Note over Script: v37_rawで欠落している細胞軌跡のセグメント(軌跡の断片)をv39.graphで補完・追加する<br/>v39_actions: DatasetGraph※, stage_audit:dict
 
     Script->>Exchange: apply_exchange(v37_raw, v39.graph, v39_actions, removed)
     Exchange-->>Script: v51_raw
@@ -866,6 +876,127 @@ sequenceDiagram
 
     Script->>MotionSub: apply_motion_substitution(final_raw, final_out, ...)
     MotionSub-->>Script: final_raw, final_out
+```
+
+### ※DatasetGraph型(biohub.io.submission.DatasetGraph)
+このコンペ主催者が提供してくれてるソースコードの中で使用する型。
+
+**メンバ**:
+- **phase19_raw.shape**: tuple[int, int, int, int]=[100,64,256,256]
+    - データセットの時空間ボリュームサイズ (T, Z, Y, X)
+- **phase19_raw.nodes**: dict[int, tuple[int, int, int, int]]
+    - キー: ノードID(int)
+    - 値: 各ノードの時空間座標 (t, z, y, x)
+    - ノード数は len(phase19_raw.nodes) (ベースのノード数 + 今回追加されたノード数)
+- **phase19_raw.edges**: list[tuple[int, int, float]]
+    - (source_id, target_id, confidence) ... edgeリスト
+    - エッジ数は len(phase19_raw.edges) (ベースのエッジ数 + 今回追加されたエッジ数)
+- **phase19_raw.dataset**: str
+  - データセット識別子 ... ``44b6_0113de3b``とか
+
+### ※p19_audit(,stage_audit)の型: dict
+追加処理の結果と整合性を記録した 9つのキーを持つ監査情報辞書
+
+**メンバ**:
+- ``dataset``: str ... データセット名(例:``44b6_0113de3b``)
+- ``segments``: int ... 追加されたセグメントの総数
+- ``bridges``: int ... 既存ノード間を繋いだブリッジ数
+- ``tails``: int ... 末端から伸びたテイル数
+- ``heads``: int ... 先頭前に遡るヘッド数
+- ``added_nodes``: int ... 新規追加されたノード数
+- ``added_edges``: int ... 新規追加されたエッジ数
+- ``original_nodes_preserved``: bool (True)
+- ``original_edges_preserved``: bool (True)
+- ``division_forks_preserved``: bool (True)
+
+### add_stage6_v24_consensus_edges()のシーケンス
+このモデルの解法(2位解法)はアンサンブルをいろんな局面で使い込んでるところが特徴。
+そしてアンサンブルは、使い方を間違うとスコアダウンになるので、正しい使い方を理解すべくこのシーケンスを追ってみた。
+#### 1. 処理概要
+既存のグラフ(stage_raw)のノードは一切増やさず、途切れてしまっている既存ノード同士の1フレームの隙間に対し、Stage-6 と V24 の両モデルが「ここは繋がっている」と一致（AND合意）したエッジ(線)だけを安全に追加する。
+
+#### 2. 戻り値の型と shape
+
+|No| 戻り値 | 型 | shape / 構造 | 内容 |
+|---| :--- | :--- | :--- | :--- |
+|1| **`v37_raw`** | `DatasetGraph` | 合意エッジが追加された新しいグラフ。<br>・`nodes`: `stage_raw.nodes` と同じ(ノードは不変)。<br>・`edges`: `stage_raw.edges + selected`。<br>・`shape`: `(100, 64, 256, 256)` |
+|2| **`v37_edge_audit`** | `dict` | 処理結果と整合性を記録した監査情報。<br>・`'selected_edges'`: 追加されたエッジ数<br>・`'raw_agreed_edges'`: 両者合意した候補数<br>・`'original_nodes_preserved'`: `True` 等 |
+|3| **`v37_edge_actions`** |リスト | 実際に追加された各エッジの実データ。<br>各要素: `{'dataset': str, 'source': int, 'target': int, 'source_t': int}` |
+
+### 3. 直前で c24 と stage6 を追加したのに、なぜさらにアンサンブルしてるのか？
+
+直前の2行とこの処理では、「追加している対象」と「目的」が全く異なるため。
+
+#### (1) 直前の2行（`add_full_length_segments`）がやったこと
+* 追加したもの: 「新しいノード」
+* c24 と Stage-6 が細胞と認識した新ノードをグラフに追加した。
+
+#### (2) この処理（`add_stage6_v24_consensus_edges`）がやること
+* 追加するもの: ノード追加はしない。既存ノード間を繋ぐエッジのみを追加
+* グラフ内のノード(stage_raw)は1個も追加しない。
+
+#### (3) なぜこの順番で行うのか？
+直前の2つのセグメント追加によって、グラフ空間上には
+* c21 由来のノード
+* c24 由来の追加ノード
+* Stage-6 由来の追加ノード
+が存在することになる。
+その状態だと、「c21の軌跡の末端」と「Stage-6の先端」のように、異なるモデルが持ち寄ったnode同士が、時空間上で1フレームの隙間（Gap）を挟んで向かい合っている状態が起こりえる。
+
+```text
+[stage-6、c24ノード追加後]
+c21のedge: (t=10) ●───● (t=11:末端) ???(隙間)
+Stage6のedge:                                (t=12: 先端) ●───● (t=13)
+[add_stage6_v24_consensus_edges 後]
+両モデル合意:  (t=10) ●───● (t=11) ═══════════> (t=12) ●───● (t=13)
+                                  ↑ 合意エッジで1本に結合！
+```
+上記の分断された隙間に対して、Stage-6 と V24 の両者に **「お前たち2人とも、ここが繋がっていると認めるか？」** と問い合わせ、2つのモデルが両方とも「繋がっている」と証言した箇所だけをエッジで架橋（Stitch）している。
+これによって、バラバラだった軌跡の断片が1本のトラックへと統合することができるようになるため、このタイミングで実行する。
+
+---
+
+### 4. `add_stage6_v24_consensus_edges()` のシーケンス図
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as 2nd-place-notebook.py
+    participant Consensus as add_stage6_v24_consensus_edges
+    participant Mapper as _mapped_ordinary_edges
+    participant Spatial as match_sequence (3D近傍マッチング)
+    participant Validator as validate_graph
+
+    Caller->>Consensus: 呼び出し (stage_raw, stage6.graph, v24.graph)
+    
+    rect rgb(240, 245, 255)
+        note over Consensus, Spatial: Step 1. 各モデルのノードをベース座標へマッピング
+        Consensus->>Mapper: stage6 のエッジ抽出依頼
+        Mapper->>Spatial: 3Dユークリッド距離でベースノードと照合 (MAP_UM=3.0)
+        Spatial-->>Mapper: 対応ノード対応表
+        Mapper-->>Consensus: stage6_edges (ベースノードID空間でのエッジ集合)
+
+        Consensus->>Mapper: v24 のエッジ抽出依頼
+        Mapper->>Spatial: 3Dユークリッド距離でベースノードと照合
+        Spatial-->>Mapper: 対応ノード対応表
+        Mapper-->>Consensus: v24_edges (ベースノードID空間でのエッジ集合)
+    end
+
+    rect rgb(255, 248, 240)
+        note over Consensus: Step 2. 両モデルのAND合意とフィルタリング
+        Consensus->>Consensus: agreed = stage6_edges & v24_edges (論理積AND)
+        Consensus->>Consensus: 途切れた端点のみ抽出 (outdegree[left]==0 かつ indegree[right]==0)
+        Consensus->>Consensus: 1対1の一意な接続のみ選択 (selected)
+    end
+
+    rect rgb(240, 255, 240)
+        note over Consensus, Validator: Step 3. グラフ構築と不変性の検証
+        Consensus->>Consensus: 新しい DatasetGraph 作成 (既存ノード不変 + selectedエッジ追加)
+        Consensus->>Validator: トポロジー検証 (既存ノード・エッジ・分裂が壊れていないか)
+        Validator-->>Consensus: 検証パス確認
+    end
+
+    Consensus-->>Caller: 返却 (v37_raw, v37_edge_audit, v37_edge_actions)
 ```
 
 ---
