@@ -814,6 +814,8 @@ sequenceDiagram
 
 ## 7. (cell 5: line 695〜789) 処理C: グラフ統合・コンセンサス・ギャップ補完
 
+### 処理C-1: グラフ統合・コンセンサス・セグメント交換 (line 695〜739)
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -822,13 +824,6 @@ sequenceDiagram
     participant AddStage6 as add_stage6_v24_consensus_edges()
     participant Exchange as apply_exchange()
     participant AddConsensus as add_consensus_edges()
-    participant ForkVotes as fork_votes()
-    participant Materialize as materialize()
-    participant TempMotion as sample_temporal_motion()
-    participant ProposeGaps as propose_gaps()
-    participant MatGaps as materialize_gaps()
-    participant Corresp as apply_correspondence()
-    participant MotionSub as apply_motion_substitution()
 
     Script->>AddSeg: add_full_length_segments(v21.graph, v24.graph)
     AddSeg-->>Script: phase19_raw, p19_audit
@@ -840,7 +835,7 @@ sequenceDiagram
 
     Script->>AddStage6: add_stage6_v24_consensus_edges(stage_raw, stage6.graph, v24.graph)
     AddStage6-->>Script: v37_raw, v37_edge_audit, v37_edge_actions
-    Note over Script: 途切れているedgeの隙間を、Stage6とV24の『両モデルが一致して認めたエッジ』で安全に架橋（修復）する処理<br/>stage_raw+stage6.graph+v24.graph → v37_raw<br/>v37_raw: DatasetGraph ... 全実データ<br/>v37_edge_audit:dict ... 処理結果と整合性を記録した監査情報。<br/>v37_edge_actions: dictのリスト ... 実際に追加された各エッジの実データ。
+    Note over Script: 途切れているedgeの隙間を、Stage6とV24の『両モデルが一致して認めたエッジ』で安全に架橋(修復)する処理<br/>stage_raw+stage6.graph+v24.graph → v37_raw<br/>v37_raw: DatasetGraph ... 全実データ<br/>v37_edge_audit:dict ... 処理結果と整合性を記録した監査情報。<br/>v37_edge_actions: dictのリスト ... 実際に追加された各エッジの実データ。
 
     %% ---------------------------------------
     %% - v37(ベース) ⇔ v39 セグメント交換処理 -
@@ -849,7 +844,7 @@ sequenceDiagram
     rect rgb(240, 255, 250)
     Script->>AddSeg: full_length_segment_actions(v37_raw, v39.graph)
     AddSeg-->>Script: v39_actions
-    Note over Script: v37_raw+v39.graphの計画策定。<br/>※v39_actionsは追加予定リストで実データではない。<br/>v37_raw+v39.graph → v39_actions<br/>v39_actions: DatasetGraph※, stage_audit:dict
+    Note over Script: v37_raw+v39.graphの計画策定。<br/>※v39_actionsは追加予定リストで実データではない。<br/>v37_raw+v39.graph → v39_actions<br/>v39_actions: list[dict], stage_audit:dict
 
     Script->>Exchange: build_removal_features(v37_raw, phase19_raw, v21.graph, v24.graph, stage6.graph, v39.graph, v39_actions, {'v21': c21, 'v24': c24, 'stage6': c_stage6, 'v39': c39})<br/>v37_raw:stage_raw+stage6.graph+v24.graph, phase19_raw:v21.graph+v24.graph,v39_actions:v37_raw+v39.graph
     Exchange-->>Script: features
@@ -857,11 +852,11 @@ sequenceDiagram
 
     Script->>Exchange: predict_bagged_risk(features, V57_BOOSTERS[route])
     Exchange-->>Script: risk:
-    Note over Script: 削除候補(features)から『削除すべき度合い(リスク確率)』を予測・平均化する。<br/>LightGBM(fold[0-4].txt)をアンサンブル平均化している。<br/>※bagged(バギングされた): 機械学習の基本手法である「Bagging(Bootstrap Aggregating)」に由来。<br/>内部で「複数のモデルの予測結果を平均化(集約)して安定した1つの予測にする」処理をしててその手法を指す。<br/>risk:numpy.ndarray[shape=(N,)] ... 入力 features の行数と全く同じ。各要素に、対応するノードの「削除リスク確率（0.0〜1.0 の実数値）」が格納される。
+    Note over Script: 削除候補(features)から『削除すべき度合い(リスク確率)』を予測・平均化する。<br/>LightGBM(fold[0-4].txt)をアンサンブル平均化している。<br/>※bagged(バギングされた): 機械学習の基本手法である「Bagging(Bootstrap Aggregating)」に由来。<br/>内部で「複数のモデルの予測結果を平均化(集約)して安定した1つの予測にする」処理をしててその手法を指す。<br/>risk:numpy.ndarray[shape=(N,)] ... 入力 features の行数と全く同じ。各要素に、対応するノードの「削除リスク確率(0.0〜1.0 の実数値)」が格納される。
 
     Script->>Exchange: select_removals(features, risk)
     Exchange-->>Script: selected
-    Note over Script: 各フレームで追加予定の枠数(quota)に合わせて、優先順位に従って実際に削除するノードを最終選定する<br/>selected:DataFrame[shape=(M, 66)] ... Mは次で求めるlen(expected_removals)と同数。66はfeaturesの65+`p_risk`列
+    Note over Script: 各フレームで追加予定の枠数(quota)に合わせて、優先順位に従って実際に削除するノードを最終選定する<br/>selected:DataFrame(shape=(M, 66)) ... Mは次で求めるexpected_removalsと同数。66はfeaturesの65+p_risk列
 
     Script->>Script: removed = set(selected.node_id.astype(int))
     Note over Script: selected.node_idをset型に。
@@ -875,38 +870,12 @@ sequenceDiagram
     end
 
     Script->>AddConsensus: add_consensus_edges(v51_raw, witnesses)
-    AddConsensus-->>Script: v52_raw, edge_actions, edge_census
+    AddConsensus-->>Script: v52_raw※, edge_actions※, edge_census※
     Note over Script: 複数のモデル間で意見が一致した(合意の取れた)高信頼なエッジ(追跡線)を補完・追加する(エッジ修復)
 
     Script->>AddSeg: add_full_length_segments(v52_raw, v38.graph)
     AddSeg-->>Script: after_v38_raw, v38_audit
-    Note over Script: after_v38_raw: v52_raw + v38.graph ... v52_rawにv38.graphを合算, v38_audit:dict ... 処理結果と整合性を記録した監査情報
-
-
-    Note over Script,Materialize: 細胞分裂(Division / 分岐)を検出・確定する処理
-    rect rgb(255, 240, 230)
-    Script->>ForkVotes: fork_votes(after_v38_raw, division_witnesses)
-    ForkVotes-->>Script: division_votes
-    Note over Script: 細胞分裂(Fork: 1つの親ノードから2つの子ノードへの分岐)について、複数のモデルから『どこで分裂が起きたか』の合意投票(Votes)を集計する
-
-    Script->>Materialize: materialize(after_v38_raw, division_actions)
-    Materialize-->>Script: final_raw (分裂コンセンサス後)
-
-    end
-
-    Script->>TempMotion: sample_temporal_motion(V21_MODELS, shared_volumes, ...)
-    TempMotion-->>Script: gap_backward, gap_forward
-
-    Script->>ProposeGaps: propose_gaps(final_raw, ...)
-    ProposeGaps-->>Script: gap_actions
-    Script->>MatGaps: materialize_gaps(final_raw, gap_actions)
-    MatGaps-->>Script: final_raw (ギャップ補完後)
-
-    Script->>Corresp: apply_correspondence(final_raw, final_out, ..., V230_MODELS)
-    Corresp-->>Script: final_raw, final_out
-
-    Script->>MotionSub: apply_motion_substitution(final_raw, final_out, ...)
-    MotionSub-->>Script: final_raw, final_out
+    Note over Script: ベース側(v52_raw)に追加<br/>after_v38_raw: v52_raw + v38.graph<br/>v38_audit:dict ... 監査情報
 ```
 
 ### 7.1 ※DatasetGraph型(biohub.io.submission.DatasetGraph)
@@ -984,8 +953,6 @@ Stage6のedge:                                (t=12: 先端) ●───● (t=
 ```
 上記の分断された隙間に対して、Stage-6 と V24 の両者に **「お前たち2人とも、ここが繋がっていると認めるか？」** と問い合わせ、2つのモデルが両方とも「繋がっている」と証言した箇所だけをエッジで架橋（Stitch）している。
 これによって、バラバラだった軌跡の断片が1本のトラックへと統合することができるようになるため、このタイミングで実行する。
-
----
 
 ### 7.4. `add_stage6_v24_consensus_edges()` のシーケンス図
 
@@ -1164,6 +1131,272 @@ sequenceDiagram
       "selected_mutual_unique": int  # 実際に採択・追加されたエッジ数 (= K)
   }
 ```
+
+### 処理C-2: 細胞分裂検出・ギャップ補完・座標補正 (line 741〜789)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Script as Main Script
+    participant ForkVotes as fork_votes()
+    participant SelectActions as select_actions()
+    participant Materialize as materialize()
+    participant TempMotion as sample_temporal_motion()
+    participant ProposeGaps as propose_gaps()
+    participant MatGaps as materialize_gaps()
+    participant Corresp as apply_correspondence()
+    participant MotionSub as apply_motion_substitution()
+
+    Note over Script,Materialize: 細胞分裂(Division / 分岐)を検出・確定する処理
+    rect rgb(255, 240, 230)
+    %% いまここ fork_votes()
+    Script->>ForkVotes: fork_votes(after_v38_raw, division_witnesses)※
+    ForkVotes-->>Script: division_votes, division_mapping
+    Note over Script: 細胞分裂(Fork: 1つの親ノードから2つの子ノードへの分岐)について、4つのモデルから『どこで分裂が起きたか』の投票(Votes)を集計する<br/>division_votes: dict, division_mapping: dict
+
+    Script->>SelectActions: select_actions(after_v38_raw, division_votes, 'root_consensus2', guard_hops=2)※
+    SelectActions-->>Script: division_actions, division_conflicts
+    Note over Script: 投票結果(division_votes)を評価し、ポリシー('root_consensus2': 2モデル以上の合意)を満たす分裂アクションを選定し、他の分裂との競合を解消して確定する<br/>division_actions: list[dict], division_conflicts: dict
+
+    Script->>Materialize: materialize(after_v38_raw, division_actions)
+    Materialize-->>Script: final_raw (分裂コンセンサス後)
+    Note over Script: 採択された分裂アクションをグラフに正式反映(1親→2子の分岐エッジを追加)<br/>※ここまで細胞nodesは一つも追加しない<br/>final_raw: DatasetGraph...細胞分裂edges追加を含む全edges, division_audit:dict...監査結果
+    end
+
+    Note over Script,MotionSub: 最終後処理
+
+    Script->>TempMotion: sample_temporal_motion(V21_MODELS, shared_volumes, ...)※
+    TempMotion-->>Script: gap_backward, gap_forward
+    Note over Script: 現在のグラフ(final_raw)内の全細胞ノードについて、flow(3次元移動量)から、過去方向(backward)と未来方向(forward)の移動ベクトルをサンプリング(抽出)する<br/>gap_backward:numpy.ndarray[shape:(N:全細胞ノードの総数,len(final_raw.nodes), 3:過去方向の移動ベクトル(Δz, Δy, Δx)]<br/>gap_forward:numpy.ndarray[shape:(N, 3)]
+
+    Script->>ProposeGaps: propose_gaps(final_raw, ...)※
+    ProposeGaps-->>Script: gap_actions, gap_selection
+    Note over Script: 追跡途中で一時的に細胞を見失って途切れてしまったトラックの隙間(0〜2フレームの欠落ギャップ)を、前後のオプティカルフロー(双方向の動き予測)と検出候補(c21)を用いて橋渡し・再接続(Gap Closure)するための計画を策定する<br/>gap_actions:list[dict], gap_selection:dict
+
+    Script->>MatGaps: materialize_gaps(final_raw, gap_actions)
+    MatGaps-->>Script: final_raw (ギャップ補完後)
+    Note over Script: 前段の propose_gaps() で計画されたギャップ補完(gap_actions)に従って、中間に抜けていた細胞ノードを新設し、前後のトラックを繋ぐエッジを追加。途切れを解消した最新のグラフを実体化・検証する<br/>final_raw:DatasetGraph, gap_raw_audit:dict
+
+    Script->>Corresp: apply_correspondence(final_raw, final_out, ..., V230_MODELS)
+    Corresp-->>Script: final_raw, final_out
+    Note over Script: 細胞の3次元画像パッチ(外見・テクスチャ)を深層学習で比較し、追跡エッジの誤接続を解除、もしくは、より確度の高い接続へと繋ぎ直す『最終画像マッチング(対応付け: Correspondence)処理』
+
+    Script->>MotionSub: apply_motion_substitution(final_raw, final_out, ...)
+    MotionSub-->>Script: final_raw, final_out
+    Note over Script: トラックの繋がり(エッジ)やノードIDは一切変えずに、前後の移動予測と矛盾している不自然な中間細胞ノードの位置座標(外れ値)を、より物理的に自然な検出候補(c21)の位置へとすり替える『座標の精密置換（Substitution）処理
+
+```
+### 7.7. fork_votes() ... 2位解法での細胞分裂判定
+「細胞分裂(分岐)」は、この関数(fork_votes)から。
+とはいえ、各モデル（v24, stage6, v39, v38）は、それぞれ単体でトラッキングの段階で細胞分裂を予測しており、それを使用して投票を集計する。
+
+戻り値:
+| 変数名 | 型 | shape / 要素数 | 役割・内容 |
+| :--- | :--- | :--- | :--- |
+| **`division_votes`** | `dict[tuple, set]` | $F$ 個のキー<br>キー: 3要素タプル<br>値: サイズ1〜4の集合 | 「どの分裂トリプル `(親, 子1, 子2)` に、どのモデルが投票したか」の集計表 |
+| **`division_mapping`** | `dict[str, dict]` | 4モデル分のキー<br>値: 4統計値の辞書 | 各モデルのノード照合数やマッピング成功数の監査・統計ログ |
+
+
+#### 7.7.1 `fork_votes()` のシーケンス図
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Caller as 呼び出し元(Main Script)
+    participant FV as fork_votes()
+    participant Matcher as match_sequence()<br/>(空間座標照合)
+    participant Witness as 目撃者モデル(v24, stage6, v39, v38)
+    participant VoteBox as 投票箱(votes)
+
+    Caller->>FV: fork_votes(after_v38_raw, division_witnesses)
+    Note over FV: ベースグラフ(after_v38_raw)の全ノード座標(t, z, y, x)を取得
+
+    loop 4つのモデル(v24, stage6, v39, v38)ごとに繰り返し
+        FV->>Witness: 各モデルのノードID・座標を取得
+        Witness-->>FV: donor_ids, donor_coords
+
+        Note over FV,Matcher: 【Step 1. 空間座標マッチング】
+        FV->>Matcher: match_sequence(同フレーム & 距離 <= 3.0μm)
+        Matcher-->>FV: mapping (対応インデックス)
+        Note over FV: 物理スケール換算で 3.0μm を超えるペアを除外<br/>1対1のノード対応辞書 pairs を作成 (witnessノード → baseノード)
+
+        Note over FV,Witness: 【Step 2. 分裂候補(Fork)の抽出と検証】
+        FV->>Witness: children(witness) でエッジ接続を取得
+        Witness-->>FV: 各親ノードに対する子ノード一覧 (donor_children)
+
+        loop モデル内の各親ノードについて判定
+            Note over FV: ① 子ノードがちょうど2個か？ (len == 2)<br/>② 親と子2個がすべてベースグラフに対応付けできたか？<br/>③ ベース側で時間がちょうど +1 フレームか？<br/>(t_child == t_parent + 1)
+            alt すべての条件を満たす場合
+                Note over FV: 分裂トリプルを作成: triple = (p, 子a, 子b)
+                FV->>VoteBox: votes[triple].add(モデル名)
+                Note over VoteBox: この分裂トリプルに「1票」を投じる！
+            else 条件を満たさない場合
+                Note over FV: スキップ (投票しない)
+            end
+        end
+
+        Note over FV: そのモデルの監査統計(audit)を記録<br/>(マッピング成功数、半径外拒絶数、分裂数)
+    end
+
+    FV-->>Caller: division_votes, division_mapping (audit)
+```
+
+#### 7.7.2 処理の核心ポイント（なぜこうしているのか？）
+
+##### 7.7.2.1. 幾何学的な座標照合(3.0 μm マッチング)
+* 各モデル（`v24`, `stage6`, `v39`, `v38`）はそれぞれ独立して推論を行っているため、**同じ細胞であってもノードID番号がバラバラ**になっている。
+* そのため、まず「同じ時刻 $t$」かつ「空間距離 3.0 μm 以内」という条件で最近傍探索を行い、**「モデルAのノード10番は、ベースグラフのノード50番のことだな」** と ID辞書 `pairs` を作成。
+
+##### 7.7.2.2. 分裂トリプル `(p, a, b)` の厳格な判定
+モデル内で分裂（1親 $\rightarrow$ 2子）が見つかっても、そのまま採用するのではなく、以下の条件をすべてクリアしたものだけをベースグラフの分裂候補とする：
+* **完全対応**: 親 $p$ だけでなく、2つの娘細胞 $a, b$ もベースグラフ上に存在すること。
+* **時間整合性**: 親が時刻 $t$ なら、2つの子は両方とも**きっかり時刻 $t+1$** に存在すること。
+* **正規化**: 子の順序（$a, b$ か $b, a$ か）で別の分裂と判定されないよう、`(p, min(a,b), max(a,b))` とソートして一意化。
+
+##### 7.7.2.3. 投票（Vote）の集積
+* 満たしたトリプルに対して、`votes[triple].add(bank)` で投票する。
+* 例えば、
+  * `v24` が「(10, 20, 21) は分裂だ」と判定 $\rightarrow$ 1票
+  * `stage6` も「(10, 20, 21) は分裂だ」と判定 $\rightarrow$ 2票
+  * `v39` も「(10, 20, 21) は分裂だ」と判定 $\rightarrow$ 3票
+* これで、**「どの細胞が、どの2つの娘細胞に分裂したか」について、各モデルからの支持票が集計**される。
+
+次段の `select_actions(..., 'root_consensus2')` で、「2票以上」集まった分裂を正式採用する。
+
+### 7.8 select_actions()でやっていること
+fork_votes() で集めた投票（division_votes）の中には、「1票しか集まらなかった怪しい分裂」や「複数の分裂候補で同じ細胞が取り合いになっている競合」が含まれる。select_actions でふるい落とす：
+**ふるい落としのステップ**
+1. 得票数の足切り:
+    ポリシー 'root_consensus2' に従い、2票以上集まった候補のみを通過させる（1票のみは却下）。
+2. グラフ構造の適合チェック:
+    親ノードが現在「一本道(出次数が1)」であり、分裂候補の片方の子（first）とすでに繋がっていることを確認。もう片方の子（second）を「新しく追加する2番目の娘細胞」として認定。
+3. 安全ガード(guard_hops):
+    直前の処理で変更された不安定な箇所の近く（2ホップ以内）にあるノードは除外する。
+4. 競合の解消（Conflict Resolution）:
+    複数の分裂提案で同じノード(親や子)が重複して使われていないかをカウントし、競合・衝突している提案は安全のためにすべて除外。
+
+#### 7.8.2. 戻り値の型と shape
+`(division_actions, division_conflicts)` のタプル
+##### 7.8.2.① `division_actions`
+* **型**: **`list[dict]`**（辞書のリスト）
+* **shape / 要素数**: **長さ $K$**（最終的に採択された分裂アクションの件数）
+* **各要素の辞書の中身**:
+  グラフに分裂を追加するための具体的な指示書データ（6つのキー）
+  ```python
+  {
+      "parent": int,             # 分裂する親ノードID
+      "first": int,              # すでに親と繋がっている1番目の娘ノードID
+      "second": int,             # 新しく親と接続する2番目の娘ノードID
+      "old_parent": int | None,  # second に元親がいた場合そのID (通常は None)
+      "votes": list[str],        # 投票したモデル名のリスト (例: ['stage6', 'v24'])
+      "participants": list[int]  # この分裂に関与する全ノードIDのリスト
+  }
+  ```
+
+##### 7.8.2.② `division_conflicts`
+* **型**: **`dict[str, int]`**（辞書型）
+* **shape / 要素数**: **2個のキーを持つ辞書**
+* **中身（監査・ログ）**:
+  審査と競合解消の集計結果
+  ```python
+  {
+      "qualified_before_conflicts": int,  # 競合チェック前に条件をクリアしていた提案数
+      "conflict_rejections": int          # ノード重複(競合)で弾かれた提案数
+  }
+  ```
+
+次の処理の `materialize(after_v38_raw, division_actions)` で、この `division_actions` 使って各 `(parent, second)` への新しいエッジが追加、正式な細胞分裂グラフ（`final_raw`）が生成される。
+
+### 7.9 sample_temporal_motion()でやっていること
+
+一言で言うと、**「現在のグラフ(final_raw)内に存在するすべての細胞ノードについて、深層学習モデルが予測したオプティカルフロー(3次元移動量)から、過去方向(backward)と未来方向(forward)の移動ベクトルをサンプリング(抽出)する処理」**。
+
+#### 7.9.1 処理の流れ
+1. **全細胞の座標を取得**:
+   * `final_raw` に存在する全 $N$ 個の細胞の時空間座標 `(t, z, y, x)` を取り出す。
+2. **2方向の動き（Temporal Motion）を抽出**:
+   * **過去方向（`gap_backward`）**:
+     時刻 $t$ の細胞が、直前のフレーム $t-1$ からどう動いてきたかを表す 3D 移動ベクトル。
+   * **未来方向（`gap_forward`）**:
+     入力画像を時間軸で反転（`torch.flip`）させてモデル（`V21_MODELS`）に通し、時刻 $t$ から直後のフレーム $t+1$ へどう動くかを表す 3D 移動ベクトル。
+3. **連続値グリッドからのサンプリング**:
+   * オプティカルフローの空間マップから、各細胞の座標位置における移動量 `(Δz, Δy, Δx)` を補間サンプリング。
+
+#### 7.9.2 何のために使うのか？
+直後の `propose_gaps()`で使用する。「途切れてしまったトラックの先端」から、このオプティカルフローによる移動ベクトルを前後に伸ばすことで、**「時間的に数フレーム飛んでしまった細胞同士」を物理的に正しく繋ぎ直す(ギャップ補完: Gap Closure)** ための補佐情報になる。
+
+#### 7.9.3 戻り値の型と shape
+関数は `(gap_backward, gap_forward)` のタプルを返却する。
+##### 7.9.3.① `gap_backward`(過去方向の移動ベクトル)
+* **型**: **`numpy.ndarray`**（要素は `float32`）
+* **shape**: **`(N, 3)`**
+  * **$N$**: 入力された全細胞ノードの総数（`len(final_raw.nodes)`）
+  * **$3$**: 各細胞の 3次元移動ベクトル `(Δz, Δy, Δx)`
+
+##### 7.9.3.② `gap_forward`(未来方向の移動ベクトル)
+* **型**: **`numpy.ndarray`**（要素は `float32`）
+* **shape**: **`(N, 3)`**
+  * **$N$**: 入力された全細胞ノードの総数（`len(final_raw.nodes)`）
+  * **$3$**: 各細胞の 3次元移動ベクトル `(Δz, Δy, Δx)`
+
+### 7.10 `propose_gaps()` は何をしているのか？
+
+追跡途中で一時的に細胞を見失って途切れてしまったトラックの隙間(0〜2フレームの欠落ギャップ)を、前後のオプティカルフロー(双方向の動き予測)と検出候補(c21)を用いて橋渡し・再接続(Gap Closure)するための計画を策定している。
+
+```text
+【ギャップ補完のイメージ(1フレーム欠落の例)】
+トラック前半 (終端) : (t=10) ──> (t=11)
+                                   ：  (オプティカルフローで予測)
+中間ノード (補完)   :              [t=12] (c21の未利用ピークから補間ノードを挿入)
+                                   ：
+トラック後半 (始端) :              (t=13) ──> (t=14)
+```
+
+#### 7.10.1 具体的な処理の流れ
+1. **途切れた端点の抽出**:
+   * **終端(`terminals`)**: トラックの末端（出次数が0）で、手前に3フレーム以上安定して続いているノード。
+   * **始端(`roots`)**: トラックの先頭（入次数が0）で、後方に3フレーム以上安定して続いているノード。
+2. **双方向の動き検証(Bidirectional Motion Check)**:
+   * **欠落 0 フレーム(直結できるギャップ)**:
+     終端の未来予測位置（$pos + forward$）と、次フレームの始端の過去予測位置（$pos + backward$）が、互いに距離 3.0 μm 以内で一致しているかを検証。
+   * **欠落 1〜2 フレーム(中間に細胞が抜けているギャップ)**:
+     未採用だった検出候補テーブル(`c21`)の中から、前後のオプティカルフローの予測軌道上に存在する「未利用の細胞ピーク」を発見し、中間に挿入するノードとして割り当てる。
+3. **低コスト順の選定と競合解消(Greedy Selection)**:
+   * 移動ベクトルのズレ(平均二乗誤差 $\mu\text{m}^2$)が最も小さい順にソートし、ノードの取り合い(競合)がないように 1対1 で最適な接続アクションを決定。
+
+#### 7.10.2. 戻り値の型と shape
+`(gap_actions, gap_selection)` のタプルを返却。
+
+#### 7.10.2.① `gap_actions`(採択されたギャップ補完アクションリスト)
+* **型**: **`list[dict]`**（辞書のリスト）
+* **shape / 要素数**: **長さ $G$**（採択されたギャップ接続の総数）
+* **各要素の辞書の中身**:
+  トラックを繋ぐための具体的な指示書データ（5つのキー）
+  ```python
+  {
+      "parent": int,                           # 途切れていた前半トラックの終端ノードID
+      "child": int,                            # 途切れていた後半トラックの始端ノードID
+      "mean_squared_residual_um2": float,      # 移動ベクトルの平均二乗残差コスト (μm^2)
+      "candidate_rows": list[int],             # 補間された中間細胞候補の行番号リスト
+      "nodes": list[tuple[int, int, int, int]] # 途中に新規挿入する細胞座標 [(t, z, y, x), ...]
+  }
+  ```
+  ※ `nodes` の長さは、0フレーム欠落なら `0`(直結)、1フレーム欠落なら `1`(ノード1個挿入)、2フレーム欠落なら `2`(ノード2個挿入)となります。
+
+#### 7.10.2.② `gap_selection`（監査・集計統計）
+* **型**: **`dict`**（辞書型）
+* **shape / 要素数**: **4個のキーを持つ辞書**
+* **中身**:
+  ```python
+  {
+      "proposals": int,                   # 検討されたギャップ接続候補の総数
+      "eligible_terminals": int,          # 接続候補になり得た終端ノード数
+      "eligible_roots": int,              # 接続候補になり得た始端ノード数
+      "selected_by_missing_cells": dict   # 欠落フレーム数別の採択内訳 (例: {0: 18, 1: 10, 2: 4})
+  }
+  ```
+
+次行の`materialize_gaps(final_raw, gap_actions)`によって、この `gap_actions` に記載された中間ノードや接続エッジがグラフへ挿入され、途切れていたトラックが1本に繋がる。
 
 ---
 
