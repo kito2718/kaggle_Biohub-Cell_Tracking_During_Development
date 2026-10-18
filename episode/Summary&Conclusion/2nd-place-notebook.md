@@ -832,36 +832,67 @@ sequenceDiagram
 
     Script->>AddSeg: add_full_length_segments(v21.graph, v24.graph)
     AddSeg-->>Script: phase19_raw, p19_audit
-    Note over Script: ベース側(v21.graph)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>phase19_raw: DatasetGraph※, p19_audit:dict
+    Note over Script: ベース側(v21.graph)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>v21.graph+v24.graph → phase19_raw<br/>phase19_raw: DatasetGraph※, p19_audit:dict
 
     Script->>AddSeg: add_full_length_segments(phase19_raw, stage6.graph)
     AddSeg-->>Script: stage_raw, stage_audit
-    Note over Script: ベース側(phase19_raw)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>stage_raw: DatasetGraph※, stage_audit:dict
+    Note over Script: ベース側(phase19_raw)で欠落している細胞軌跡のセグメント(軌跡の断片)を補完・追加する<br/>phase19_raw+stage6.graph → stage_raw<br/>stage_raw: DatasetGraph※, stage_audit:dict
 
     Script->>AddStage6: add_stage6_v24_consensus_edges(stage_raw, stage6.graph, v24.graph)
     AddStage6-->>Script: v37_raw, v37_edge_audit, v37_edge_actions
-    Note over Script: 途切れているedgeの隙間を、Stage6とV24の『両モデルが一致して認めたエッジ』で安全に架橋（修復）する処理<br/>v37_raw: DatasetGraph ... 全実データ<br/>v37_edge_audit:dict ... 処理結果と整合性を記録した監査情報。<br/>v37_edge_actions: dictのリスト ... 実際に追加された各エッジの実データ。
+    Note over Script: 途切れているedgeの隙間を、Stage6とV24の『両モデルが一致して認めたエッジ』で安全に架橋（修復）する処理<br/>stage_raw+stage6.graph+v24.graph → v37_raw<br/>v37_raw: DatasetGraph ... 全実データ<br/>v37_edge_audit:dict ... 処理結果と整合性を記録した監査情報。<br/>v37_edge_actions: dictのリスト ... 実際に追加された各エッジの実データ。
 
-    %% --------------------------------------
-    %% --------------------------------------
-    %% --------------------------------------
-    Script->>AddSeg: add_full_length_segments(v37_raw, v39.graph)
+    %% ---------------------------------------
+    %% - v37(ベース) ⇔ v39 セグメント交換処理 -
+    %% ---------------------------------------
+    Note over Script,Exchange: v37(ベース) ⇔ v39 セグメント交換処理
+    rect rgb(240, 255, 250)
+    Script->>AddSeg: full_length_segment_actions(v37_raw, v39.graph)
     AddSeg-->>Script: v39_actions
-    Note over Script: v37_rawで欠落している細胞軌跡のセグメント(軌跡の断片)をv39.graphで補完・追加する<br/>v39_actions: DatasetGraph※, stage_audit:dict
+    Note over Script: v37_raw+v39.graphの計画策定。<br/>※v39_actionsは追加予定リストで実データではない。<br/>v37_raw+v39.graph → v39_actions<br/>v39_actions: DatasetGraph※, stage_audit:dict
+
+    Script->>Exchange: build_removal_features(v37_raw, phase19_raw, v21.graph, v24.graph, stage6.graph, v39.graph, v39_actions, {'v21': c21, 'v24': c24, 'stage6': c_stage6, 'v39': c39})<br/>v37_raw:stage_raw+stage6.graph+v24.graph, phase19_raw:v21.graph+v24.graph,v39_actions:v37_raw+v39.graph
+    Exchange-->>Script: features
+    Note over Script: ベースグラフ(v37_raw)の検出数を維持しつつ、v37 ⇔ v39 セグメント交換のためのv37削除候補ノードの特徴量を作成する<br/>features : DataFrame(shape=N, 65)※
+
+    Script->>Exchange: predict_bagged_risk(features, V57_BOOSTERS[route])
+    Exchange-->>Script: risk:
+    Note over Script: 削除候補(features)から『削除すべき度合い(リスク確率)』を予測・平均化する。<br/>LightGBM(fold[0-4].txt)をアンサンブル平均化している。<br/>※bagged(バギングされた): 機械学習の基本手法である「Bagging(Bootstrap Aggregating)」に由来。<br/>内部で「複数のモデルの予測結果を平均化(集約)して安定した1つの予測にする」処理をしててその手法を指す。<br/>risk:numpy.ndarray[shape=(N,)] ... 入力 features の行数と全く同じ。各要素に、対応するノードの「削除リスク確率（0.0〜1.0 の実数値）」が格納される。
+
+    Script->>Exchange: select_removals(features, risk)
+    Exchange-->>Script: selected
+    Note over Script: 各フレームで追加予定の枠数(quota)に合わせて、優先順位に従って実際に削除するノードを最終選定する<br/>selected:DataFrame[shape=(M, 66)] ... Mは次で求めるlen(expected_removals)と同数。66はfeaturesの65+`p_risk`列
+
+    Script->>Script: removed = set(selected.node_id.astype(int))
+    Note over Script: selected.node_idをset型に。
+
+    Script->>Script: expected_removals = sum(len(json.loads(str(action['path_v24_nodes']))) for action in v39_actions)
+    Note over Script: expected_removals:int ... 削除予定数 
 
     Script->>Exchange: apply_exchange(v37_raw, v39.graph, v39_actions, removed)
     Exchange-->>Script: v51_raw
+    Note over Script: 交換実行関数<br/>v51_raw: DatasetGraph
+    end
 
     Script->>AddConsensus: add_consensus_edges(v51_raw, witnesses)
-    AddConsensus-->>Script: v52_raw
+    AddConsensus-->>Script: v52_raw, edge_actions, edge_census
+    Note over Script: 複数のモデル間で意見が一致した(合意の取れた)高信頼なエッジ(追跡線)を補完・追加する(エッジ修復)
 
     Script->>AddSeg: add_full_length_segments(v52_raw, v38.graph)
-    AddSeg-->>Script: after_v38_raw
+    AddSeg-->>Script: after_v38_raw, v38_audit
+    Note over Script: after_v38_raw: v52_raw + v38.graph ... v52_rawにv38.graphを合算, v38_audit:dict ... 処理結果と整合性を記録した監査情報
 
+
+    Note over Script,Materialize: 細胞分裂(Division / 分岐)を検出・確定する処理
+    rect rgb(255, 240, 230)
     Script->>ForkVotes: fork_votes(after_v38_raw, division_witnesses)
     ForkVotes-->>Script: division_votes
+    Note over Script: 細胞分裂(Fork: 1つの親ノードから2つの子ノードへの分岐)について、複数のモデルから『どこで分裂が起きたか』の合意投票(Votes)を集計する
+
     Script->>Materialize: materialize(after_v38_raw, division_actions)
     Materialize-->>Script: final_raw (分裂コンセンサス後)
+
+    end
 
     Script->>TempMotion: sample_temporal_motion(V21_MODELS, shared_volumes, ...)
     TempMotion-->>Script: gap_backward, gap_forward
@@ -878,7 +909,7 @@ sequenceDiagram
     MotionSub-->>Script: final_raw, final_out
 ```
 
-### ※DatasetGraph型(biohub.io.submission.DatasetGraph)
+### 7.1 ※DatasetGraph型(biohub.io.submission.DatasetGraph)
 このコンペ主催者が提供してくれてるソースコードの中で使用する型。
 
 **メンバ**:
@@ -894,7 +925,7 @@ sequenceDiagram
 - **phase19_raw.dataset**: str
   - データセット識別子 ... ``44b6_0113de3b``とか
 
-### ※p19_audit(,stage_audit)の型: dict
+### 7.2 ※p19_audit(,stage_audit)の型: dict
 追加処理の結果と整合性を記録した 9つのキーを持つ監査情報辞書
 
 **メンバ**:
@@ -909,13 +940,13 @@ sequenceDiagram
 - ``original_edges_preserved``: bool (True)
 - ``division_forks_preserved``: bool (True)
 
-### add_stage6_v24_consensus_edges()のシーケンス
+### 7.3 add_stage6_v24_consensus_edges()のシーケンス
 このモデルの解法(2位解法)はアンサンブルをいろんな局面で使い込んでるところが特徴。
 そしてアンサンブルは、使い方を間違うとスコアダウンになるので、正しい使い方を理解すべくこのシーケンスを追ってみた。
-#### 1. 処理概要
+#### 7.3.1. 処理概要
 既存のグラフ(stage_raw)のノードは一切増やさず、途切れてしまっている既存ノード同士の1フレームの隙間に対し、Stage-6 と V24 の両モデルが「ここは繋がっている」と一致（AND合意）したエッジ(線)だけを安全に追加する。
 
-#### 2. 戻り値の型と shape
+#### 7.3.2. 戻り値の型と shape
 
 |No| 戻り値 | 型 | shape / 構造 | 内容 |
 |---| :--- | :--- | :--- | :--- |
@@ -923,19 +954,19 @@ sequenceDiagram
 |2| **`v37_edge_audit`** | `dict` | 処理結果と整合性を記録した監査情報。<br>・`'selected_edges'`: 追加されたエッジ数<br>・`'raw_agreed_edges'`: 両者合意した候補数<br>・`'original_nodes_preserved'`: `True` 等 |
 |3| **`v37_edge_actions`** |リスト | 実際に追加された各エッジの実データ。<br>各要素: `{'dataset': str, 'source': int, 'target': int, 'source_t': int}` |
 
-### 3. 直前で c24 と stage6 を追加したのに、なぜさらにアンサンブルしてるのか？
+### 7.3.3. 直前で c24 と stage6 を追加したのに、なぜさらにアンサンブルしてるのか？
 
 直前の2行とこの処理では、「追加している対象」と「目的」が全く異なるため。
 
-#### (1) 直前の2行（`add_full_length_segments`）がやったこと
+#### 7.3.3.(1) 直前の2行（`add_full_length_segments`）がやったこと
 * 追加したもの: 「新しいノード」
 * c24 と Stage-6 が細胞と認識した新ノードをグラフに追加した。
 
-#### (2) この処理（`add_stage6_v24_consensus_edges`）がやること
+#### 7.3.3.(2) この処理（`add_stage6_v24_consensus_edges`）がやること
 * 追加するもの: ノード追加はしない。既存ノード間を繋ぐエッジのみを追加
 * グラフ内のノード(stage_raw)は1個も追加しない。
 
-#### (3) なぜこの順番で行うのか？
+#### 7.3.3.(3) なぜこの順番で行うのか？
 直前の2つのセグメント追加によって、グラフ空間上には
 * c21 由来のノード
 * c24 由来の追加ノード
@@ -956,7 +987,7 @@ Stage6のedge:                                (t=12: 先端) ●───● (t=
 
 ---
 
-### 4. `add_stage6_v24_consensus_edges()` のシーケンス図
+### 7.4. `add_stage6_v24_consensus_edges()` のシーケンス図
 
 ```mermaid
 sequenceDiagram
@@ -997,6 +1028,141 @@ sequenceDiagram
     end
 
     Consensus-->>Caller: 返却 (v37_raw, v37_edge_audit, v37_edge_actions)
+```
+
+### 7.5. features : DataFrame(shape=N, 65)※の詳細
+#### 7.5.1. 全65列の内訳一覧
+
+戻り値``features``の `pandas.DataFrame` に含まれる全65列の内訳は以下の通り
+
+##### 7.5.2.(1) メタデータ・識別情報（4列）
+モデル学習・推論の特徴量（`V55_FEATURES`）からは除外され、管理や後続の選択処理（`select_removals`）で使用される。
+
+| No. | カラム名 | 型 | 説明 |
+| :--- | :--- | :--- | :--- |
+| 1 | `dataset` | object | データセット名 |
+| 2 | `node_id` | int64 | ノードID（v37_raw 内の一意識別子） |
+| 3 | `t` | int16 | タイムフレーム番号（時刻 $t$） |
+| 4 | `frame_quota` | int16 | そのフレームにおいて交換（削除）が必要なノード数 |
+
+##### 7.5.2.(2) グラフ位相・由来・モデル支持特徴量（21列）
+トポロジー情報や、過去の各モデル（v21, v24, stage6, v39）との一致度合いを表す特徴量です。
+
+| No. | カラム名 | 説明 |
+| :--- | :--- | :--- |
+| 5 | `origin_v21` | ノードが v21 由来かどうかの真偽値 |
+| 6 | `origin_v24` | ノードが v24 由来かどうかの真偽値 |
+| 7 | `origin_stage6` | ノードが stage6 由来かどうかの真偽値 |
+| 8 | `v21_supported` | v21 のグラフに空間的に一致するノードが存在するか（bool） |
+| 9 | `v24_supported` | v24 のグラフに空間的に一致するノードが存在するか（bool） |
+| 10 | `stage6_supported` | stage6 のグラフに空間的に一致するノードが存在するか（bool） |
+| 11 | `v39_supported` | v39 のグラフに空間的に一致するノードが存在するか（bool） |
+| 12 | `supporting_banks` | このノードを支持しているモデルバンクの合計数（0〜4） |
+| 13 | `v21_distance_um` | v21 の最近傍ノードとの空間距離（μm） |
+| 14 | `v24_distance_um` | v24 の最近傍ノードとの空間距離（μm） |
+| 15 | `stage6_distance_um` | stage6 の最近傍ノードとの空間距離（μm） |
+| 16 | `v39_distance_um` | v39 の最近傍ノードとの空間距離（μm） |
+| 17 | `indegree` | ノードの入次数（親ノード数） |
+| 18 | `outdegree` | ノードの出次数（子ノード数） |
+| 19 | `incident_degree` | ノードの総次数（入次数 + 出次数） |
+| 20 | `history` | 過去方向へ何フレーム連続してトラックが続いているか |
+| 21 | `future` | 未来方向へ何フレーム連続してトラックが続いているか |
+| 22 | `track_support` | min(history, future) ... トラックの安定度 |
+| 23 | `track_span` | トラック全体の継続フレーム長（history + future - 1） |
+| 24 | `incoming_step_um` | 親ノードからの移動距離（μm） |
+| 25 | `outgoing_step_um` | 子ノードへの移動距離（μm） |
+
+##### 7.5.2.(3) 各モデルバンク（v21, v24, stage6, v39）の検出候補スカラー特徴量（32列）
+各モデルの検出候補テーブル（`candidates`）から、該当位置・時刻の検出スコアや形態学的数値をマッピングしたもの（4モデル × 8種類 = 32列）。
+
+| No. | カラム名 | 参照モデル | スカラー項目の説明 |
+| :--- | :--- | :--- | :--- |
+| 26〜33 | `v21_candidate_{suffix}` | v21 | 下記の8種類（距離、ランク、スコア、フローσ、近傍距離、密度、幅、境界） |
+| 34〜41 | `v24_candidate_{suffix}` | v24 | 同上 |
+| 42〜49 | `stage6_candidate_{suffix}` | stage6 | 同上 |
+| 50〜57 | `v39_candidate_{suffix}` | v39 | 同上 |
+
+※ 各モデル共通の8種類の suffix：
+1. `distance_um`: 候補検出点との距離（μm）
+2. `rank_fraction`: フレーム内でのスコア相対順位（0〜1）
+3. `score`: 検出モデルの生スコア
+4. `flow_sigma_um`: オプティカルフローの分散
+5. `near_um`: 最も近い他の細胞候補との距離
+6. `density_10um`: 半径10μm以内の局所細胞密度
+7. `peak_width_um`: 検出シグナルのピーク幅
+8. `boundary_um`: 画像境界からの距離
+
+##### 7.5.2.(4) 由来モデル（Origin）の検出候補スカラー特徴量（8列）
+そのノードの生みの親となったモデル（v21 / v24 / stage6 のいずれか）における、上記と同じ8種類のスカラー値です。
+
+| No. | カラム名 | 説明 |
+| :--- | :--- | :--- |
+| 58 | `origin_candidate_distance_um` | 由来モデルでの最近傍距離 |
+| 59 | `origin_candidate_rank_fraction` | 由来モデルでのスコア順位率 |
+| 60 | `origin_candidate_score` | 由来モデルでの検出スコア |
+| 61 | `origin_candidate_flow_sigma_um` | 由来モデルでのフロー分散 |
+| 62 | `origin_candidate_near_um` | 由来モデルでの最近接他細胞距離 |
+| 63 | `origin_candidate_density_10um` | 由来モデルでの局所密度 |
+| 64 | `origin_candidate_peak_width_um` | 由来モデルでのピーク幅 |
+| 65 | `origin_candidate_boundary_um` | 由来モデルでの境界距離 |
+
+ 総列数: 65列
+
+### 7.6. add_consensus_edges()処理概要
+#### 7.6.1. `add_consensus_edges()` は何をしているのか？
+「複数のモデル間で意見が一致した(合意の取れた)高信頼なエッジ（追跡線）を補完・追加する(エッジ修復)」。
+
+##### 概要
+前段の処理(ノード交換など)により、途切れてしまったトラックや未接続の端点を、3つのモデル（`stage6`, `v24`, `expanded`=v39）の出力を見比べて、以下の合意条件(Consensus) を満たす接続線だけを新しく追加する：
+
+1. **多数決の支持**: 2つ以上のモデルファミリーが「このノードとこのノードは繋がっている」と支持している。
+2. **端点同士の接続**: 始点側のノードにまだ先がなく(出次数 0)、終点側のノードにまだ手前がない(入次数 0)。
+3. **時間整合性**: 時間差がちょうど 1 フレーム差（$t \rightarrow t+1$）。
+4. **1対1の接続Mutual Unique）**: 競合する接続候補が他に存在しない。
+
+※ **ノード数（細胞数）は一切増やさず**、途切れていた細胞同士をつなぐ「エッジ（線）」のみを追加する。
+
+#### 7.6.2. 各戻り値の型と shape
+
+戻り値は `(v52_raw, edge_actions, edge_census)` のタプル。
+
+##### 7.6.2.① `v52_raw`
+* **型**: **`biohub.io.submission.DatasetGraph`**(追跡グラフデータクラス)
+* **shape / 構造**:
+  * **`.shape` 属性**: `tuple[int, int, int, int]`（元画像の4次元ボクセルサイズ `(T, Z, Y, X)`）
+  * **ノード数 (`len(v52_raw.nodes)`)**: $N$
+    * `v51_raw` と完全に同数（ノードは1つも増減しない）。
+  * **エッジ数 (`len(v52_raw.edges)`)**: $E + K$
+    * 合意によって新しく採択されたエッジの本数（$K$ 本）だけ増加。
+
+##### 7.6.2.② `edge_actions`
+* **型**: **`list[dict]`**（辞書のリスト）
+* **要素数（shape）**: **長さ $K$**（新しく追加されたエッジの本数）
+* **各要素の辞書の中身**:
+  追加された各エッジの具体的な情報が格納されている。
+```python
+  {
+      "dataset": str,     # データセット名
+      "source": int,      # 接続の始点ノードID
+      "target": int,      # 接続の終点ノードID
+      "families": str     # 支持したモデル系統（例: "crossbank_solver+strong_detector"）
+  }
+```
+
+##### 7.6.2.③ `edge_census`
+* **型**: **`dict`**（辞書型）
+* **要素数（shape）**: **6 個のキーを持つ辞書**
+* **中身（監査・集計ログ）**:
+  各モデルから何本のエッジが候補になり、最終的に何本追加されたかの統計サマリー。
+```python
+  {
+      "dataset": str,                # データセット名
+      "mapped_stage6_edges": int,    # stage6 から提案されたエッジ数
+      "mapped_v24_edges": int,       # v24 から提案されたエッジ数
+      "mapped_v25_edges": int,       # v25 から提案されたエッジ数 (あれば)
+      "mapped_expanded_edges": int,  # expanded(v39) から提案されたエッジ数
+      "selected_mutual_unique": int  # 実際に採択・追加されたエッジ数 (= K)
+  }
 ```
 
 ---
