@@ -894,6 +894,3 @@ assert set(df.dataset) == {path.stem for path in datasets}
 assert df[['t', 'z', 'y', 'x']].notna().all().all()
 print('every discovered dataset present; schema and finite-coordinate gates pass')
 summary
-
-
-

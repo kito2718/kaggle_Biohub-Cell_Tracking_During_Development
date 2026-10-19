@@ -1431,16 +1431,22 @@ sequenceDiagram
     TrimTails-->>Script: v399_graph
     Note over Script: 末端のゴミ(tails:過剰追跡)を除去
 
-    Script->>GapAdmit: v454.apply_gap_admission(v399_graph, ...)
+    Script->>GapAdmit: v454.apply_gap_admission(v399_graph, ...)※
     GapAdmit-->>Script: v454_graph
+    Note over Script: トラッキンググラフにおける 1フレーム欠損(時間ギャップ: t -> t+2)を検出・補間し、新しいノードとエッジを追加する後処理(V454 Gap Admission) を行う。
 
-    Script->>Prep507: v507.prepare_actions(v454_graph, c21, ...)
+    Script->>Prep507: v507.prepare_actions(v454_graph, c21, ...)※
     Prep507-->>Script: v507_prepared
-    Script->>Apply507: v507.apply_prepared(v454_graph, v507_prepared)
-    Apply507-->>Script: v507_graph
+    Note over Script: 後処理実行の方針を決定する。
 
-    Script->>Apply533: v533.apply(v507_graph, c21, v394_cluster, path)
+    Script->>Apply507: v507.apply_prepared(v454_graph, v507_prepared)※
+    Apply507-->>Script: v507_graph
+    Note over Script: 直前の v507.prepare_actions()に基づいて、入力グラフに対して実際に座標補正と分岐エッジ削除を適用して新しいグラフを生成・検証する
+
+    Script->>Apply533: v533.apply(v507_graph, c21, v394_cluster, path)※
     Apply533-->>Script: v533_graph (最終グラフを graphs リストへ追加)
+    Note over Script: 全体の最終段処理(ルールベースで整形)
+
 ```
 
 ### 8.1 v394.prune_components()でやっていること
@@ -1565,6 +1571,242 @@ DatasetGraphと、dict。
 | `"witness_matching_used"` | `bool` | 他モデルによる照合特徴量を使用したか |
 | `"new_forward_passes"` | `int` | (追加フォワードパス数、`0`) |
 
+### 8.3. `v454.apply_gap_admission()` でやっていること
+トラッキンググラフにおける**1フレーム欠損(時間ギャップ: $t \rightarrow t+2$)を検出・補間し、新しいノードとエッジを追加する後処理(V454 Gap Admission)**をする。
+
+#### 8.3.1 引数
+
+| 引数名 | ノートブックでの実引数 | 型 | shape / 形式 | 説明 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`graph`** | `v399_graph` | `DatasetGraph` | オブジェクト | 処理対象となる現在のトラッキンググラフ(直前の `v399.trim_terminal_tails` でノイズ末端が除去されたグラフ)。内部に `nodes`, `edges`, `shape` を保持。 |
+| **`motion_ids`** | `gap_ids` | `np.ndarray` | `(N,)` (dtype: `int64`) | モーションベクトルが計算されている基準ノードのID一覧`final_raw.nodes`のキー配列。 |
+| **`backward`** | `gap_backward` | `np.ndarray` | `(N, 3)` (dtype: `float64`) | `motion_ids` の各ノードに対する**過去方向($t-1$)への推定移動ベクトル** $(\Delta z, \Delta y, \Delta x)$ [$\mu\text{m}$単位]。 |
+| **`forward`** | `gap_forward` | `np.ndarray` | `(N, 3)` (dtype: `float64`) | `motion_ids` の各ノードに対する**未来方向($t+1$)への推定移動ベクトル** $(\Delta z, \Delta y, \Delta x)$ [$\mu\text{m}$単位]。 |
+| **`zarr_path`** | `path` | `pathlib.Path` | パスオブジェクト | データセットのZarr画像ディレクトリへのパス。候補点周辺のパッチ画像を切り出してコントラスト等の生画像特徴量を計算するために使用。 |
+| **`metadata`** | `V454_METADATA` | `dict` | 辞書 | 事前学習済みのロジスティック回帰モデルおよび前処理パラメータ`load_assets() でロードする。 |
+
+##### 補足: `metadata` 辞書に含まれる主な内容
+- `features`: 使用する8種類の特徴量名リスト
+- `threshold`: 採択判定の確率閾値(`0.65`)
+- `imputer_statistics`: 欠損値補完用の中央値配列(shape: `(8,)`)
+- `scaler_mean`: 特徴量正規化用の平均配列(shape: `(8,)`)
+- `scaler_scale`: 特徴量正規化用のスケール配列(shape: `(8,)`)
+- `logistic_coef`: ロジスティック回帰の重み配列(shape: `(8,)`)
+- `logistic_intercept`: ロジスティック回帰のバイアス値(スカラー `float`)
+- 
+
+#### 8.3.2 主な処理フロー
+1. **候補(Proposal)の抽出** `_proposal_rows()`
+   - トラッキングが途切れている終端ノード(terminal: 出次数0, 時刻 $t$)と、新しく始まっているノード(root: 入次数0, 時刻 $t+2$)を探索。
+   - terminalの順方向モーション予測(`forward`)と、rootの逆方向モーション予測(`backward`)から中間時刻 $t+1$ の位置を推測。
+   - 予測位置の一致度(`agreement_um` $\le 3.0\,\mu\text{m}$)が高く、既存セルとも重複しない(新規性がある)中間点を補間候補として抽出。
+2. **生画像特徴量の抽出** `_patch_stats()`
+   - Zarrボリュームから候補座標 $(t+1, z, y, x)$ 周辺のパッチを切り出し、コントラスト(`raw_center_contrast`, `raw_peak_contrast`)、SNR(`raw_peak_snr`)、中心からのピークズレ(`raw_peak_offset`)を算出。
+3. **採択確率のスコアリング** `_probabilities()`
+   - 幾何特徴量と画像特徴量(計8次元)を標準化し、事前学習済みのロジスティック回帰モデルで採択確率(`selection_probability`)を計算。
+4. **ノード・エッジの追加** [L184-L204]
+   - 閾値(`threshold`=0.65)以上の候補から最もスコアの良い1件を選択。
+   - 新規ノード `new_id` を $(t+1, z, y, x)$ に追加し、`parent -> new_id` および `new_id -> child` の2本のエッジ(confidence=0.30)を接続してバリデーション(`validate_graph()`を実行。
+
+#### 8.3.3. 戻り値の型とshape
+
+DatasetGraphとdict。
+
+##### 8.3.3.第1要素: `result` (型: `DatasetGraph`)
+
+| フィールド | 型 | 構造 / 要素数(shape相当) | 内容 |
+| :--- | :--- | :--- | :--- |
+| `dataset` | `str` | スカラー | データセット識別子名(例: `"acq_01"`) |
+| `nodes` | `dict[int, tuple[int, int, int, int]]` | 長さ $N$ (採択時: 元ノード数 $+1$)、値タプルは `(t, z, y, x)` の長さ4 | ノードIDから4次元座標へのマッピング |
+| `edges` | `list[tuple[int, int, float]]` | 長さ $E$ (採択時: 元エッジ数 $+2$)、各タプルは `(parent, child, conf)` の長さ3 | 接続エッジのリスト |
+| `shape` | `tuple[int, int, int, int] \| None` | 長さ4: `(T, Z, Y, X)` | 画像ボリュームの全体形状 |
+
+##### 8.3.3.第2要素: `audit` (型: `dict`)
+処理結果の監査・メタ情報辞書。
+
+- **候補なし / 閾値未満で採択なしの場合**:
+  - `proposals` (`int`): 抽出された候補数
+  - `above_threshold` (`int`): 閾値以上の候補数(0)
+  - `selected` (`int`): 採択数(0)
+- **1件採択された場合**:
+  - `proposals`: 候補数 (`int`)
+  - `above_threshold`: 閾値超え候補数 (`int`)
+  - `selected`: `1` (`int`)
+  - `selection_probability`: 採択確率 (`float`)
+  - `parent`: 親ノードID (`int`)
+  - `child`: 子ノードID (`int`)
+  - `new_node_id`: 新規ノードID (`int`)
+  - `coordinate_tzyx`: `[t, z, y, x]` (要素数4の `list[int]`)
+  - `agreement_um`: 一致度距離 (`float`)
+  - `endpoint_distance_um`: 端点間距離 (`float`)
+  - `features`: 計算に使用した8種類の特徴量 (`dict[str, float]`)
+
+### 8.4. `v507.prepare_actions()` がしていること
+トラッキンググラフに対する2つの後処理アクション、**①ノード座標の微小補正(Localization / ゲーティング付き位置修正)** と **②誤った細胞分裂分岐の剪定(Fork Pruning / 分岐エッジ削除)** の適用対象を事前決定(準備・ロック)する。ここで決定されたアクション辞書に基づいて、直後の `v507.apply_prepared() によってグラフへ適用される。
+
+#### 8.4.1. 引数
+| 引数名 | 実引数 | 型 | shape / 形式 | 説明 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`graph`** | `v454_graph` | `DatasetGraph` | オブジェクト | 処理対象のグラフ(直前の `v454.apply_gap_admission` 後のグラフ)。 |
+| **`candidates`** | `c21` | `pd.DataFrame` | 行数 $M$, カラム数多数 | 検出器が出力した全候補点データフレーム(`t`, `z`, `y`, `x`, `score`, `rank_in_frame` など)。 |
+| **`cluster`** | `v394_cluster` | `str` | スカラー | 取得条件クラスター名(例: `"acq_01"` かそれ以外か)。 |
+| **`motion_ids`** | `gap_ids` | `np.ndarray` | `(N,)` (dtype: `int64`) | モーションサンプリングが行われた基準ノードID一覧。 |
+| **`motion_nodes`** | `gap_nodes` | `np.ndarray` | `(N, 4)` (dtype: `int64`) | `motion_ids` 各ノードの `(t, z, y, x)` 座標配列。 |
+| **`motion_backward`** | `gap_backward` | `np.ndarray` | `(N, 3)` (dtype: `float64`) | 過去方向への推定移動量 $(\Delta z, \Delta y, \Delta x)$ [$\mu\text{m}$単位]。 |
+| **`motion_forward`** | `gap_forward` | `np.ndarray` | `(N, 3)` (dtype: `float64`) | 未来方向への推定移動量 $(\Delta z, \Delta y, \Delta x)$ [$\mu\text{m}$単位]。 |
+| **`assets`** | `V507_ASSETS` | `dict` | 辞書 | `v507.load_assets()` でロードされたメタデータとモデル群(`localization` 3軸分, `gate`, `fork`)。 |
+
+#### 8.4.2 主な処理の流れ
+1. **グラフの表形式化** `_tables()`
+   - 入力グラフの `nodes` と `edges` を DataFrame に変換。
+2. **座標補正アクションの選定** `_localization_actions()`
+   - ノードの前後速度・中点残差や、近傍検出候補点(`candidates`)とのオフセット・検出スコア等から特徴量を抽出。
+   - 3軸別($z, y, x$)の学習済み回帰木モデルで変位量(residual)を予測し、ゲートモデル(gate model)で補正の信頼度を評価。
+   - ゲート値が閾値(`localization_gate_threshold_um`)以上の高信頼ノードのみ、最大移動量キャップ(`localization_norm_cap_um`)をかけて補正後の $(z, y, x)$ 整数座標を決定。
+3. **分岐剪定アクションの選定** `_fork_action()
+   - 親ノード1つに対して子ノードが2つある分岐点(`fork`)をすべて抽出。
+   - 2本のアームの幾何距離、速度残差、オプティカルフローモーション予測残差(`forward`/`backward`)などの特徴量を抽出。
+   - 分岐剪定モデルで「誤った余剰分岐である確率」を推論し、閾値(`fork_probability_threshold`)を超えた最も確信度の高い分岐から、モーション不整合が大きい方の子へのエッジ $(parent \rightarrow child)$ を削除対象として最大1件選定。
+
+#### 8.4.3. 戻り値の型とshape
+
+dictと dict。
+
+##### 8.4.3.第1要素: `prepared` (型: `dict`)
+
+| キー | 型 | 構造 / 要素数(shape相当) | 説明 |
+| :--- | :--- | :--- | :--- |
+| `"localization"` | `dict[int, tuple[int, int, int]]` | 長さ $K$ ($0 \le K \le |V|$)、値は長さ3のタプル | 補正対象のノードID $\rightarrow$ 新しい座標 `(z, y, x)` の辞書。 |
+| `"fork"` | `dict \| None` | 辞書または `None` | 剪定対象となる分岐エッジ情報。<br>選定時: `{"parent": int, "child": int, "probability": float}`<br>非該当時: `None` |
+
+##### 8.4.3.第2要素: `audit` (型: `dict`)
+実行時のログ・評価指標辞書。
+
+- **`audit["localization"]`** (`dict`):
+  - `gate_threshold_um` (`float`): ゲート閾値
+  - `selected` (`int`): ゲートを通過したノード数
+  - `moved` (`int`): 実際に座標値が変化するノード数
+  - `gate_min`, `gate_max` (`float`): ゲートスコアの最小・最大値
+- **`audit["fork"]`** (`dict`):
+  - `candidates` (`int`): 評価した分岐の総数
+  - `above_threshold` (`int`): 確率閾値を超えた分岐数
+  - `selected` (`int`): 採択数(0 または 1)
+  - 採択時は `parent`, `child`, `probability` が追加されます。
+
+
+### 8.5. `v507.apply_prepared()` がしていること
+
+直前の `v507.prepare_actions()`で決定・事前準備されたアクション辞書(`prepared`)を元に、**入力グラフに対して実際に座標補正と分岐エッジ削除を適用して新しいグラフを生成・検証する**。
+
+#### 8.5.1. 引数
+
+| 引数名 | 実引数 | 型 | shape / 形式 | 説明 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`graph`** | `v454_graph` | `DatasetGraph` | オブジェクト | アクション適用対象となる現在のグラフ。 |
+| **`prepared`** | `v507_prepared` | `dict` | 辞書 | `v507.prepare_actions()`で作成されたアクション辞書。<br>・`"localization"`: `dict[int, tuple[int, int, int]]` (ノードID $\rightarrow$ 新座標)<br>・`"fork"`: `dict \| None` (`{"parent": int, "child": int, "probability": float}`) |
+
+
+#### 8.5.2 具体的な処理の流れ
+1. **ノード座標の更新(Localizationの適用)** [L407-L416]
+   - `prepared["localization"]` に登録されているノードIDと新座標 `(z, y, x)` を走査。
+   - グラフ内に存在するノードについて、時刻 $t$ は維持したまま空間座標 $(z, y, x)$ を予測された補正座標に書き換え。
+   - 実際に座標値が変化した件数を `moved` としてカウントする。
+2. **分岐エッジの削除(Fork Pruningの適用)** [L417-L425]
+   - `prepared["fork"]` が指定されている場合、対象の $(parent \rightarrow child)$ エッジを探索し、該当する1本のエッジをグラフから削除(剪定)。
+3. **グラフの再構築とバリデーション** [L426-L436]
+   - 更新された `nodes` と `edges` を用いて新しい `DatasetGraph` インスタンスを生成。
+   - `validate_graph()` で重複IDや座標の有効範囲、分岐数などを検証し、監査辞書(`audit`)とともに返却する。
+
+#### 8.5.3. 戻り値の型とshape
+DatasetGraphとdict。
+
+##### 8.5.3.第1要素: `result` (型: `DatasetGraph`)
+アクション適用後の新しいトラッキンググラフオブジェクト。
+
+| フィールド | 型 | 構造 / 要素数(shape相当) | 内容 |
+| :--- | :--- | :--- | :--- |
+| `dataset` | `str` | スカラー | データセット識別子名(例: `"acq_01"`) |
+| `nodes` | `dict[int, tuple[int, int, int, int]]` | 長さ $N$ (ノード数は不変)、値タプルは `(t, z, y, x)` | 座標補正が適用されたノード辞書 |
+| `edges` | `list[tuple[int, int, float]]` | 長さ $E$ (fork削除が適用された場合は $-1$) | 剪定後のエッジリスト |
+| `shape` | `tuple[int, int, int, int] \| None` | 長さ4: `(T, Z, Y, X)` | 画像ボリュームの全体形状 |
+
+##### 8.5.3.第2要素: `audit` (型: `dict`)
+アクション適用結果の監査情報辞書(すべてスカラーの整数値)。
+
+| キー | 型 | 説明 |
+| :--- | :--- | :--- |
+| `"localization_actions"` | `int` | 準備されていた位置補正アクション総数 |
+| `"localization_moved"` | `int` | 実際に座標値が書き換わって移動したノード数 |
+| `"localization_nodes_removed_by_tail"` | `int` | 補正対象だったがグラフ上に存在しなかったノード数 |
+| `"fork_selected"` | `int` | 分岐削除アクションが選択されていたか(1 または 0) |
+| `"fork_applied"` | `int` | 実際に該当分岐エッジが削除されたか(1 または 0) |
+| `"fork_skipped"` | `int` | 削除対象だったがスキップされたか(1 または 0) |
+| `"nodes"` | `int` | 適用後の総ノード数 |
+| `"edges"` | `int` | 適用後の総エッジ数 |
+| `"components"` | `int` | グラフ内の連結成分数 (`nodes - edges`) |
+| `"forks"` | `int` | グラフ内に残存している細胞分裂分岐の総数 |
+
+### 8.6. `v533.apply()` がしていること
+全体の最終段処理として、**①未検出チェーンの復活(Contrast-Gated Add-Back)**と、**②視野境界アーティファクトの削除(XY Edge Trim)**を実施。機械学習モデルは使わず、NumPy/SciPy/Zarrによる幾何・画像演算のみ動作。
+
+#### 8.6.1 引数
+
+| 引数名 | ノートブックでの実引数 | 型 | shape / 形式 | 説明 |
+| :--- | :--- | :--- | :--- | :--- |
+| **`graph`** | `v507_graph` | `DatasetGraph` | オブジェクト | 処理対象となるグラフ(V507適用後のグラフ)。 |
+| **`candidates`** | `c21` | `pd.DataFrame` | 行数 $M$, カラム数多数 | 検出器が出力したプライマリ検出候補データフレーム(`t`, `z`, `y`, `x`, `score`, `rank_in_frame` 等)。ステップAの未検出セル探索に使用。 |
+| **`cluster`** | `v394_cluster` | `str` | スカラー | データセットの取得条件クラスター名(`"acq_01"` の場合のみステップAが有効化)。 |
+| **`zarr_path`** | `path` | `pathlib.Path` | パスオブジェクト | データセットのZarrディレクトリパス。画像有効領域バウンディングボックスの計算や、ステップAのコントラスト計測に使用。 |
+| **`p`** | *(省略: None)* | `dict` | 辞書(省略時は既定パラメータ) | ハイパーパラメータ辞書。省略時はモジュール内の `PARAMS` 辞書が使用される(主な値: `edge_px: 1.5`, `min_nodes: 9`, `min_contrast: 0.1` など)。 |
+
+
+#### 8.6.2 具体的な処理の流れ
+1. **ステップA: コントラスト判定付きチェーン追加(Add-Back)** (※`cluster == "acq_01"` のみ実行)
+   - 既存グラフから $4.5\,\mu\text{m}$ 以上離れた未検出候補点(ホール)を検出器の候補プール(`candidates`)から抽出。
+   - 近傍点同士を時間フレーム間で繋いでチェーンを形成(長さ $\ge 3$)し、既存トラックの端点への接続も探索。
+   - 厳格な採択基準(ノード数 $\ge 9$、近傍距離 $\le 8\,\mu\text{m}$、実画像での局所コントラスト中央値 $> 0.1$)をすべて満たすチェーンのみを新規ノードおよびエッジとしてグラフに追加。
+2. **ステップB: 視野境界ノード・エッジの剪定(XY Edge Trim)** (※全データセットで実行)
+   - Zarr生画像の有効データ領域(ゼロパディング領域を除くバウンディングボックス)をフレームごとに計算。
+   - $y$ 軸または $x$ 軸のデータ有効境界から 1.5 px(`edge_px`) 以内の端に存在するノードを、境界アーティファクトとして接続エッジごと削除。
+3. **最終グラフの生成と検証** [L291-L296]
+   - 最終的なノードとエッジで `DatasetGraph`を構築、`validate_graph() で形式・制約をチェックして返却。
+
+---
+
+#### 8.6.3. 戻り値の型とshape
+DatasetGraphとdict。
+
+##### 8.6.3.第1要素: `out` (型: `DatasetGraph`)
+コンペ提出の最終出力となるトラッキンググラフ。
+
+| フィールド | 型 | 構造 / 要素数(shape相当) | 内容 |
+| :--- | :--- | :--- | :--- |
+| `dataset` | `str` | スカラー | データセット識別子名(例: `"acq_01"`) |
+| `nodes` | `dict[int, tuple[int, int, int, int]]` | 長さ $N_{final}$、値タプルは `(t, z, y, x)` | 最終ノード辞書(未検出チェーンの追加、境界ノードの削除が反映) |
+| `edges` | `list[tuple[int, int, float]]` | 長さ $E_{final}$、各エッジは `(parent, child, conf)` | 最終エッジリスト |
+| `shape` | `tuple[int, int, int, int] \| None` | 長さ4: `(T, Z, Y, X)` | 画像ボリュームの全体形状 |
+
+##### 8.6.3.第2要素: `audit` (型: `dict`)
+処理の詳細ログ辞書。
+
+| キー | 型 | 説明 |
+| :--- | :--- | :--- |
+| `"version"` | `str` | `"v533_addback_edge_v1"` |
+| `"cluster"` | `str` | クラスター名 |
+| `"addback_applied"` | `bool` | ステップA(add-back)が実行されたか(`cluster == "acq_01"`) |
+| `"proposals"` | `int` | 構築されたチェーン候補総数 |
+| `"length_near_pass"` | `int` | 長さ・近傍条件を通過した候補数 |
+| `"selected"` | `int` | コントラスト閾値をクリアして採択された候補数 |
+| `"kept"` | `int` | 競合解消後に残ったチェーン数 |
+| `"added_nodes"` | `int` | ステップAで新たに追加されたノード数 |
+| `"added_edges"` | `int` | ステップAで新たに追加されたエッジ数 |
+| `"trimmed_nodes"` | `int` | ステップBで視野端境界として削除されたノード数 |
+| `"trimmed_edges"` | `int` | 境界ノード削除に伴って削除されたエッジ数 |
+| `"nodes"` | `int` | 最終的な総ノード数 |
+| `"edges"` | `int` | 最終的な総エッジ数 |
+| `"forks"` | `int` | 最終的な分岐数 |
+| `"seconds_addback"` | `float` | ステップAの所要時間(秒) |
+| `"seconds_total"` | `float` | V533全体の所要時間(秒) |
 
 ---
 
