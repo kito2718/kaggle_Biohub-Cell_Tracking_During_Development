@@ -1416,16 +1416,20 @@ sequenceDiagram
     participant Apply533 as v533.apply()
 
     Script->>ValidGraph: validate_graph(final_raw / final_out)
-    ValidGraph-->>Script: 検証通過
+    ValidGraph-->>Script: raw_valid,out_valid:整合結果データ(not use)
+    Note over Script: (final_raw,final_out): DatasetGraphの整合性チェック
 
     Script->>FinalizeCV: finalize_cv_graph(final_raw, final_out)
     FinalizeCV-->>Script: v389_graph
+    Note over Script: 引数の整合性チェックとDatasetGraphインスタンスを生成・返却する
 
-    Script->>PruneComp: v394.prune_components(v389_graph, shared_volumes, ...)
-    PruneComp-->>Script: v394_graph
+    Script->>PruneComp: v394.prune_components(v389_graph, shared_volumes, ...)※
+    PruneComp-->>Script: v394_graph, v394_audit
+    Note over Script: 孤立ノードをグラフから刈り取り(削除)する。推論(LightGBM,Booster)を使用
 
-    Script->>TrimTails: v399.trim_terminal_tails(v394_graph, shared_volumes, ...)
+    Script->>TrimTails: v399.trim_terminal_tails(v394_graph, shared_volumes, ...)※
     TrimTails-->>Script: v399_graph
+    Note over Script: 末端のゴミ(tails:過剰追跡)を除去
 
     Script->>GapAdmit: v454.apply_gap_admission(v399_graph, ...)
     GapAdmit-->>Script: v454_graph
@@ -1438,6 +1442,129 @@ sequenceDiagram
     Script->>Apply533: v533.apply(v507_graph, c21, v394_cluster, path)
     Apply533-->>Script: v533_graph (最終グラフを graphs リストへ追加)
 ```
+
+### 8.1 v394.prune_components()でやっていること
+短〜中規模の連結成分(トラック)を機械学習モデル(LightGBM Booster)で真偽判定し、誤検出と判定されたノイズ成分およびエッジを持たない孤立ノードをグラフから刈り取り(削除)する
+
+#### 8.1.1 引数
+
+| 引数名 | 型 (`type`) | ノートブックでの実引数例 | 役割・内容 |
+| :--- | :--- | :--- | :--- |
+| **`graph`** | `DatasetGraph` | `v389_graph`(final_rawと同じ) | **枝刈り対象の入力グラフ**。<br>これまでのパイプラインで構築されたノード座標とエッジ情報を持つ。 |
+| **`volume`** | `np.ndarray` | `shared_volumes` | **顕微鏡画像の4Dボリュームデータ** `(T, Z, Y, X)`。<br>ノード周辺の $3 \times 3 \times 3$ 局所画像パッチをサンプリングし、輝度や前後フレーム間の相互相関(NCC)を計算するために使用。 |
+| **`witnesses`** | `dict[str, DatasetGraph]` | v24: copy_cv_coordinates(v24.graph)<br/>stage6: copy_cv_coordinates(stage6.graph)<br/>v39: copy_cv_coordinates(v39.graph)<br/>v38: copy_cv_coordinates(v38.graph) | **他モデル・他ステージの予測グラフ群(証人)**。<br>対象グラフのエッジが他手法でも共通して支持されているか(アンサンブル支持数)を照合するために使用。 |
+| **`model`** | `lightgbm.Booster` | `V394_MODEL` | **学習済み LightGBM モデル** (`component_protector.txt`)。<br>抽出された特徴量から、各短コンポーネントを保持すべき確率を推論する。 |
+| **`metadata`** | `dict` | `V394_METADATA` | **モデルの設定辞書** (`metadata.json`)。<br>対象とする最大ノード数 (`max_component_nodes`)、特徴量名リスト (`feature_columns`)、クラスタ別閾値 (`protect_thresholds`) を含む。 |
+| **`cluster`** | `str` | `v394_cluster` | **撮影条件クラスタ名** (例: `'acq_01'`)。<br>画像の解像度や輝度統計量から分類されたクラスタIDで、クラスタ別の確率閾値の選択や特徴量フラグ (`is_acq01`) に使用。 |
+
+#### 8.1.1 具体的な処理手順
+1. **連結成分の抽出 (Union-Find)**:
+   - エッジ情報に基づきノード間の連結成分を分解し、各成分のノード数(`sizes`)や出次数を算出。
+2. **判定対象候補の絞り込み**:
+   - ノード数が2以上かつ `metadata["max_component_nodes"]` 以下の成分を抽出。
+   - ただし、**分裂(出次数2)を含む成分(`fork_roots`)は誤削除を避けるため保護対象として除外**する。
+3. **特徴量の抽出**:
+   絞り込んだ候補成分ごとに、以下の特徴量を計算:
+   - **トポロジー・位置**: ノード数、エッジ数、時間スパン、時間・空間の正規化座標。
+   - **近傍距離**: 同時刻フレーム内での最近傍ノードまでの空間距離(`cKDTree` による `nearest_um`)。
+   - **画像輝度パッチ**: 3D画像ボリューム(`volume`)からノード周辺の $3 \times 3 \times 3$ パッチをサンプリングし、平均輝度や標準偏差を算出。
+   - **運動・連続性**: フレーム間変位距離(`edge_um`)、前後フレームのパッチ間の正規化相互相関(NCC: `edge_ncc`)、進行方向の変化(コサイン類似度 `turn`)、加速度(`acceleration_um`)。
+   - **他モデルによる支持(Witnesses)**: 他の予測グラフ群(`witnesses`: v24, stage6, v39, v38 など)とシーケンスマッチングを行い、他モデルでも共通して予測されているエッジかどうか(`witnesses`)。
+4. **LightGBM による保護判定**:
+   - 特徴量行列を `model.predict()` に入力し、各コンポーネントを保持すべき確率(`probability`)を算出。
+   - データセットのクラスタごとに設定された閾値(`metadata["protect_thresholds"][cluster]`)未満の成分を削除対象(`remove_roots`)にする。
+5. **枝刈りとグラフ再構築**:
+   - エッジが存在しない孤立ノード(`edgeless_nodes`)および削除対象と判定された成分のノード・エッジを除去した、新しい DatasetGraph を構築。
+6. **バリデーションと監査情報の生成**:
+   - 新グラフに対して validate_graph()を実行、枝刈りの実行結果(削除数など)を追記した監査メタデータを作成。
+
+#### 8.1.2. 戻り値の型と各要素の type
+戻り値は、DatasetGraph, dict。
+##### 8.1.2.第1要素: `result`
+- **型 (`type`)**: **`DatasetGraph`**
+- **内容**: ノイズ成分や孤立ノードが削除された後の新しいDatasetGraph。
+
+##### 8.1.2.第2要素: `audit`
+- **型 (`type`)**: **`dict`** (実質的には `dict[str, Union[str, int, float, None]]`)
+- **内容**: `validate_graph(result)` のサマリーと、以下の枝刈り監査キーが追加された辞書。
+
+| キー名 | 値の型 (`type`) | 内容 |
+| :--- | :--- | :--- |
+| `"dataset"` | `str` | データセット名 |
+| `"nodes"` | `int` | 枝刈り後の総ノード数 |
+| `"edges"` | `int` | 枝刈り後の総エッジ数 |
+| `"forks"` | `int` | 分裂ノード数 |
+| `"births"` | `int` | 新規発生ノード数 |
+| `"deaths"` | `int` | 追跡終了ノード数 |
+| `"mean_disp_um"` | `float` | 平均変位量(μm) |
+| `"p99_disp_um"` | `float` | 変位量の99パーセンタイル値(μm) |
+| `"acquisition_cluster"` | `str` | 撮影条件クラスタ名(例: `'acq_01'`) |
+| `"threshold"` | `float` | 判定に使用された確率閾値 |
+| `"candidates"` | `int` | 判定対象となった候補コンポーネント数 |
+| `"removed_components"` | `int` | 閾値未満で削除されたコンポーネント数 |
+| `"edgeless_nodes"` | `int` | 削除されたエッジなし孤立ノード数 |
+| `"removed_nodes"` | `int` | 削除された合計ノード数(孤立ノード＋削除コンポーネント) |
+| `"probability_min"` | `float \| None` | 予測確率の最小値(候補がない場合は `None`) |
+| `"probability_max"` | `float \| None` | 予測確率の最大値(候補がない場合は `None`) |
+
+
+### 8.2. `v399.trim_terminal_tails()` でやっていること
+十分な長さを持つ細胞軌跡(直鎖トラック)の両端(先頭・末尾)について、追跡の誤りや過剰延伸によるノイズ端点ノードを、機械学習モデル(LightGBM)を用いて外側から連続している部分だけトリミング(刈り込み)する。
+
+**背景**
+細胞追跡では、細胞が視野から消える直後や現れる直前、あるいは見失った後に、近傍のノイズや背景のムラを誤って1〜数フレーム余計に繋げてしまう(過剰追跡)ケースが起こりえる。この関数はその**末端のゴミ(tails)**を除去する。
+
+#### 8.2.1 具体的な処理の流れ
+1. **直鎖トラック(Simple Paths)の抽出[54〜101行目]**:
+   - 途中に分岐(`outdegree > 1`)や合流(`indegree > 1`)を含まない、1本の直線状のトラックで、かつ一定以上の長さ(`minimum_component_nodes`)を持つものを抽出。
+2. **端点刈り取り候補アクションの作成[126〜139行目]**:
+   - 各トラックの始点側(`side=0`)と終点側(`side=1`)から、トラックの中央に向かって深さ `depth` (1 〜 `maximum_tail_depth`=5) のノードを削除候補アクションとしてリストアップする。
+3. **特徴量の抽出**:
+   - **端点と隣接点の画像特徴**: パッチ平均輝度、標準偏差、輝度比率(`patch_mean_ratio`)、エッジ間のパッチ正規化相互相関(NCC: `edge_ncc`)。
+   - **空間・時間位置**: フレーム境界への近さ(`temporal_boundary_fraction`)、同時刻の最近傍ノード距離(`terminal_nearest_um`)。
+   - **運動特性**: 端部の移動距離(`edge_um`)、進行方向の曲がり角(`first_turn_cosine`)、加速度(`first_acceleration_um`)。
+   - **トラック全体の文脈**: トラック長、時間スパン、他モデル(`witnesses`)による支持数。
+4. **LightGBM による推論**:
+   - 各端点ノードについて「真の細胞(保持すべき)」である確率 `probability` を推論する。
+5. **外側からの連続プレフィックスのみ削除[317〜322行目]**:
+   - 端点(外側)から順に見ていき、確率が閾値 `threshold` 未満であれば削除リストに追加するが、**途中で一度でも閾値以上の信頼できるノードに達したら探索を即座に打ち切る(`break`)**。
+   - これにより、トラックの途中に穴を開けることなく、「端っこに連続してくっついていた低信頼ノード」だけを綺麗に刈り取る。
+6. **グラフ再構築と検証**:
+   - 削除ノード・エッジを除去した新しい DatasetGraph を作成し、validate_graph()で整合性を確認する。
+
+#### 8.2.2. 戻り値の型と各要素の type
+DatasetGraphと、dict。
+
+##### 8.2.2.第1要素: `result`
+- **型 (`type`)**: **`biohub.io.submission.DatasetGraph`**
+- **内容**: 信頼度の低い末端ノード・エッジがトリミングされた後の新しいグラフ。
+
+##### 8.2.2.第2要素: `audit`
+- **型 (`type`)**: **`dict`**
+- **内容**: `validate_graph(result)` の出力に、末端トリミングの実行統計を追加した辞書。
+
+| キー名 | 値の型 (`type`) | 内容 |
+| :--- | :--- | :--- |
+| `"dataset"` | `str` | データセット名 |
+| `"nodes"` | `int` | 処理後の総ノード数 |
+| `"edges"` | `int` | 処理後の総エッジ数 |
+| `"forks"` | `int` | 分裂ノード数 |
+| `"births"` | `int` | 新規発生ノード数 |
+| `"deaths"` | `int` | 追跡終了ノード数 |
+| `"mean_disp_um"` | `float` | 平均移動距離(μm) |
+| `"p99_disp_um"` | `float` | 移動距離の99パーセンタイル値(μm) |
+| `"acquisition_cluster"` | `str` | 撮影条件クラスタ名(例: `'acq_01'`) |
+| `"threshold"` | `float` | 使用された確率閾値 |
+| `"candidate_components"` | `int` | 評価対象となった直鎖トラック数 |
+| `"candidate_actions"` | `int` | 評価した端点候補アクション数 |
+| `"removed_actions"` | `int` | 削除されたアクション数 |
+| `"removed_nodes"` | `int` | 削除された末端ノード数 |
+| `"removed_edges"` | `int` | 削除されたエッジ数 |
+| `"probability_min"` | `float` | 予測確率の最小値 |
+| `"probability_max"` | `float` | 予測確率の最大値 |
+| `"witness_matching_used"` | `bool` | 他モデルによる照合特徴量を使用したか |
+| `"new_forward_passes"` | `int` | (追加フォワードパス数、`0`) |
+
 
 ---
 
