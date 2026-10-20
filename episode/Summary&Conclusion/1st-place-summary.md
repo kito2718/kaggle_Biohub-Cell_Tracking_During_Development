@@ -1,4 +1,4 @@
-18-⑤Kaggle実践3 Biohub細胞トラッキング：1位の解法まとめ
+18-⑤Kaggle実践3 Biohub細胞トラッキング：1位解法のまとめ
 
 <img src="image.png" width="800" />
 
