@@ -114,6 +114,71 @@ flowchart TD
     end
 ```
 
+### 概要シーケンス
+
+本体コード (`cell_tracking/inference.py`) では、動画1本に対して **2つの処理関数** を実行。
+1. **`build_caches()`**: 各フレームをループしながら、**【フェーズ1: 検出】** と **【フェーズ2: 視覚追跡】** を同時に実行して中間キャッシュを保存。
+2. **`link_and_post()`**: 保存された全フレームの中間キャッシュを読み込み、動画全体に対して **【フェーズ3: グラフ接続】** と **【フェーズ4: 仕上げの後処理】** を実行。
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Entry as biohub-1st-place-inference.py
+    participant Main as cell_tracking/inference.py (main / run_worker)
+    participant DetMod as cell_tracking/detector/inference.py
+    participant SoonScore as cell_tracking/soon/scoring.py
+    participant LinkMovie as cell_tracking/linker/link.py
+    participant GraphMod as cell_tracking/linker/graph.py
+    participant Tracks as cell_tracking/common/tracks.py
+
+    Entry->>Main: cli() -> main()
+    Main->>Main: load_stack(device) [5-foldモデル重み群をVRAMへロード]
+    Note over Main: テスト動画群(.zarr)をサイズ順にキューへ登録しGPU並列スレッド起動
+
+    loop 各動画 (movie) の処理 [run_worker]
+        Note over Main: ━━━━━━━━ 1. キャッシュ構築処理: build_caches() ━━━━━━━━
+        Main->>Main: build_caches(detector, soon, raw, dirs, movie, device)
+
+        loop 各フレーム t = 0 .. n_t-1 (3Dボリューム vol)
+            rect rgb(235, 245, 255)
+            Note over Main, DetMod: 【フェーズ1: 検出 (Detection)】
+            Main->>DetMod: extract_frame_cache(detector, vol) [4x反転TTA (計20パス)]
+            DetMod-->>Main: 座標・幾何特徴・輝度キャッシュ保存 (frame_000x, intensity)
+            end
+
+            rect rgb(240, 255, 240)
+            Note over Main, SoonScore: 【フェーズ2: 視覚追跡 (Soon Net)】
+            Main->>SoonScore: score_soon(nvol, coords, prev, nxt) [Soon Net 5-fold]
+            SoonScore-->>Main: 状態確率(3ch) & 移動先・分裂先の占有マップ(occ, div)保存
+            end
+        end
+
+        Note over Main: ━━━━━━━━ 2. 接続・後処理: link_and_post() ━━━━━━━━
+        Main->>Main: link_and_post(edge, cfg, dirs, movie, device)
+
+        rect rgb(255, 250, 235)
+        Note over Main, LinkMovie: 【フェーズ3: グラフ接続 (Learned Linker)】
+        Main->>LinkMovie: link_movie_from_cache(edge, dirs["cache"], ...)
+        Note over LinkMovie: 全フレームのキャッシュから近傍ペア探索 + 占有マップ照合<br/>EdgeEnsemble (5-fold) + 貪欲デコードでエッジ確定
+        LinkMovie-->>Main: frames, links (接続リスト), link_probs
+        end
+
+        rect rgb(255, 240, 245)
+        Note over Main, GraphMod: 【フェーズ4: 仕上げの後処理 (Post Processing)】
+        Main->>GraphMod: graph_from_pair_links() & postprocess_graph()
+        Note over GraphMod: 信頼度ゲート選別 + 1フレーム補間 + 孤立点削除 + 短トラック削除 + 分裂保護平滑化
+        GraphMod-->>Main: g (完成したTrackGraph)
+        end
+
+        Main->>Tracks: graph_to_rows(movie_name, g)
+        Tracks-->>Main: rows (動画ごとの提出行)
+    end
+
+    Note over Main: 全動画完了後
+    Main->>Tracks: write_submission(all_rows, OUTPUT)
+    Tracks-->>Entry: submission.csv 書き出し完了
+```
+
 ---
 
 ### フェーズ1: 検出 (Detection)
@@ -342,49 +407,9 @@ sequenceDiagram
 
 ## ソースコード (`inference.py`) の推論フロー詳解
 
-推論コード `biohub-1st-place-inference.py` から呼び出される `cell_tracking/inference.py` を起点とした、フェーズ1〜フェーズ4のファイルベースの処理シーケンスおよび各ファイル(オブジェクト)の役割分担です。
+エントリーポイントとなる `biohub-1st-place-inference.py` から呼び出される `cell_tracking/inference.py` を起点とし、前述の「推論処理の全体概要シーケンス図」に示した通り、各動画に対して `build_caches()` (フェーズ1・2) と `link_and_post()` (フェーズ3・4) が順に実行されます。
 
-### フェーズ1〜フェーズ4 全体シーケンス図
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Entry as biohub-1st-place-inference.py
-    participant Main as cell_tracking/inference.py
-    participant DetMod as cell_tracking/detector/inference.py
-    participant SoonScore as cell_tracking/soon/scoring.py
-    participant LinkMovie as cell_tracking/linker/link.py
-    participant GraphMod as cell_tracking/linker/graph.py
-    participant Tracks as cell_tracking/common/tracks.py
-
-    Entry->>Main: cli() -> main()
-    Main->>Main: load_stack(device) [各モデル重みをロード (5-fold)]
-    Note over Main: テスト動画をキューに登録しワーカースレッド起動
-    loop 各ワーカースレッド run_worker(k) [動画ごとの処理]
-        Main->>Main: run_worker(k)
-        Main->>Main: build_caches(detector, soon, raw, dirs, movie, device)
-        Note over Main: 【フェーズ1: 検出】 & 【フェーズ2: 視覚追跡】
-        loop 全フレーム t = 0 .. n_t-1
-            Main->>DetMod: extract_frame_cache() [3D U-Net + 4x TTA]
-            DetMod-->>Main: 座標・幾何特徴・輝度キャッシュ保存
-            Main->>Main: score_soon()
-            Main->>SoonScore: score_points_per_net() [Soon Net 5-fold]
-            SoonScore-->>Main: soonスコア・占有マップキャッシュ保存
-        end
-
-        Main->>Main: link_and_post(edge, cfg, dirs, movie, device)
-        Note over Main: 【フェーズ3: 接続】 & 【フェーズ4: 後処理】
-        Main->>LinkMovie: link_movie_from_cache() [EdgeEnsemble + 貪欲デコード]
-        LinkMovie-->>Main: frames, links, link_probs
-        Main->>GraphMod: graph_from_pair_links() & postprocess_graph()
-        Note over GraphMod: ギャップ補完・孤立点削除・短トラック削除・線形平滑化
-        GraphMod-->>Main: g (完成したTrackGraph)
-        Main->>Tracks: graph_to_rows(name, g)
-    end
-    Note over Main: main() で全動画集約後
-    Main->>Tracks: write_submission(all_rows, OUTPUT)
-    Tracks-->>Entry: submission.csv 書き出し完了
-```
+ここでは、各ファイル(オブジェクト)の役割分担および主要パラメータを整理します。
 
 ### 各ファイル (オブジェクト) の役割と分担
 
