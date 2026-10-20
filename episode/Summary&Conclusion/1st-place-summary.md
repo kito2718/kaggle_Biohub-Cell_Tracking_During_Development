@@ -179,6 +179,18 @@ sequenceDiagram
     Tracks-->>Entry: submission.csv 書き出し完了
 ```
 
+##### 概要シーケンス 登場関数一覧
+
+| No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `cli()` | `Entry (biohub-1st-place-inference.py)` | なし (CLI引数は `sys.argv` 経由) | `None` | コマンドライン引数(データパス、重みパス、出力先等)をパースし、`main()` を起動。 |
+| 2 | `main()` | `cli()` | なし | `None` | 推論処理全体の統括。重みロード、テスト動画キュー管理、GPU並列スレッド管理、最終CSV出力。 |
+| 3 | `load_stack()` | `main()` | `device`: `str`<br>(例: `"cuda:0"`, `"cpu"`) | `tuple`: `(detector, soon, edge, cfg)`<br>- `detector`: 5-fold 3D U-Net<br>- `soon`: 5-fold Soon Net<br>- `edge`: 5-fold EdgeEnsemble<br>- `cfg`: `dict` 設定辞書 | 指定デバイス(GPU/CPU)へ5-foldの検出器、Soon Net、学習型リンカーの全重みをロード。 |
+| 4 | `run_worker()` | `main()` (Thread) | `k`: `int`<br>(デバイス番号/スレッド番号) | `None` | GPUごとに立ち上がるワーカースレッド関数。キューから動画を順次取得し各処理を実行。 |
+| 5 | `build_caches()` | `run_worker()` | - `detector`: 5-fold 3D U-Net<br>- `soon`: 5-fold Soon Net<br>- `raw`: `list[np.ndarray]`, shape: 各 `(Z, Y, X)` (全フレーム画像)<br>- `dirs`: `dict[str, str]` 一時ディレクトリ群<br>- `movie`: `str` 動画名<br>- `device`: `str` デバイス名 | `int`: `n_det`<br>(動画全体の総検出細胞数) | 全フレームをループし、【フェーズ1: 検出】と【フェーズ2: 視覚追跡】を実行してキャッシュ保存。 |
+| 6 | `link_and_post()` | `run_worker()` | - `edge`: EdgeEnsemble<br>- `cfg`: `dict` 設定辞書<br>- `dirs`: `dict[str, str]`<br>- `movie`: `str` 動画名<br>- `device`: `str` | `TrackGraph | None`<br>(完成した時空間細胞トラックグラフ) | 全フレームのキャッシュを読み込み、【フェーズ3: 接続】と【フェーズ4: 後処理】を一括実行。 |
+| 7 | `graph_to_rows()` | `run_worker()` | - `name`: `str` 動画名<br>- `g`: `TrackGraph` オブジェクト | `list[tuple]`, shape: `(N_points, 6)`<br>(各行: `(name, t, id, z, y, x)`) | 完成した TrackGraph を提出用フォーマットの行データに変換。 |
+| 8 | `write_submission()` | `main()` | - `rows`: `list[tuple]`, shape: `(全行数, 6)`<br>- `path`: `str` 出力先ファイルパス | `None` (ディスク書き出し: `submission.csv`) | 全動画の行データを集約し、最終的な `submission.csv` を出力。 |
 ---
 
 ### フェーズ1. 検出 (Detection)
@@ -223,6 +235,15 @@ sequenceDiagram
     end
 ```
 
+##### フェーズ1 登場関数一覧
+
+| No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `build_caches()` | `Main` | - `detector`: 5-fold 3D U-Net<br>- `soon`: 5-fold Soon Net<br>- `raw`: `list[np.ndarray]`, shape: 各 `(Z, Y, X)`<br>- `dirs`: `dict`, `movie`: `str`, `device`: `str` | `int`: `n_det` (総検出数) | 各フレームの3D画像を取り出し、検出処理とキャッシュ保存を統括。 |
+| 2 | `extract_frame_cache()` | `build_caches()` | - `detector`: 5-fold 3D U-Net<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `device`: `str`, `frame_at`: `callable` | `tuple`: `(coords, feats, vols)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)` (z, y, x座標, float64)<br>- `feats`: `np.ndarray`, shape: `(N, 6)` (幾何特徴, float32)<br>- `vols`: `np.ndarray`, shape: `(N,)` (細胞体積, float64) | 3D U-Netによる推論、4方向反転TTA(計20パス)の平均化、ピーク抽出による細胞座標・特徴量抽出。 |
+| 3 | `UNet3D.forward()` | `extract_frame_cache()` | `crops`: `torch.Tensor`, shape: `(B, 1, 64, 128, 128)` (3Dクロップ画像) | `torch.Tensor`, shape: `(B, 4, 64, 128, 128)`<br>(ch0..2: 3Dフローdz, dy, dx、ch3: 中心確率prob) | 3D U-Netモデル本体。立体画像クロップからフローベクトルと中心確率マップを出力。 |
+| 4 | `write_frame_cache()` | `build_caches()` | - `path`: `str` 出力先パス<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `feats`: `np.ndarray`, shape: `(N, 6)`<br>- `vols`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 | `None` (ディスク書き出し: `frame_000x` データ) | 検出された細胞中心座標、幾何特徴量、体積データをディスクへ保存。 |
+| 5 | `write_intensity_sidecar()` | `build_caches()` | - `path`: `str` 出力先パス<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `volumes`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 | `None` (ディスク書き出し: `frame_000x_intensity.npz`) | 各細胞の局所輝度統計情報を抽出し、サイドカーとして保存。 |
 ---
 
 ### フェーズ2: 分裂直前 / ビジュアルトラッキング (Soon Net)
@@ -286,6 +307,17 @@ sequenceDiagram
     end
 ```
 
+##### フェーズ2 登場関数一覧
+
+| No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `NormWindow.window()` | `Main` | - `t`: `int` フレーム番号<br>- `context`: `int` 前後参照数 (通常 1 または 2) | `tuple`: `(vol, prev, nxt)`<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `prev`: `np.ndarray | None`, shape: `(Z, Y, X)`<br>- `nxt`: `np.ndarray | None`, shape: `(Z, Y, X)` | メモリを節約しながら、現在フレーム `t` とその前後フレームの正規化3D画像を取得。 |
+| 2 | `score_soon()` | `Main` | - `soon`: `list[dict]` (5-fold Soon Net)<br>- `nvol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `prev`, `nxt`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `device`: `str` | `tuple`: `(mean, occ, div)`<br>- `mean`: `np.ndarray`, shape: `(N, 3)` (3クラス確率)<br>- `occ`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)` (継続占有マップ)<br>- `div`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)` (分裂占有マップ) | 検出座標リストに対して 5-fold Soon Net の推論をまとめて呼び出し、平均スコアを算出。 |
+| 3 | `score_points_per_net()` | `score_soon()` | - `nets`: `list[SoonNet]`<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `crop_size`: `tuple[int, int, int]` = `(16, 64, 64)`<br>- `prev`, `nxt`: `np.ndarray`, shape: `(Z, Y, X)` | `tuple`: `(scores, occ, div)`<br>- `scores`: `list[np.ndarray]`, 各shape: `(N, 3)`<br>- `occ`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)`<br>- `div`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)` | 各細胞座標を中心に 16×64×64 の局所3Dボリュームを切り出し、バッチ単位でモデルへ入力。 |
+| 4 | `SoonNet.forward()` | `score_points_per_net()` | `crops`: `torch.Tensor`, shape: `(B, 3, 4, 16, 64, 64)`<br>(B: バッチサイズ, 3フレーム, 4ch: 輝度+ガウス球) | `tuple`: `(logits, occ, div)`<br>- `logits`: `torch.Tensor`, shape: `(B, 3)` (クラス未正規化スコア)<br>- `occ`: `torch.Tensor`, shape: `(B, 3, 16, 64, 64)`<br>- `div`: `torch.Tensor`, shape: `(B, 3, 16, 64, 64)` | CNN Tokenizer + Transformer + FPN。3クラス状態分類と移動先・分裂先の占有マップを出力。 |
+| 5 | `write_soon_frame()` | `Main` | - `path`: `str` 出力先パス<br>- `scores`: `np.ndarray`, shape: `(N, 3)` (float32) | `None` (ディスク書き出し: `soon_frame_000x` データ) | 各細胞の「もうすぐ分裂か」の3クラス確率スコアを保存。 |
+| 6 | `flush()` | `Main` | - `t`: `int` フレーム番号<br>- `dest_next`: `np.ndarray`, shape: `(N_next, 3)` | `None` | 1フレーム遅延させて前後の移動先・分裂先の対応付けを確定し、占有マップ書き出しを実行。 |
+| 7 | `write_occupancy_from_maps()` | `flush()` | - `path`: `str` 出力先パス<br>- `maps`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `dest_next`: `np.ndarray`, shape: `(N_next, 3)`<br>- `dest_prev`: `np.ndarray`, shape: `(N_prev, 3)`<br>- `crop_size`: `tuple[int, int, int]` = `(16, 64, 64)` | `None` (ディスク書き出し: `occupancy_000x.npz` サイドカー) | 継続占有マップと分裂占有マップをサイドカーとして保存。 |
 ---
 
 ### フェーズ3: 学習型リンカー (Learned Linker)
@@ -337,6 +369,14 @@ sequenceDiagram
     LinkMovie-->>Main: frames, links (接続リスト), link_probs
 ```
 
+##### フェーズ3 登場関数一覧
+
+| No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `link_and_post()` | `Main` | - `edge`: `EdgeEnsemble`<br>- `cfg`: `dict` 設定辞書<br>- `dirs`: `dict[str, str]`<br>- `movie`: `str` 動画名<br>- `device`: `str` | `TrackGraph | None` (完成グラフ) | 保存済みキャッシュからエッジ接続処理と後処理を統括して呼び出し。 |
+| 2 | `link_movie_from_cache()` | `link_and_post()` | - `edge`: `EdgeEnsemble`<br>- `cache_dir`: `str`<br>- `movie`: `str`<br>- `support_radius_um`: `float` = 30.0<br>- `support_k`: `int` = 16<br>- `soon_dir`, `intensity_dir`, `occupancy_dir`: `str` | `tuple`: `(frames, links, raw_scores, link_probs)`<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)`<br>- `links`: `list[list[tuple[int, int]]]`, 長さ: `T-1` (各フレームペアの `(親idx, 子idx)`)<br>- `raw_scores`: 任意<br>- `link_probs`: `list[np.ndarray]`, 各shape: `(L_t,)` (接続確率) | キャッシュ読み込み、探索半径30μm・近傍k=16での候補ペア抽出、特徴量生成、貪欲デコードを実行。 |
+| 3 | `EdgeEnsemble.forward()` | `link_movie_from_cache()` | `features`: `torch.Tensor` または `dict`<br>- ノード特徴: shape `(N, 42)`<br>- ペア特徴: shape `(P, 23)` | `tuple`: `(pair_probs, fork_probs)`<br>- `pair_probs`: `np.ndarray`, shape: `(P,)` (継続接続確率)<br>- `fork_probs`: `np.ndarray`, shape: `(F,)` (分裂接続確率) | 5-fold MLPリンカーアンサンブル。ノード42次元・ペア23次元特徴から接続・分裂確率を算出。 |
+| 4 | `貪欲デコード (Greedy Decode)` | `link_movie_from_cache()` | 各候補ペア・分岐候補の対数尤度スコア: `log p(option)` と `log p(no child)` | `list[tuple[int, int]]` (確定されたリンクペアリスト) | 対数オッズ比 log p(option) - log p(no child) > 0 をソートし、親1つ最大1選択肢、子1つ最大1親でエッジ確定。 |
 ---
 
 ### フェーズ4: 後処理 (Post Processing)
@@ -399,6 +439,18 @@ sequenceDiagram
     Tracks-->>Entry: submission.csv 書き出し完了
 ```
 
+##### フェーズ4 登場関数一覧
+
+| No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | `graph_from_pair_links()` | `link_and_post()` | - `B`: モジュールオブジェクト<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)`<br>- `pair_links`: `list[list[tuple[int, int]]]` | `TrackGraph`<br>- `node_ids`: `np.ndarray`, shape: `(N_total,)`<br>- `node_t, z, y, x`: `np.ndarray`, shape: `(N_total,)`<br>- `edges`: `np.ndarray`, shape: `(E_total, 2)` | フレームごとのインデックス接続リストから、全体を表現する `TrackGraph` データ構造を構築。 |
+| 2 | `link_confidence()` | `link_and_post()` | - `frames`: `list[np.ndarray]`<br>- `links`: `list[list[tuple[int, int]]]`<br>- `link_probs`: `list[np.ndarray]`, 各shape: `(L_t,)` | `dict[tuple[int, int], float]`<br>(エッジ `(node_u, node_v)` をキー、確信度スコアを値とする辞書) | 各接続エッジの推論確率からリンクの総合確信度スコアを算出。 |
+| 3 | `tiered_temporal_gate()` | `link_and_post()` | - `g`: `TrackGraph`<br>- `conf`: `dict[tuple[int, int], float]`<br>- `conf_thresh`: `float` = 0.3<br>- `min_len`: `int` = 3 | `TrackGraph`<br>(低信頼かつ短期間の接続エッジが削除されたグラフ) | 確信度が低く、かつ持続期間が3フレーム未満の信頼性の低い短エッジを排除。 |
+| 4 | `postprocess_graph()` | `link_and_post()` | - `B`: モジュールオブジェクト<br>- `frames`: `list[np.ndarray]`<br>- `g`: `TrackGraph`<br>- `linefit`: `bool` = True<br>- `max_gap`: `int` = 1<br>- `gap_dist_um`: `float` = 4.0<br>- `gap_drift_um`: `float` = 30.0 | `TrackGraph`<br>(ギャップ補完・平滑化後の最終完成グラフ) | ギャップ補完、孤立点削除、短トラック削除、線形平滑化の後処理チェーンを一括統括。 |
+| 5 | `close_gaps()` | `postprocess_graph()` | - `frames`: `list[np.ndarray]`<br>- `g`: `TrackGraph`<br>- `max_gap`: `int` = 1<br>- `gap_dist_um`: `float` = 4.0<br>- `drift_radius_um`: `float` = 30.0 | `TrackGraph`<br>(補間エッジが追加されたグラフ) | 1フレームの一時的な検出漏れを距離閾値内で自動補間。 |
+| 6 | `prune_isolated()` | `postprocess_graph()` | `g`: `TrackGraph` | `TrackGraph`<br>(孤立ノードが削除されたグラフ) | どこにも繋がっていない孤立ノードをグラフから削除。 |
+| 7 | `filter_short_tracks()` | `postprocess_graph()` | - `g`: `TrackGraph`<br>- `min_track_len`: `int` = 3<br>- `keep_division_components`: `bool` = False | `TrackGraph`<br>(短トラックが除外されたグラフ) | 全体の長さが3フレーム未満の微小なノイズトラックを削除。 |
+| 8 | `linefit_smooth()` | `postprocess_graph()` | - `g`: `TrackGraph`<br>- `window`: `int` = 2<br>- `weight`: `float` = 0.8<br>- `stop_at_forks`: `bool` = True | `TrackGraph`<br>(座標が平滑化されたグラフ) | 局所線形回帰で座標のブレを平滑化(分裂分岐点では母娘が混ざらないよう平滑化を停止)。 |
 ---
 
 ## ソースコード (`inference.py`) の推論フロー詳解
