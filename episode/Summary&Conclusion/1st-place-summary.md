@@ -201,17 +201,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Entry as biohub-1st-place-inference.py
-    participant Main as cell_tracking/<br/>inference.py<br/>(main / run_worker / build_caches)
-    participant DetMod as cell_tracking/detector<br/>inference.py
-    participant UNet as cell_tracking/detector<br/>model.py
-    participant LinkCache as cell_tracking/linker<br/>cache.py
-    participant IntSidecar as cell_tracking/linker<br/>intensity.py
+    participant Main as cell_tracking/inference.py<br/>(build_caches)
+    participant DetMod as cell_tracking/detector/<br/>inference.py
+    participant UNet as cell_tracking/detector/<br/>model.py
+    participant LinkCache as cell_tracking/linker/<br/>cache.py
+    participant IntSidecar as cell_tracking/linker/<br/>intensity.py
 
-    Entry->>Main: cli() -> main()
-    Main->>Main: run_worker(GPU数)
-    Main->>Main: build_caches(detector, soon, raw, dirs, movie, device)
-    Note over Main: 【フェーズ1: 検出 (Detection)】
+    Note over Main: build_caches() 内のフレームループ
     loop 各フレーム t = 0 .. n_t-1 (3Dボリューム vol)
         Main->>DetMod: extract_frame_cache(detector, vol, device, frame_at)
         loop 4方向反転 TTA (xy反転)
