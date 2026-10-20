@@ -143,8 +143,10 @@ sequenceDiagram
     participant LinkCache as cell_tracking/linker<br/>cache.py
     participant IntSidecar as cell_tracking/linker<br/>intensity.py
 
-    Entry->>Main: cli() -> main() -> run_worker(GPU数) 起動
-    Note over Main: build_caches(detector, soon, raw, dirs, movie, device) 開始
+    Entry->>Main: cli() -> main()
+    Main->>Main: run_worker(GPU数)
+    Main->>Main: build_caches(detector, soon, raw, dirs, movie, device)
+    Note over Main: 【フェーズ1: 検出 (Detection)】
     loop 各フレーム t = 0 .. n_t-1 (3Dボリューム vol)
         Main->>DetMod: extract_frame_cache(detector, vol, device, frame_at)
         loop 4方向反転 TTA (xy反転)
@@ -197,17 +199,17 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Main as cell_tracking/inference.py (build_caches)
+    participant Main as cell_tracking/inference.py
     participant SoonScore as cell_tracking/soon/scoring.py
     participant SoonModel as cell_tracking/soon/model.py
     participant SoonCache as cell_tracking/linker/soon_cache.py
     participant OccMod as cell_tracking/linker/occupancy.py
 
-    Note over Main: build_caches() 内のフレームループ (フェーズ1直後)
+    Note over Main: build_caches() 内のフレームループ (フェーズ1の直後)
     loop 各フレーム t = 0 .. n_t-1
-        Note over Main: window(t) で前・現・次フレーム (nvol, prev, nxt) 取得
-        Main->>SoonScore: score_soon(soon, nvol, coords, prev, nxt, device)
-        Note over SoonScore: score_points_per_net() で 16×64×64 局所クロップ切り出し
+        Main->>Main: window(t) [前・現・次フレーム (nvol, prev, nxt) 取得]
+        Main->>Main: score_soon(soon, nvol, coords, prev, nxt, device)
+        Main->>SoonScore: score_points_per_net(coords, 16×64×64 crops)
         SoonScore->>SoonModel: forward(crops) [5-fold Soon Netアンサンブル]
         Note over SoonModel: CNN Tokenizer + Transformer + FPNヘッド推論
         SoonModel-->>SoonScore: 3クラス状態確率, 継続占有マップ, 分裂占有マップ
@@ -215,6 +217,7 @@ sequenceDiagram
         Main->>SoonCache: write_soon_frame(dirs["soon"], scores)
         Note over SoonCache: soon_frame_000x キャッシュ保存
         opt t >= 1 (1フレーム遅延 flush)
+            Main->>Main: flush(t - 1, coords)
             Main->>OccMod: write_occupancy(dirs["occ"], occ) [継続マップ]
             Main->>OccMod: write_occupancy(dirs["occ_div"], div) [分裂マップ]
             Note over OccMod: occupancy_000x.npz キャッシュ保存
@@ -254,13 +257,15 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Main as cell_tracking/inference.py (main / run_worker / link_and_post)
+    participant Main as cell_tracking/inference.py
     participant LinkMovie as cell_tracking/linker/link.py
     participant LinkCache as cell_tracking/linker/cache.py
     participant OccMod as cell_tracking/linker/occupancy.py
     participant EdgeEns as cell_tracking/linker/ensemble.py
 
-    Note over Main: link_and_post(edge, cfg, dirs, movie, device) 開始
+    Note over Main: run_worker() から呼び出し
+    Main->>Main: link_and_post(edge, cfg, dirs, movie, device)
+    Note over Main: 【フェーズ3: グラフ接続 (Learned Linker)】
     Main->>LinkMovie: link_movie_from_cache(edge, dirs["cache"], movie, ...)
     LinkMovie->>LinkCache: 全フレームの座標・幾何特徴・輝度キャッシュ読込
     LinkMovie->>OccMod: Soonスコア & 継続・分裂占有マップ読込
@@ -295,7 +300,8 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Main as cell_tracking/inference.py (link_and_post / run_worker / main)
+    participant Entry as biohub-1st-place-inference.py
+    participant Main as cell_tracking/inference.py
     participant GraphMod as cell_tracking/linker/graph.py
     participant ScoreMod as cell_tracking/linker/scoring.py
     participant TierGate as cell_tracking/linker/tiered_gate.py
@@ -320,16 +326,16 @@ sequenceDiagram
     Note over Tracks: 孤立ノード削除
     GraphMod->>PostMod: filter_short_tracks(g, min_track_len=3)
     Note over PostMod: 3フレーム未満の短トラック削除
-    GraphMod->>PostMod: linefit_smooth(g, stop_at_forks=True)
+    GraphMod->>PostMod: linefit_smooth(stop_at_forks=True)
     Note over PostMod: 局所線形回帰平滑化 (分裂ノードは保護)
     GraphMod-->>Main: g (後処理完了TrackGraph)
 
-    Note over Main: run_worker() で行データ変換
+    Note over Main: run_worker() へ戻り行データ変換
     Main->>Tracks: graph_to_rows(movie_name, g)
     Tracks-->>Main: rows
     Note over Main: main() で全動画完了後に提出ファイル出力
     Main->>Tracks: write_submission(all_rows, OUTPUT)
-    Note over Tracks: submission.csv 書き出し完了
+    Tracks-->>Entry: submission.csv 書き出し完了
 ```
 
 ---
@@ -344,42 +350,40 @@ sequenceDiagram
 sequenceDiagram
     autonumber
     participant Entry as biohub-1st-place-inference.py
-    participant Main as cell_tracking/inference.py (main / run_worker)
-    participant BuildCache as cell_tracking/inference.py (build_caches)
+    participant Main as cell_tracking/inference.py
     participant DetMod as cell_tracking/detector/inference.py
     participant SoonScore as cell_tracking/soon/scoring.py
-    participant LinkPost as cell_tracking/inference.py (link_and_post)
     participant LinkMovie as cell_tracking/linker/link.py
     participant GraphMod as cell_tracking/linker/graph.py
     participant Tracks as cell_tracking/common/tracks.py
 
-    %% 起点
     Entry->>Main: cli() -> main()
-    Note over Main: 各モデル重みをロード (5-fold)<br/>動画をキューに登録しワーカースレッド起動
-    loop 各動画 (movie) の処理
-        Main->>BuildCache: build_caches(detector, soon, raw, dirs, movie, device)
-        Note over BuildCache: 【フェーズ1: 検出】 & 【フェーズ2: 視覚追跡】
+    Main->>Main: load_stack(device) [各モデル重みをロード (5-fold)]
+    Note over Main: テスト動画をキューに登録しワーカースレッド起動
+    loop 各ワーカースレッド run_worker(k) [動画ごとの処理]
+        Main->>Main: run_worker(k)
+        Main->>Main: build_caches(detector, soon, raw, dirs, movie, device)
+        Note over Main: 【フェーズ1: 検出】 & 【フェーズ2: 視覚追跡】
         loop 全フレーム t = 0 .. n_t-1
-            BuildCache->>DetMod: extract_frame_cache() [3D U-Net + 4x TTA]
-            DetMod-->>BuildCache: 座標・幾何特徴・輝度キャッシュ保存
-            BuildCache->>SoonScore: score_soon() [Soon Net 5-fold]
-            SoonScore-->>BuildCache: soonスコア・占有マップキャッシュ保存
+            Main->>DetMod: extract_frame_cache() [3D U-Net + 4x TTA]
+            DetMod-->>Main: 座標・幾何特徴・輝度キャッシュ保存
+            Main->>Main: score_soon()
+            Main->>SoonScore: score_points_per_net() [Soon Net 5-fold]
+            SoonScore-->>Main: soonスコア・占有マップキャッシュ保存
         end
-        BuildCache-->>Main: n_det (総検出数)
 
-        Main->>LinkPost: link_and_post(edge, cfg, dirs, movie, device)
-        Note over LinkPost: 【フェーズ3: 接続】 & 【フェーズ4: 後処理】
-        LinkPost->>LinkMovie: link_movie_from_cache() [EdgeEnsemble + 貪欲デコード]
-        LinkMovie-->>LinkPost: frames, links, link_probs
-        LinkPost->>GraphMod: graph_from_pair_links() & postprocess_graph()
+        Main->>Main: link_and_post(edge, cfg, dirs, movie, device)
+        Note over Main: 【フェーズ3: 接続】 & 【フェーズ4: 後処理】
+        Main->>LinkMovie: link_movie_from_cache() [EdgeEnsemble + 貪欲デコード]
+        LinkMovie-->>Main: frames, links, link_probs
+        Main->>GraphMod: graph_from_pair_links() & postprocess_graph()
         Note over GraphMod: ギャップ補完・孤立点削除・短トラック削除・線形平滑化
-        GraphMod-->>LinkPost: g (完成したTrackGraph)
-        LinkPost-->>Main: g
+        GraphMod-->>Main: g (完成したTrackGraph)
         Main->>Tracks: graph_to_rows(name, g)
     end
-    Note over Main: 全動画集約後
+    Note over Main: main() で全動画集約後
     Main->>Tracks: write_submission(all_rows, OUTPUT)
-    Note over Tracks: submission.csv 書き出し完了
+    Tracks-->>Entry: submission.csv 書き出し完了
 ```
 
 ### 各ファイル (オブジェクト) の役割と分担
