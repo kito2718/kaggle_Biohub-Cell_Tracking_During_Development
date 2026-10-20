@@ -137,13 +137,13 @@ flowchart TD
 sequenceDiagram
     autonumber
     participant Entry as biohub-1st-place-inference.py
-    participant Main as cell_tracking/inference.py (main / run_worker / build_caches)
-    participant DetMod as cell_tracking/detector/inference.py
-    participant UNet as cell_tracking/detector/model.py
-    participant LinkCache as cell_tracking/linker/cache.py
-    participant IntSidecar as cell_tracking/linker/intensity.py
+    participant Main as cell_tracking/<br/>inference.py<br/>(main / run_worker / build_caches)
+    participant DetMod as cell_tracking/detector<br/>inference.py
+    participant UNet as cell_tracking/detector<br/>model.py
+    participant LinkCache as cell_tracking/linker<br/>cache.py
+    participant IntSidecar as cell_tracking/linker<br/>intensity.py
 
-    Entry->>Main: cli() -> main() -> run_worker() 起動
+    Entry->>Main: cli() -> main() -> run_worker(GPU数) 起動
     Note over Main: build_caches(detector, soon, raw, dirs, movie, device) 開始
     loop 各フレーム t = 0 .. n_t-1 (3Dボリューム vol)
         Main->>DetMod: extract_frame_cache(detector, vol, device, frame_at)
