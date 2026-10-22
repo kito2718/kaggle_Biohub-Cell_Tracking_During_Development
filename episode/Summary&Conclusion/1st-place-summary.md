@@ -77,7 +77,143 @@ biohub-1st-place-reproduction/
 
 ---
 
-## 4大処理フェーズの詳細解説
+Viewed inference.py:150-250
+
+ご質問の2点についてお答えします。
+
+---
+
+## 全体クラス図
+
+1. **検出 (Detection)**
+2. **視覚追跡 (Soon Net)**
+3. **学習型リンカー (Learned Linker)**
+4. **後処理 (Post Processing)**
+
+```mermaid
+classDiagram
+    direction LR
+
+    %% ==========================================
+    %% 1. 検出 (Detection)
+    %% ==========================================
+    class UnetCellPoseModel["Detection<br/>UnetCellPoseModel"] {
+        +UNet3D net
+        +int pool
+        +dict decode
+    }
+    class _UnetCellPoseNet["Detection<br/>«abstract» _UnetCellPoseNet"] {
+        +Channels ch
+        +Conv3d out_flow
+        +Conv3d out_prob
+    }
+    class EnsembleTTANet["Detection<br/>EnsembleTTANet"] {
+        +ModuleList nets
+        +tuple flips
+    }
+    class UNet3D["Detection<br/>UNet3D"] {
+        +forward(x)
+        +forward_with_d1(x)
+    }
+
+    _UnetCellPoseNet <|-- UNet3D
+    UnetCellPoseModel *-- _UnetCellPoseNet
+    EnsembleTTANet *-- UNet3D
+
+    %% ==========================================
+    %% 2. 視覚追跡 (Soon Net)
+    %% ==========================================
+    class _TemporalSoonNet["Soon Net<br/>«abstract» _TemporalSoonNet"] {
+        +int n_frames
+        +SharedSpatialEncoder encoder
+    }
+    class SharedSpatialEncoder["Soon Net<br/>SharedSpatialEncoder"] {
+        +forward(frames)
+    }
+    class SiameseSpaceTimeSoonNet["Soon Net<br/>SiameseSpaceTimeSoonNet"] {
+        +forward(x, return_aux)
+    }
+    class EvaTransformerEncoder["Soon Net<br/>EvaTransformerEncoder"] {
+        +forward(seq, rope)
+    }
+    class AuxFPN["Soon Net<br/>AuxFPN"] {
+        +forward(skips, top)
+    }
+
+    _TemporalSoonNet <|-- SiameseSpaceTimeSoonNet
+    _TemporalSoonNet *-- SharedSpatialEncoder
+    SiameseSpaceTimeSoonNet *-- EvaTransformerEncoder
+    SiameseSpaceTimeSoonNet *-- AuxFPN
+
+    %% ==========================================
+    %% 3. 学習型リンカー (Learned Linker)
+    %% ==========================================
+    class SimpleNodeTransformer["Linker<br/>SimpleNodeTransformer"] {
+        +ModuleList blocks
+        +encode_frames()
+    }
+    class CrossAttentionBlock["Linker<br/>CrossAttentionBlock"] {
+        +MultiheadAttention cross_attn
+        +forward(q, kv)
+    }
+    class ForkHeadMixin["Linker<br/>«mixin» ForkHeadMixin"] {
+        +Sequential fork_mlp
+        +forward_fork()
+    }
+    class UnetCellPoseEdgeTransformer["Linker<br/>UnetCellPoseEdgeTransformer"] {
+        +Sequential pair_mlp
+        +forward_pairs()
+    }
+    class EdgeEnsemble["Linker<br/>EdgeEnsemble"] {
+        +list models
+        +str shortlist
+        +forward()
+    }
+
+    SimpleNodeTransformer <|-- UnetCellPoseEdgeTransformer
+    ForkHeadMixin <|-- UnetCellPoseEdgeTransformer
+    SimpleNodeTransformer *-- CrossAttentionBlock
+    EdgeEnsemble *-- UnetCellPoseEdgeTransformer
+
+    %% ==========================================
+    %% 4. 後処理 (Post Processing)
+    %% ==========================================
+    class GraphPostProcessor["Post<br/>«module» GraphPostProcessor"] {
+        +graph_from_pair_links()
+        +tiered_temporal_gate()
+        +postprocess_graph()
+    }
+    class TrackGraph["Post<br/>TrackGraph"] {
+        +ndarray node_t, z, y, x
+        +ndarray edges
+    }
+
+    GraphPostProcessor ..> TrackGraph
+
+    %% ==========================================
+    %% ステージ間の主軸フロー (左から右へ整列させる推進力)
+    %% ==========================================
+    UNet3D ..> SiameseSpaceTimeSoonNet : ① 検出座標 coords
+    SiameseSpaceTimeSoonNet ..> UnetCellPoseEdgeTransformer : ② 分裂スコア・占有マップ
+    EdgeEnsemble ..> GraphPostProcessor : ③ ペア・分岐候補
+```
+
+---
+
+### 4ステージの役割とデータの流れ
+
+| ステージ | 主要クラス / 関数 | 入力 | 出力 | 役割・ポイント |
+|---|---|---|---|---|
+| **1. 検出 (Detection)** | `UNet3D`<br>`EnsembleTTANet` | 生3Dボリューム画像 `(Z, Y, X)` | 細胞中心座標 `coords`, 形状特徴 `feats` | 3D U-NetによるFlow(重心ベクトル)と前景確率の予測。XY-TTAアンサンブルで頑健に検出。 |
+| **2. 視覚追跡 (Soon Net)** | `SiameseSpaceTimeSoonNet`<br>`SharedSpatialEncoder`<br>`EvaTransformer` | 検出点周辺の3フレームCrop画像 | 分裂確率 `scores`, 占有マップ `occ, div` | 「どの細胞が直後に2分裂するか」を予測。3D RoPEアテンションとAuxFPNで時空間の幾何変化を捉える。 |
+| **3. 学習型リンカー (Learned Linker)** | `UnetCellPoseEdgeTransformer`<br>`EdgeEnsemble`<br>`ForkHeadMixin` | ノード特徴 + Soon Netの占有マップ・分裂スコア | フレーム間ペア結合確率, 1対2フォーク分岐確率 | 前後フレームの細胞同士のクロスアテンション。多重継承された `ForkHeadMixin` で1親→2子の分岐を判定。 |
+| **4. 後処理 (Post Processing)** | `GraphPostProcessor`<br>`TrackGraph` | 接続確率, 分岐候補 | 最終的な追跡グラフ `TrackGraph` (`submission.csv`) | `tiered_temporal_gate`(低信頼エッジの階層除去)、貪欲デコード、ギャップ補間(短期間の検出漏れ救済)、分裂不応期制約の適用。 |
+
+この4分割の視点は、**アルゴリズムのパイプラインの段階（前処理・特徴抽出・推定・後処理）とコード上のクラス配置が1対1で完全に一致**するため、解法を説明・理解する上で最も美しい構成です。
+
+---
+
+## 各フェーズの詳細解説
 
 1位解法の一連の処理は、以下の4つの処理段階(フェーズ)で構成されています。
 
