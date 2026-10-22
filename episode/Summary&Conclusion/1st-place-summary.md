@@ -329,17 +329,10 @@ sequenceDiagram
 | 8 | `write_submission()` | `main()` | - `rows`: `list[tuple]`, shape: `(全行数, 6)`<br>- `path`: `str` 出力先ファイルパス | `None` (ディスク書き出し: `submission.csv`) | 全動画の行データを集約し、最終的な `submission.csv` を出力。 |
 ---
 
-Viewed inference.py:55-145
-Viewed checkpoints.py:1-60
-Viewed checkpoints.py:61-80
-Viewed link.py:1-60
-Viewed link.py:300-350
 
-`main()` から `load_stack()` が呼び出され、各モデル（Detector / Soon Net / Linker）がロードされるまでの処理フローを、**参加オブジェクトを「ファイル」**にしたシーケンス図で作成しました。
-
----
 
 ### モデル読み込みシーケンス `main()` → `load_stack()`
+`main()` → `load_stack()` 　で、各モデル（Detector / Soon Net / Linker）がロードされるまでの処理フロー。
 
 ```mermaid
 sequenceDiagram
