@@ -329,6 +329,133 @@ sequenceDiagram
 | 8 | `write_submission()` | `main()` | - `rows`: `list[tuple]`, shape: `(全行数, 6)`<br>- `path`: `str` 出力先ファイルパス | `None` (ディスク書き出し: `submission.csv`) | 全動画の行データを集約し、最終的な `submission.csv` を出力。 |
 ---
 
+Viewed inference.py:55-145
+Viewed checkpoints.py:1-60
+Viewed checkpoints.py:61-80
+Viewed link.py:1-60
+Viewed link.py:300-350
+
+`main()` から `load_stack()` が呼び出され、各モデル（Detector / Soon Net / Linker）がロードされるまでの処理フローを、**参加オブジェクトを「ファイル」**にしたシーケンス図で作成しました。
+
+---
+
+### モデル読み込みシーケンス `main()` → `load_stack()`
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 実行環境 (CLI / main)
+    participant Inf as cell_tracking/inference.py
+    participant DetInf as cell_tracking/detector/inference.py
+    participant DetMod as cell_tracking/detector/model.py
+    participant SoonCkpt as cell_tracking/soon/checkpoints.py
+    participant SoonMod as cell_tracking/soon/model.py
+    participant LinkLink as cell_tracking/linker/link.py
+    participant LinkMod as cell_tracking/linker/model.py
+    participant LinkEns as cell_tracking/linker/ensemble.py
+
+    User ->> Inf: main() 起動
+    Note over Inf: GPU/CPUデバイス判定<br/>devices = ['cuda:0', ...]
+
+    loop 各利用可能デバイス (device)
+        Inf ->> Inf: load_stack(device)
+        activate Inf
+
+        %% ========================================================
+        %% 1. Detector ロード (5-fold)
+        %% ========================================================
+        rect rgb(240, 248, 255)
+            Note over Inf, DetMod: 1. 検出モデルのロード (Detector Ensemble)
+            Inf ->> DetInf: load_unetcellpose_ensemble(DETECTORS, device, tta="xy", expected_pool=2)
+            activate DetInf
+            loop 5-fold (det_fold0 ~ 4.ckpt)
+                DetInf ->> DetInf: load_unetcellpose(ckpt_path)
+                DetInf ->> DetMod: build_backbone("plain", in_ch, pool_schedule, ...)
+                activate DetMod
+                DetMod -->> DetInf: UNet3D インスタンス
+                deactivate DetMod
+                DetInf ->> DetInf: state_dict 読込 & UnetCellPoseModel 作成
+            end
+            DetInf ->> DetInf: EnsembleTTANet(nets, ch, flips) 生成
+            DetInf -->> Inf: detector (EnsembleTTANet)
+            deactivate DetInf
+        end
+
+        %% ========================================================
+        %% 2. Soon Net ロード (5-fold)
+        %% ========================================================
+        rect rgb(255, 250, 240)
+            Note over Inf, SoonMod: 2. 視覚追跡モデルのロード (Soon Net)
+            loop 5-fold (soon_fold0 ~ 4.pt)
+                Inf ->> SoonCkpt: load_soon_crop(weight_path, device)
+                activate SoonCkpt
+                Note over SoonCkpt: チェックポイントのハイパーパラメータ検証
+                SoonCkpt ->> SoonMod: SiameseSpaceTimeSoonNet(num_registers, dropout=0.0)
+                activate SoonMod
+                SoonMod -->> SoonCkpt: net インスタンス
+                deactivate SoonMod
+                SoonCkpt ->> SoonCkpt: net.load_state_dict() & eval()
+                SoonCkpt -->> Inf: (net, meta)
+                deactivate SoonCkpt
+                Inf ->> SoonCkpt: deploy_context(meta)
+                SoonCkpt -->> Inf: context (フレーム時間幅: 2)
+                Inf ->> Inf: soon リストに {net, crop_size, xy_pool, context} を格納
+            end
+            Note over Inf: 全foldの crop_size と xy_pool の一致を検証
+        end
+
+        %% ========================================================
+        %% 3. Linker ロード (5-fold) & Ensemble
+        %% ========================================================
+        rect rgb(240, 255, 240)
+            Note over Inf, LinkEns: 3. 学習型リンカーのロード (Linker Ensemble)
+            loop 5-fold (edge_fold0 ~ 4/edge.pt)
+                Inf ->> LinkLink: load_edge_checkpoint(weight_path, device)
+                activate LinkLink
+                Note over LinkLink: リンカー構成・入力次元の検証
+                LinkLink ->> LinkMod: UnetCellPoseEdgeTransformer(feat_dim, hidden_dim, ...)
+                activate LinkMod
+                LinkMod -->> LinkLink: model インスタンス
+                deactivate LinkMod
+                LinkLink ->> LinkLink: model.load_state_dict() & eval()
+                LinkLink -->> Inf: (model, config)
+                deactivate LinkLink
+            end
+            Inf ->> LinkEns: EdgeEnsemble(models, shortlist="consensus")
+            activate LinkEns
+            LinkEns -->> Inf: edge (EdgeEnsemble)
+            deactivate LinkEns
+            Note over Inf: 5-fold間の config (feat_dim, occupancy等) の整合性検証
+        end
+
+        Inf -->> Inf: return (detector, soon, edge, cfg)
+        deactivate Inf
+    end
+
+    Note over Inf: stacks (各デバイス分のモデル一式) を保持して推論ループへ
+```
+
+---
+
+### シーケンスの要点
+
+1. **`inference.py` がオーケストレーター**
+   `main()` から GPU/CPU ごとに `load_stack(device)` を呼び出し、各ステージのモジュールから 5-fold 分の重みを並行して読み込む。
+
+2. **1. Detector (`detector/inference.py`, `detector/model.py`)**
+   - 5つのチェックポイント (`det_fold0.ckpt`〜`4`) をループして `UNet3D` を構築・初期化。
+   - 最後に `EnsembleTTANet` クラスでラップし、XY方向のテスト時データ拡張(TTA: Flip-XY)と5-fold平均を1つのモジュールとして扱えるように集約。
+
+3. **2. Soon Net (`soon/checkpoints.py`, `soon/model.py`)**
+   - `load_soon_crop()` が厳格なメタデータチェック(CNNバックボーン、RoPEベース、SwiGLU設定等)を行い、`SiameseSpaceTimeSoonNet` に重みを流し込み。
+   - `deploy_context()` で前後の参照フレーム数(`context=2`)を取り出し、推論時用のクロップ設定辞書を組み立て。
+
+4. **3. Linker (`linker/link.py`, `linker/model.py`, `linker/ensemble.py`)**
+   - `load_edge_checkpoint()` が `UnetCellPoseEdgeTransformer` を初期化して各foldをロード。
+   - 読み込まれた5つのモデルを `EdgeEnsemble` に渡し、「consensus(合意)モード」によるエッジ候補絞り込みと平均出力を行えるように束ねる。
+
+---
+
 ### フェーズ1. 検出 (Detection)
 
 #### 1. アーキテクチャと特徴
