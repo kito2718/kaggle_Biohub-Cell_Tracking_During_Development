@@ -504,19 +504,23 @@ sequenceDiagram
 
 | No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `build_caches()` | `Main` | - `detector`: 5-fold 3D U-Net<br>- `soon`: 5-fold Soon Net<br>- `raw`: `list[np.ndarray]`, shape: 各 `(Z, Y, X)`<br>- `dirs`: `dict`, `movie`: `str`, `device`: `str` | `int`: `n_det` (総検出数) | 各フレームの3D画像を取り出し、検出処理とキャッシュ保存を統括。 |
-| 2 | `extract_frame_cache()` | `build_caches()` | - `detector`: 5-fold 3D U-Net<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `device`: `str`, `frame_at`: `callable` | `tuple`: `(coords, feats, vols)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)` (z, y, x座標, float64)<br>- `feats`: `np.ndarray`, shape: `(N, 6)` (幾何特徴, float32)<br>- `vols`: `np.ndarray`, shape: `(N,)` (細胞体積, float64) | 3D U-Netによる推論、4方向反転TTA(計20パス)の平均化、ピーク抽出による細胞座標・特徴量抽出。 |
-| 3 | `UNet3D.forward()` | `extract_frame_cache()` | `crops`: `torch.Tensor`, shape: `(B, 1, 64, 128, 128)` (3Dクロップ画像) | `torch.Tensor`, shape: `(B, 4, 64, 128, 128)`<br>(ch0..2: 3Dフローdz, dy, dx、ch3: 中心確率prob) | 3D U-Netモデル本体。立体画像クロップからフローベクトルと中心確率マップを出力。 |
-| 4 | `write_frame_cache()` | `build_caches()` | - `path`: `str` 出力先パス<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `feats`: `np.ndarray`, shape: `(N, 6)`<br>- `vols`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 | `None` (ディスク書き出し: `frame_000x` データ) | 検出された細胞中心座標、幾何特徴量、体積データをディスクへ保存。 |
-| 5 | `write_intensity_sidecar()` | `build_caches()` | - `path`: `str` 出力先パス<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `volumes`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 | `None` (ディスク書き出し: `frame_000x_intensity.npz`) | 各細胞の局所輝度統計情報を抽出し、サイドカーとして保存。 |
+| 1 | `build_caches()` | `Main`<br/>(`run_worker`) | - `detector`: 5-fold 3D U-Net<br>- `soon`: 5-fold Soon Net<br>- `raw`: `list[np.ndarray]`, shape: 各 `(Z, Y, X)` (全フレーム画像)<br>- `dirs`: `dict[str, str]` (一時cache保存先dict)<br>- `movie`: `str` (ムービー名)<br>- `device`: `str` (デバイス名) | `int`: `n_det`<br>(全フレームの総検出細胞数) | 各フレームの3D画像ループを回し、フェーズ1の細胞検出とフェーズ2のSoon/占有マップのキャッシュ保存を統括。 |
+| 2 | `native_crop_size()` | `build_caches()`<br/>(`Main`) | - `crop_size`: `tuple[int, int, int]`(クロップサイズ(16, 64, 64))<br>- `xy_pool`: `int = 1` (XYプーリング係数) | `tuple[int, int, int]`<br>(クロップサイズ `(16, 64, 64)`) | プーリング係数を考慮し、元画像(ボクセル)解像度における3Dクロップ切り出しサイズを算出。<br/>※voxel単位だと $(16, 64, 64)$ 、現実空間だと「$26 \mu\text{m} × 26 \mu\text{m} × 26 \mu\text{m}$ の真四角な立方体」|
+| 3 | `extract_frame_cache()` | `build_caches()`<br/>(`Main`) | - `detector`: `UnetCellPoseModel` (3D U-Netモデル)<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)` (3Dボリューム画像)<br>- `device`: `str` (実行デバイス)<br>- `frame_at`: `callable` (前後フレーム取得関数)<br>- `include_geom`: `bool = True`, `include_time`: `bool = True`, `include_appearance`: `bool = False` | `tuple`: `(coords, feats, vols)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)` (細胞中心座標、float64)<br>- `feats`: `np.ndarray`, shape: `(N, 42)` (幾何・位置特徴量、float32)<br>- `vols`: `np.ndarray`, shape: `(N,)` (細胞体積、float64) | 1フレームの3D画像から細胞インスタンスをデコードし、各細胞の中心座標・幾何特徴量・体積を抽出して返す。 |
+| 4 | `decode_instances()` | `extract_frame_cache()`<br/>(`LinkCache`) | - `fsm`: `UnetCellPoseModel`<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)`<br>- `device`: `str`, `frame_at`: `callable`<br>- `_return_pred`: `bool = True` | `tuple`: `(inst, pred)`<br>- `inst`: `np.ndarray`, shape: `(Z, Y, X)` (int32、各細胞のインスタンスIDマップ)<br>- `pred`: `np.ndarray`, shape: `(4, Z, Y, X)` (3Dフローdz, dy, dx + 中心確率prob) | 3D U-Netによる推論(4方向反転TTA、計20パス)を実行・平均化し、`flow_follow_decode()` で細胞IDマップを生成。 |
+| 5 | `UNet3D.forward()` | `decode_instances()`<br/>(`DetMod`) | `crops`: `torch.Tensor`, shape: `(B, 1, 64, 128, 128)` (3Dクロップ画像テンソル) | `torch.Tensor`, shape: `(B, 4, 64, 128, 128)`<br>(ch0..2: 3Dフローdz, dy, dx、ch3: 中心確率prob) | 3D U-Netモデル本体。立体画像クロップから細胞中心へ向かう3Dフローベクトルと中心確率マップを出力。 |
+| 6 | `flow_follow_decode()` | `decode_instances()`<br/>(`DetMod`) | - `flow`: `np.ndarray`, shape: `(3, Z, Y, X)` (3Dフロー)<br>- `prob_logit`: `np.ndarray`, shape: `(Z, Y, X)` (中心確率)<br>- `fg_thresh`: `float`, `step_um`: `float`, `min_size`: `int` | `np.ndarray`, shape: `(Z, Y, X)`<br>(int32、各細胞のインスタンスIDラベルマップ `inst`) | 予測された3Dフローベクトルに沿ってオイラー積分で追跡し、同じ中心点(シンク)へ収束したボクセル群を1つの細胞としてラベリング。 |
+| 7 | `instance_node_features()` | `extract_frame_cache()`<br/>(`LinkCache`) | - `instances`: `np.ndarray`, shape: `(Z, Y, X)` (細胞IDマップ)<br>- `d1`: `np.ndarray | None` (アピアランス特徴マップ)<br>- `prob_logit`: `np.ndarray`, shape: `(Z, Y, X)` (中心確率)<br>- `pool`: `int`, `include_geom`: `bool`, `include_time`: `bool` | `tuple`: `(ids, coords_native, feats, volumes)`<br>- `coords_native`: `(N, 3)` (細胞中心座標)<br>- `feats`: `(N, 42)` (幾何特徴量・位置エンコーディング)<br>- `volumes`: `(N,)` (細胞体積・ボクセル数) | セグメンテーションされた細胞インスタンス領域から、中心座標(重心)、幾何特徴(共分散・主軸比・中心確率)、ボクセル体積を高速集計。 |
+| 8 | `write_frame_cache()` | `build_caches()`<br/>(`Main`) | - `path`: `str` 出力先パス (`.../frame_000x.npz`)<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `feats`: `np.ndarray`, shape: `(N, 42)`<br>- `vols`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 $t$ | `None`<br>(ディスク書き出し: `frame_000x.npz`) | 検出された細胞の中心座標、幾何特徴量、体積データをzip圧縮 (`np.savez_compressed`) してディスクへキャッシュ保存。 |
+| 9 | `write_intensity_sidecar()` | `build_caches()`<br/>(`Main`) | - `path`: `str` 出力先パス (`.../frame_000x_intensity.npz`)<br>- `vol`: `np.ndarray`, shape: `(Z, Y, X)` (3D生画像)<br>- `coords`: `np.ndarray`, shape: `(N, 3)` (中心座標)<br>- `volumes`: `np.ndarray`, shape: `(N,)`<br>- `frame`: `int` フレーム番号 $t$ | `Path`<br>(ディスク書き出し: `frame_000x_intensity.npz`) | 3D生画像から各細胞の局所蛍光輝度(平均、最大値、標準偏差、合計)および正規化輝度特徴量を抽出し、補助データとして保存。 |
 ---
 
 ### フェーズ2: 分裂直前 / ビジュアルトラッキング (Soon Net)
 
-1位解法の最大のブレイクスルーとなったのが、この独自設計モデル **`Soon Net`** です。
+1位解法の特徴、独自設計モデル **`Soon Net`** 。
 
 #### 1. モチベーション
-従来の幾何学的追跡では、分裂直前の親細胞と2つの娘細胞の対応付けで誤判定が頻発していました。しかし細胞は分裂直前になると、球状化し、細胞質の輝度分布や境界のコントラストが劇的に変化します。この「見た目の予兆」を捉えるために開発されました。
+親細胞と2つの娘細胞の対応付けに誤判定が頻発してて、その対応策として、「目視すれば分裂の様子がすぐに分かる」という気づきを起点として、細胞が分裂直前に示す「見た目の予兆（球状化や輝度・コントラストの変化）」を捉えるために追加したフェーズ。
 
 #### 2. アーキテクチャ
 - **入力:** 時点 $t-1, t, t+1$ における対象細胞周辺の局所3Dボリューム (サイズ: 16×64×64)。
