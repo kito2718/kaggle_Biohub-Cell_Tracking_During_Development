@@ -464,30 +464,39 @@ sequenceDiagram
   - 公開のtwoPassトラッカーで長さ3以上のトラックのみを抽出・精緻化し、スパースだった正解データを大幅に増強。
 - **推論時TTA:** 本番推論では、5フォールド × 4倍反転TTA (xy反転) = **1フレームあたり計20回のフォワードパス**を実行して平均化。
 
-#### フェーズ1 処理シーケンス図
+#### フェーズ1 ``検出(Detection)``シーケンス
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Main as cell_tracking/inference.py<br/>(build_caches)
+    participant Crops as cell_tracking/soon/<br/>crops.py
+    participant LinkCache as cell_tracking/linker/<br/>cache.py
     participant DetMod as cell_tracking/detector/<br/>inference.py
     participant UNet as cell_tracking/detector/<br/>model.py
-    participant LinkCache as cell_tracking/linker/<br/>cache.py
+    participant LinkFeat as cell_tracking/linker/<br/>features.py
     participant IntSidecar as cell_tracking/linker/<br/>intensity.py
+
+    Main->>Crops: native_crop_size(crop_size, xy_pool=1) 16,64,64
 
     Note over Main: build_caches() 内のフレームループ
     loop 各フレーム t = 0 .. n_t-1 (3Dボリューム vol)
-        Main->>DetMod: extract_frame_cache(detector, vol, device, frame_at)
+        Main->>LinkCache: extract_frame_cache(detector, vol, device, frame_at)
+        LinkCache->>DetMod: decode_instances(fsm:UnetCellPoseModel, vol[64,256,256], frame_at, ...)
         loop 4方向反転 TTA (xy反転)
-            DetMod->>UNet: forward(crops) [5-foldアンサンブル]
-            UNet-->>DetMod: 3Dフロー (dz, dy, dx) + 中心確率 (prob)
+            DetMod->>UNet: fsm.net(t) → forward(t) [5-foldアンサンブル]
+            UNet-->>DetMod: 64x128x128 3Dフローベクトル群 (dz, dy, dx) + 中心確率 (prob)
         end
-        Note over DetMod: 20パス平均化 & ピーク検出 (極大値抽出)
-        DetMod-->>Main: coords (細胞座標), feats (幾何特徴), vols (体積)
-        Main->>LinkCache: write_frame_cache(dirs["cache"], coords, feats, vols, t)
-        Note over LinkCache: frame_000x キャッシュ保存
-        Main->>IntSidecar: write_intensity_sidecar(dirs["intensity"], vol, coords, vols, t)
-        Note over IntSidecar: frame_000x_intensity.npz キャッシュ保存
+        Note over DetMod: 20パス平均化 & flow_follow_decode()<br/>(フロー追跡により細胞IDマップ inst を生成)
+        DetMod-->>LinkCache: inst:各細胞のID番号index<br/>pred:64x256x256 3Dフローベクトル群(dz, dy, dx) ＋ 確率
+        LinkCache->>LinkFeat: instance_node_features(pred, inst, ...) ... 細胞中心計算処理
+        LinkFeat-->>LinkCache: coords(細胞中心座標), feats(幾何特徴[42次元]), vols(体積)
+        Note over LinkFeat,LinkCache: coordsは細胞中心座標(例:492個), featsは幾何特徴[42次元](例:492個), volsは体積でかつボクセル数
+        LinkCache-->>Main: coords, feats, vols
+        Main->>LinkCache: write_frame_cache(dirs["cache"], coords, feats, vols, t)<br/>npzファイル保存 ... coords(中心座標),feats(幾何特徴量42次元),volumes(体積),フレーム番号
+        Note over LinkCache: .../cache/<movie_name>/frame_0000.npz<br/>.../cache/<movie_name>/frame_0001.npz<br/>...<br/>.../cache/<movie_name>/frame_0099.npz
+        Main->>IntSidecar: write_intensity_sidecar(dirs["intensity"], vol, coords, vols, t)<br/>intensityは輝度,sidecarは補助データの意<br/>npzファイル保存...輝度の(平均,最大値,標準偏差,合計),(時間経過退色や露光ブレの)正規化輝度
+        Note over IntSidecar: .../intensity/<movie_name>/frame_0000_intensity.npz<br/>.../intensity/<movie_name>/frame_0001_intensity.npz<br/>...<br/>.../intensity/<movie_name>/frame_0099_intensity.npz
     end
 ```
 
