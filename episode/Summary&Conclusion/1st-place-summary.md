@@ -306,7 +306,7 @@ sequenceDiagram
         GraphMod-->>Main: g (完成したTrackGraph)
         end
 
-        Main->>Tracks: graph_to_rows(movie_name, g)
+        Main->>Tracks: graph_to_rows(胚番号, g)
         Tracks-->>Main: rows (動画ごとの提出行)
     end
 
@@ -492,11 +492,11 @@ sequenceDiagram
         LinkCache->>LinkFeat: instance_node_features(pred, inst, ...) ... 細胞中心計算処理
         LinkFeat-->>LinkCache: coords(細胞中心座標), feats(幾何特徴[42次元]), vols(体積)
         Note over LinkFeat,LinkCache: coordsは細胞中心座標(例:492個), featsは幾何特徴[42次元](例:492個), volsは体積でかつボクセル数
-        LinkCache-->>Main: coords, feats, vols
+        LinkCache-->>Main: coords※, feats, vols
         Main->>LinkCache: write_frame_cache(dirs["cache"], coords, feats, vols, t)<br/>npzファイル保存 ... coords(中心座標),feats(幾何特徴量42次元),volumes(体積),フレーム番号
-        Note over LinkCache: .../cache/<movie_name>/frame_0000.npz<br/>.../cache/<movie_name>/frame_0001.npz<br/>...<br/>.../cache/<movie_name>/frame_0099.npz
+        Note over LinkCache: .../cache/<胚番号>/frame_0000.npz<br/>.../cache/<胚番号>/frame_0001.npz<br/>...<br/>.../cache/<胚番号>/frame_0099.npz
         Main->>IntSidecar: write_intensity_sidecar(dirs["intensity"], vol, coords, vols, t)<br/>intensityは輝度,sidecarは補助データの意<br/>npzファイル保存...輝度の(平均,最大値,標準偏差,合計),(時間経過退色や露光ブレの)正規化輝度
-        Note over IntSidecar: .../intensity/<movie_name>/frame_0000_intensity.npz<br/>.../intensity/<movie_name>/frame_0001_intensity.npz<br/>...<br/>.../intensity/<movie_name>/frame_0099_intensity.npz
+        Note over IntSidecar: .../intensity/<胚番号>/frame_0000_intensity.npz<br/>.../intensity/<胚番号>/frame_0001_intensity.npz<br/>...<br/>.../intensity/<胚番号>/frame_0099_intensity.npz
     end
 ```
 
@@ -559,20 +559,28 @@ sequenceDiagram
 
     Note over Main: build_caches() 内のフレームループ (フェーズ1の直後)
     loop 各フレーム t = 0 .. n_t-1
-        Main->>Main: window(t) [前・現・次フレーム (nvol, prev, nxt) 取得]
-        Main->>Main: score_soon(soon, nvol, coords, prev, nxt, device)
-        Main->>SoonScore: score_points_per_net(coords, 16×64×64 crops)
-        SoonScore->>SoonModel: forward(crops) [5-fold Soon Netアンサンブル]
-        Note over SoonModel: CNN Tokenizer + Transformer + FPNヘッド推論
-        SoonModel-->>SoonScore: 3クラス状態確率, 継続占有マップ, 分裂占有マップ
-        SoonScore-->>Main: scores (5-fold平均), occ, div
+        Note over Main: raw:[0,0,0]～[63,255,255]輝度スケール
+        Main->>Main: 生データ(現・前・次フレーム(nvol, prev, nxt))=NormWindow::window(t)
+        rect rgb(255, 250, 240)
+            Main->>Main: score_soon(soon:soonモデル, nvol, coords:細胞中心座標s, prev, nxt, device)
+            Main->>SoonScore: score_points_per_net(nets=soon::net(s), vol=nvol, coords, crops={16×64×64})
+            Note over SoonScore: Soon Net(5-foldアンサンブル)実行<br/>分裂確率と前後フレームでの移動先予測マップを算出
+            SoonScore->>SoonScore: _crop_tensor(vol=row, zyx=coords, crop_size={16×64×64}, prev=prev, nxt=nxt, device=device)
+            Note over SoonScore: _crop_tensor()※下記参照
+            SoonScore->>SoonModel: _forward(net,xb,...)→net(xb, return_aux=True)→<br/>　　　　　　   　　　　SiameseSpaceTimeSoonNet::forward(crops)[5-fold Soon Netアンサンブル]
+            Note over SoonModel: CNN Tokenizer※ ... self.encoder = SharedSpatialEncoder(...)<br/>Transformer※ ... self.transformer = EvaTransformerEncoder(...)<br/>FPNヘッド推論※ ... self.aux_fpn = AuxFPN(...)
+            SoonModel-->>SoonScore: 3クラス状態確率, 継続占有マップ(occ), 分裂占有マップ(div)
+            SoonScore-->>Main: scores(5-fold平均), occ, div ... score_soon()の結果
+        end
         Main->>SoonCache: write_soon_frame(dirs["soon"], scores)
-        Note over SoonCache: soon_frame_000x キャッシュ保存
+        Note over SoonCache: .../soon/<胚番号>/frame_0000.npy<br/>.../soon/<胚番号>/frame_0001.npy<br/>...<br/>.../soon/<胚番号>/frame_0099.npy
         opt t >= 1 (1フレーム遅延 flush)
             Main->>Main: flush(t - 1, coords)
             Main->>OccMod: write_occupancy(dirs["occ"], occ) [継続マップ]
+            Note over OccMod: .../occ/<胚番号>/frame_0000_occupancy.npz<br/>.../occ/<胚番号>/frame_0001_occupancy.npz<br/>...<br/>.../occ/<胚番号>/frame_0099_occupancy.npz
             Main->>OccMod: write_occupancy(dirs["occ_div"], div) [分裂マップ]
-            Note over OccMod: occupancy_000x.npz キャッシュ保存
+            Note over OccMod: .../occ_div/<胚番号>/frame_0000_occupancy.npz<br/>.../occ_div/<胚番号>/frame_0001_occupancy.npz<br/>...<br/>.../occ_div/<胚番号>/frame_0099_occupancy.npz
+            Note over Main,OccMod: ↑ 3Dマップテンソル(occ, div)[t-1]をメモリ解放
         end
     end
 ```
@@ -588,8 +596,191 @@ sequenceDiagram
 | 5 | `write_soon_frame()` | `Main` | - `path`: `str` 出力先パス<br>- `scores`: `np.ndarray`, shape: `(N, 3)` (float32) | `None` (ディスク書き出し: `soon_frame_000x` データ) | 各細胞の「もうすぐ分裂か」の3クラス確率スコアを保存。 |
 | 6 | `flush()` | `Main` | - `t`: `int` フレーム番号<br>- `dest_next`: `np.ndarray`, shape: `(N_next, 3)` | `None` | 1フレーム遅延させて前後の移動先・分裂先の対応付けを確定し、占有マップ書き出しを実行。 |
 | 7 | `write_occupancy_from_maps()` | `flush()` | - `path`: `str` 出力先パス<br>- `maps`: `np.ndarray`, shape: `(N, 3, 16, 64, 64)`<br>- `coords`: `np.ndarray`, shape: `(N, 3)`<br>- `dest_next`: `np.ndarray`, shape: `(N_next, 3)`<br>- `dest_prev`: `np.ndarray`, shape: `(N_prev, 3)`<br>- `crop_size`: `tuple[int, int, int]` = `(16, 64, 64)` | `None` (ディスク書き出し: `occupancy_000x.npz` サイドカー) | 継続占有マップと分裂占有マップをサイドカーとして保存。 |
----
 
+
+##### ◆_crop_tensor()でやっていること。
+「生画像 nvol（64×256×256）から、検出された細胞の座標 coords を中心に、周辺 16×64×64 を切り取る」処理を実行している。
+イメージは下記。
+
+```
+1. 生データ raw (画面全体: 64×256×256)
+   ┌──────────────────────────────┐
+   │                              │
+   │          (z, y, x)           │
+   │             ● ←ここ！        │
+   │                              │
+   └──────────────────────────────┘
+        │
+        ├─→ 【フェーズ1: Detector】
+        │   生画像を見て、細胞の中心座標 (z, y, x) を検出する。
+        │
+        ▼
+2. 【フェーズ2: Soon Net】への入力
+   Detectorが見つけてくれた座標 (z, y, x) を目印にして、
+   生画像 raw からその周辺「16×64×64」だけをサイコロ状にくり抜く！
+   
+   ┌──────┐
+   │  ●   │ ← くり抜いた生画像パッチ (サイズ: 16×64×64)
+   └──────┘
+        │
+        ▼
+   Soon Net (CNN Tokenizer + Transformer) に入力！
+```
+![](copilot__crop_tensor()でやっていること.png)
+
+##### ◆アテンション(Attention / 注意機構) とは？
+※Transformerの説明で出現する単語。
+「自分以外のどのパーツに注目（注意）すべきか」を計算する重み付けの仕組みのこと。
+
+* 文章系の例:
+  `"The animal didn't cross the street because it was too tired."`
+  AIが `"it"` という単語を読むとき、「`"it"` は `"street"` のことか？ それとも `"animal"` のことか？」を判断するために、文章中の全単語との関連度を計算します。当然 `"animal"` に強い**アテンション（注目）**が向く。
+
+* 細胞動画系の例:
+  時刻 $t$（現在）にいる細胞のトークンが、時刻 $t+1$（未来）の全トークンを見渡して、
+  「次フレームのどの場所に、自分と同じ細胞（または分裂した娘細胞）がいるか？」を探すために、**次フレームの該当箇所へ強いアテンション(注意の矢印)を向ける。**
+
+```mermaid
+graph LR
+    subgraph 前フレーム t-1
+        A1["左上に細胞A"]
+    end
+    subgraph 現在フレーム t
+        B1["中央に細胞A"]
+    end
+    subgraph 次フレーム t+1
+        C1["右下に細胞A"]
+        C2["遠くの細胞B"]
+    end
+
+    B1 -.->|"強いアテンション! (関連大)"| A1
+    B1 ==>|"強いアテンション! (ここに移動した)"| C1
+    B1 -.->|"アテンションほぼゼロ (無関係)"| C2
+```
+
+##### ◆CNN Tokenizer とは
+ここ(1位解法)だけの方言。「CNNを使ってTransformer向けの入力を整形する方法全般」を指している。
+
+###### 1. 実装上のクラス名は `SharedSpatialEncoder`。
+
+* **定義場所:** [cell_tracking/soon/encoder.py 5行目]
+* ソースコードの冒頭（docstring）に、役割の記載あり：
+  ```python
+  class SharedSpatialEncoder(nn.Module):
+      """3D CNN extracting localized spatial tokens."""
+      # （和訳: 局所的な空間トークンを抽出する3D CNN）
+  ```
+
+###### 2. 実体はモデルファイルの一部。
+
+独立した別ファイルではなく、**Soon Net のモデル重みファイル（`soon_fold0.pt` 〜 `soon_fold4.pt`）の中に丸ごと一体として格納** されている。
+モデル全体(`SiameseSpaceTimeSoonNet`)の部品として、以下のように組み込まれる：
+```python
+# cell_tracking/soon/model.py 34行目
+self.encoder = SharedSpatialEncoder(...)  # ← これが「CNN Tokenizer」の実体
+self.transformer = EvaTransformerEncoder(...) # ← これが「Transformer」の実体
+```
+
+###### 3. なぜ「CNN Tokenizer(トークナイザー)」と呼ぶのか？
+Vision Transformer(画像向けTransformer)の世界では、**「生画像をTransformerが読める形式（トークンの列）に変換・小分けする処理」のことを「トークン化（Tokenize）」** と呼ぶ。
+この処理を担当しているのが、一般的なViT(直線の線形射影)ではなく **「小型の3D CNN(畳み込みニューラルネット)」** であるため、作者や論文の解説で **「CNN Tokenizer」**（または **CNN Encoder**）という通称で呼んでいる。
+
+###### まとめ
+
+| 項目 | 実態 |
+| :--- | :--- |
+| **CNN Tokenizer とは** | 画像をトークン（$4 \times 8 \times 8$）に変換する**部品の通称・役割名** |
+| **実装クラス名** | **`SharedSpatialEncoder`**（`cell_tracking/soon/encoder.py`） |
+| **モデルファイル** | **`soon_fold0.pt` などの中**に、Transformerと一緒に1つのモデルとして保存されている |
+
+<br/>
+
+##### ◆Transformer(トランスフォーマー) とは
+ChatGPTなどの大規模言語モデルのベースにもなっている、現代AIの標準的なニューラルネットワーク構造のこと。一言でいうと、**「並べられたデータ（トークン）同士の『つながり・関係性』を計算する頭脳」** です。
+
+###### 1. CNN と Transformer の違い
+
+| 項目 | CNN(畳み込み) | Transformer |
+| :--- | :--- | :--- |
+| **見え方** | 虫眼鏡(局所的) | ドローン(大域的・全体) |
+| **得意なこと** | すぐ隣のピクセルを見て、輪郭やテクスチャを抽出する | 遠く離れた場所や、**過去・未来のデータ同士の関連性** を直接見通す |
+| **仕組み** | 決まった枠（$3 \times 3$ など）をスライドさせる | **アテンション（注意機構）** で「どれとどれが関係あるか？」を直接計算する |
+
+###### 2. このコード(Soon Net)で Transformer がやっていること
+
+cell_tracking/soon/model.py 118行目 の `self.transformer` が実体：
+
+```python
+self.transformer = EvaTransformerEncoder(...)
+```
+
+1. **入力されるもの:**
+   CNN Tokenizer が作った、過去 $(t-1)$・現在 $(t)$・未来 $(t+1)$ の **3フレーム分のトークン(計768個のブロック)** 。
+2. **Transformer の役割:**
+   全トークン同士を総当たりでアテンション(見比べ)させます：
+   * 「現在のフレームにいるこの細胞は、**過去 $(t-1)$ のどのブロックから来たのか？**」
+   * 「**未来 $(t+1)$ のどのブロックへ動いていくのか？**」
+   * 「形がくびれてきているから、**もうすぐ分裂する関係性にあるか？**」
+3. **出力:**
+   時間軸と空間軸のつながり（ストーリー）を理解した、より高度な特徴量を出力する。
+
+###### まとめ
+* **CNN Tokenizer:** 画像をサイコロ状の小ブロック（トークン）に切り分ける「目（下ごしらえ）」
+* **Transformer:** そのブロックたちを時間（過去・現在・未来）をまたいで見比べ、「細胞がどう動いて、分裂するか？」という文脈を読み解く「頭脳（思考部分）」
+
+<br/>
+
+##### ◆FPNヘッド推論とは
+
+1. ヘッド(Head / 出力部)とは？
+   AIモデルの「最終的な出口（役割ごとの専門の口）」のこと。
+   胴体部分(バックボーン: CNN + Transformer)が理解した内容を受け取って、最後に具体的な答えを出力するパーツのこと。
+
+2. FPN(Feature Pyramid Network / 特徴ピラミッド)とは？
+   モザイク画のように粗くなってしまった特徴を、ピラミッドを逆再生するように**段階的に解像度を元の細かさに復元(拡大)していくネットワーク構造** のこと。
+
+3. 推論(Inference)とは？
+   学習済みのモデルにテスト画像を入力して、**実際に答え（計算結果）を出すこと**。
+
+###### - Soon Net の「2つのヘッド」について
+実は、Soon Net には目的の異なる **2つのヘッド(出口)** がついている：
+
+```
+             ┌─── 【① 分類ヘッド (Classification Head)】
+             │     → 「この細胞は分裂直前か？」などの確率(ただの3つの数字)を出力。
+[Transformer]│　　　　この出力がメイン出力。
+             │
+             └─── 【② FPNヘッド(AuxFPN Head)】 ★これが「FPNヘッド推論」！
+                   → 「前後のフレームで、この細胞はどこに移動するか？」という立体的な【3Dヒートマップ画像】を出力
+                   この出力がサブ出力(Auxiliary:補助)。
+```
+
+###### - FPNヘッドは何をしているのか？
+Transformer が思考し終わった直後のデータは、CNNで圧縮されているため **$4 \times 8 \times 8$ という超モザイク（粗いブロック）** になっているため、このままでは、「右下に動くぞ」という大まかな方角は分かっても、**「具体的にどの座標（ピクセル）に動いたか？」という精密な位置がボヤけて分からない。**
+そこで、** FPNヘッド(`AuxFPN`)** を使用する：
+
+1. **モザイクを拡大する:**
+   $4 \times 8 \times 8$ の粗いデータを、段階的に $16 \times 32 \times 32$ へと3D拡大する。
+2. **途中のクッキリした輪郭(スキップ)を合体させる:**
+   拡大する際、CNNの初期段階で保存しておいた「元の細かい輪郭情報」を横から足し合わせます。
+3. **高精細なマップを出力する:**
+   ボヤけることなく、「次フレームで細胞が着地する場所」がピシッと尖った **高精細な3D確率マップ(占有マップ `occ` と 分裂マップ `div`)** を出力する。
+
+###### コードでの該当箇所
+cell_tracking/soon/model.py 153行目にある `self.aux_fpn` が、「FPNヘッド」。
+
+```python
+# model.py 153行目
+self.aux_fpn = AuxFPN(...)  # ← これが FPNヘッドの実体
+```
+
+そして、推論時に 207〜212行目の `_aux_decode()`を通して、`occ`（移動先マップ）と `div`（分裂娘細胞マップ）が計算される。
+
+###### まとめ
+
+**「FPNヘッド推論」** とは、単なる「分裂確率の数字」を出すだけでなく、**「FPN構造を使って解像度を復元し、『細胞が次フレームのどの3D空間座標に移動（占有）するか』を表す立体ヒートマップを計算・出力する処理」** のこと。
+
+---
 ### フェーズ3: 学習型リンカー (Learned Linker)
 
 #### 1. 候補抽出と特徴量設計
@@ -702,7 +893,7 @@ sequenceDiagram
     GraphMod-->>Main: g (後処理完了TrackGraph)
 
     Note over Main: run_worker() へ戻り行データ変換
-    Main->>Tracks: graph_to_rows(movie_name, g)
+    Main->>Tracks: graph_to_rows(胚番号, g)
     Tracks-->>Main: rows
     Note over Main: main() で全動画完了後に提出ファイル出力
     Main->>Tracks: write_submission(all_rows, OUTPUT)
