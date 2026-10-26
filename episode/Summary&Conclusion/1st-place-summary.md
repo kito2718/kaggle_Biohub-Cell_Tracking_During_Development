@@ -781,7 +781,7 @@ self.aux_fpn = AuxFPN(...)  # ← これが FPNヘッドの実体
 **「FPNヘッド推論」** とは、単なる「分裂確率の数字」を出すだけでなく、**「FPN構造を使って解像度を復元し、『細胞が次フレームのどの3D空間座標に移動（占有）するか』を表す立体ヒートマップを計算・出力する処理」** のこと。
 
 ---
-### フェーズ3: 学習型リンカー (Learned Linker)
+### フェーズ3: 学習型リンカー(Learned Linker)
 
 #### 1. 候補抽出と特徴量設計
 - 探索半径 `support_radius_um = 30.0μm`、最近傍 `k = 16` の候補細胞ペアを列挙。
@@ -806,7 +806,7 @@ self.aux_fpn = AuxFPN(...)  # ← これが FPNヘッドの実体
 - 「1つの親は最大1つの選択肢(継続または分裂)」「1つの子は最大1つの親」という制約を満たすように上から順に確定。
 - 親がつかなかった子細胞は新規トラックとして開始。
 
-#### フェーズ3 処理シーケンス図
+#### フェーズ3 学習型リンカー(Learned Linker)シーケンス
 
 ```mermaid
 sequenceDiagram
@@ -816,25 +816,27 @@ sequenceDiagram
     participant LinkCache as cell_tracking/linker/cache.py
     participant OccMod as cell_tracking/linker/occupancy.py
     participant EdgeEns as cell_tracking/linker/ensemble.py
-
+    participant Model as cell_tracking/linker/model.py
     Note over Main: run_worker() から呼び出し
-    Main->>Main: link_and_post(edge, cfg, dirs, movie, device)
-    Note over Main: 【フェーズ3: グラフ接続 (Learned Linker)】
-    Main->>LinkMovie: link_movie_from_cache(edge, dirs["cache"], movie, ...)
+    Main->>Main: link_and_post(edge:EdgeEnsemble, cfg, dirs, movie:胚名称, device)
+    Note over Main: 【フェーズ3: グラフ接続(Learned Linker)】
+    Main->>LinkMovie: link_movie_from_cache(edge:EdgeEnsemble, dirs["cache"], movie:胚名称, ...)
     LinkMovie->>LinkCache: 全フレームの座標・幾何特徴・輝度キャッシュ読込
     LinkMovie->>OccMod: Soonスコア & 継続・分裂占有マップ読込
     Note over LinkMovie: 半径30μm・近傍k=16で候補ペア抽出<br/>特徴量生成 (ノード42次元, ペア23次元)
-    LinkMovie->>EdgeEns: forward(features) [5-fold MLPリンカー]
-    EdgeEns-->>LinkMovie: 接続確率 & 分裂確率
-    Note over LinkMovie: 貪欲デコード (Greedy Decode)<br/>log p(option) - log p(no child) > 0 を降順ソート<br/>各親最大1選択肢、各子最大1親でエッジ確定
-    LinkMovie-->>Main: frames, links (接続リスト), link_probs
+    LinkMovie->>EdgeEns: _decode_pair()→_pair_logits()→_run()→model()→EdgeEnsemble::__call__()
+    EdgeEns->>Model: m()→UnetCellPoseEdgeTransformer::forward(features) [5-fold 各モデルを推論]
+    Model-->>EdgeEns: 各foldの未正規化スコア群<br/>(ペア接続ロジット、分裂設定ロジット、分類ロジット、娘細胞インデックス)
+    EdgeEns-->>LinkMovie: 5-fold平均化されたロジット群 (辞書形式)
+    Note over LinkMovie: 貪欲デコード (Greedy Decode)<br/>① ロジットを Softmax して「接続確率」「分裂確率」に変換<br/>② log p(option) - log p(no child) > 0 を降順ソート<br/>③ 各親最大1選択肢、各子最大1親でエッジ確定
+    LinkMovie-->>Main: frames, links (接続リスト), link_probs (確定した確率)
 ```
 
-##### フェーズ3 登場関数一覧
+##### フェーズ3 学習型リンカー(Learned Linker)関数一覧
 
 | No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `link_and_post()` | `Main` | - `edge`: `EdgeEnsemble`<br>- `cfg`: `dict` 設定辞書<br>- `dirs`: `dict[str, str]`<br>- `movie`: `str` 動画名<br>- `device`: `str` | `TrackGraph | None` (完成グラフ) | 保存済みキャッシュからエッジ接続処理と後処理を統括して呼び出し。 |
+| 1 | `link_and_post()` | `Main` | - `edge`: `EdgeEnsemble`<br>- `cfg`: `dict` 設定辞書<br>- `dirs`: `dict[str, str]`<br>- `movie`: `str` 動画名<br>- `device`: `str` | `TrackGraph` | `None` (完成グラフ) | 保存済みキャッシュからエッジ接続処理と後処理を統括して呼び出し。 |
 | 2 | `link_movie_from_cache()` | `link_and_post()` | - `edge`: `EdgeEnsemble`<br>- `cache_dir`: `str`<br>- `movie`: `str`<br>- `support_radius_um`: `float` = 30.0<br>- `support_k`: `int` = 16<br>- `soon_dir`, `intensity_dir`, `occupancy_dir`: `str` | `tuple`: `(frames, links, raw_scores, link_probs)`<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)`<br>- `links`: `list[list[tuple[int, int]]]`, 長さ: `T-1` (各フレームペアの `(親idx, 子idx)`)<br>- `raw_scores`: 任意<br>- `link_probs`: `list[np.ndarray]`, 各shape: `(L_t,)` (接続確率) | キャッシュ読み込み、探索半径30μm・近傍k=16での候補ペア抽出、特徴量生成、貪欲デコードを実行。 |
 | 3 | `EdgeEnsemble.forward()` | `link_movie_from_cache()` | `features`: `torch.Tensor` または `dict`<br>- ノード特徴: shape `(N, 42)`<br>- ペア特徴: shape `(P, 23)` | `tuple`: `(pair_probs, fork_probs)`<br>- `pair_probs`: `np.ndarray`, shape: `(P,)` (継続接続確率)<br>- `fork_probs`: `np.ndarray`, shape: `(F,)` (分裂接続確率) | 5-fold MLPリンカーアンサンブル。ノード42次元・ペア23次元特徴から接続・分裂確率を算出。 |
 | 4 | `貪欲デコード (Greedy Decode)` | `link_movie_from_cache()` | 各候補ペア・分岐候補の対数尤度スコア: `log p(option)` と `log p(no child)` | `list[tuple[int, int]]` (確定されたリンクペアリスト) | 対数オッズ比 log p(option) - log p(no child) > 0 をソートし、親1つ最大1選択肢、子1つ最大1親でエッジ確定。 |
