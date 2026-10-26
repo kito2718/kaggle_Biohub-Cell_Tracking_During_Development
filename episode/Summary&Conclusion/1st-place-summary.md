@@ -817,6 +817,8 @@ sequenceDiagram
     participant OccMod as cell_tracking/linker/occupancy.py
     participant EdgeEns as cell_tracking/linker/ensemble.py
     participant Model as cell_tracking/linker/model.py
+    participant Decode as cell_tracking/linker/decode.py
+
     Note over Main: run_worker() から呼び出し
     Main->>Main: link_and_post(edge:EdgeEnsemble, cfg, dirs, movie:胚名称, device)
     Note over Main: 【フェーズ3: グラフ接続(Learned Linker)】
@@ -826,9 +828,12 @@ sequenceDiagram
     Note over LinkMovie: 半径30μm・近傍k=16で候補ペア抽出<br/>特徴量生成 (ノード42次元, ペア23次元)
     LinkMovie->>EdgeEns: _decode_pair()→_pair_logits()→_run()→model()→EdgeEnsemble::__call__()
     EdgeEns->>Model: m()→UnetCellPoseEdgeTransformer::forward(features) [5-fold 各モデルを推論]
-    Model-->>EdgeEns: 各foldの未正規化スコア群<br/>(ペア接続ロジット、分裂設定ロジット、分類ロジット、娘細胞インデックス)
+    Model-->>EdgeEns: 各foldの未正規化スコア群(<br/>- logits: ペア接続ロジット(t の細胞と t+1 の細胞の全ペアに対する1対1接続スコア)<br/>- config_logits:分裂設定ロジット(各親細胞の全選択肢(消失・単独接続・2分裂)に対する対数確率)<br/>- kind_logits:分類ロジット(各親細胞が「分裂しない(0)」か「分裂する(1)」かの2値分類スコア)<br/>- config_child1,config_child2:娘細胞インデックス(各選択肢が選択された場合の、第1娘細胞のIDと第2娘細胞のID) )
     EdgeEns-->>LinkMovie: 5-fold平均化されたロジット群 (辞書形式)
-    Note over LinkMovie: 貪欲デコード (Greedy Decode)<br/>① ロジットを Softmax して「接続確率」「分裂確率」に変換<br/>② log p(option) - log p(no child) > 0 を降順ソート<br/>③ 各親最大1選択肢、各子最大1親でエッジ確定
+    LinkMovie ->> Decode: decode_fork_configurations(fork_np)
+    Note over Decode: 貪欲デコード (Greedy Decode) 実行
+    Decode -->> LinkMovie: - links: list[tuple[int, int]]例:[(0, 1), (0, 2), (3, 4)]※(親細胞ID, 子細胞ID) のペア<br/>- link_probs: list[float]例:[0.85, 0.85, 0.94]※各エッジに対応する確率(0.0〜1.0)
+    Note over LinkMovie: ① ロジットを Softmax して「接続確率」「分裂確率」に変換<br/>② log p(option) - log p(no child) > 0 を降順ソート<br/>③ 各親最大1選択肢、各子最大1親でエッジ確定
     LinkMovie-->>Main: frames, links (接続リスト), link_probs (確定した確率)
 ```
 
