@@ -62,7 +62,7 @@ biohub-1st-place-reproduction/
 
 ---
 
-## 1位解法の全体像：なぜ勝てたのか？
+## 1位解法の全体像：
 
 多くの参加者(2位を含む上位陣も含む)は、検出後の細胞トラッキングにおいて「座標間のユークリッド距離」「カルマンフィルタによる移動速度・方向」「輝度の差」といった**幾何学的特徴量(幾何ヒューリスティクス)**に大きく依存していました。
 
@@ -74,12 +74,6 @@ biohub-1st-place-reproduction/
 > 3. **「点と点の距離」ではなく「画像そのものに基づく視覚的追跡(Visual Tracking)」へ:** 候補点同士の距離計算をメインにするのではなく、ニューラルネットワークに「細胞の次のフレームでの存在領域(占有マップ)」を画像から直接予測させる。
 
 この発想の転換により、1位チームは **「3D U-Net検出器」→「Soon Net(視覚的追跡・分裂予測)」→「Learned Linker(学習型グラフ接続)」** という、高度に洗練された視覚的追跡システムを構築しました。
-
----
-
-Viewed inference.py:150-250
-
-ご質問の2点についてお答えします。
 
 ---
 
@@ -200,9 +194,9 @@ classDiagram
 
 ---
 
-### 4ステージの役割とデータの流れ
+### 4フェーズの役割とデータの流れ
 
-| ステージ | 主要クラス / 関数 | 入力 | 出力 | 役割・ポイント |
+| フェーズ | 主要クラス / 関数 | 入力 | 出力 | 役割・ポイント |
 |---|---|---|---|---|
 | **1. 検出 (Detection)** | `UNet3D`<br>`EnsembleTTANet` | 生3Dボリューム画像 `(Z, Y, X)` | 細胞中心座標 `coords`, 形状特徴 `feats` | 3D U-NetによるFlow(重心ベクトル)と前景確率の予測。XY-TTAアンサンブルで頑健に検出。 |
 | **2. 視覚追跡 (Soon Net)** | `SiameseSpaceTimeSoonNet`<br>`SharedSpatialEncoder`<br>`EvaTransformer` | 検出点周辺の3フレームCrop画像 | 分裂確率 `scores`, 占有マップ `occ, div` | 「どの細胞が直後に2分裂するか」を予測。3D RoPEアテンションとAuxFPNで時空間の幾何変化を捉える。 |
@@ -213,7 +207,7 @@ classDiagram
 
 ---
 
-## 各フェーズの詳細解説
+## 4フェーズの詳細解説
 
 1位解法の一連の処理は、以下の4つの処理段階(フェーズ)で構成されています。
 
@@ -842,9 +836,9 @@ sequenceDiagram
 | No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・意味) | 戻り値 (型・shape・意味) | 主な処理内容と役割 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | `link_and_post()` | `Main` | - `edge`: `EdgeEnsemble`<br>- `cfg`: `dict` 設定辞書<br>- `dirs`: `dict[str, str]` 一時ディレクトリ群<br>- `movie`: `str` 胚名称<br>- `device`: `str` 実行デバイス | `TrackGraph` | `None`<br>(追跡グラフオブジェクト、またはフレーム数不足時None) | 保存済みキャッシュから `link_movie_from_cache()` を呼んでエッジ接続を行い、続けてゲート処理や平滑化などの後処理を適用して最終グラフを返す。 |
-| 2 | `link_movie_from_cache()` | `link_and_post()` | - `model`: `EdgeEnsemble`<br>- `cache_dir`: `Path`｜`str`<br>- `movie`: `str` 胚名称<br>- `support_radius_um`: `float` = 30.0<br>- `support_k`: `int` = 16<br>- `soon_dir`, `intensity_dir`, `occupancy_dir`, `occupancy_division_dir`: `Path`｜`str`｜`None` | `tuple`: `(frames, links, None, link_probs)`<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)` (細胞座標)<br>- `links`: `list[list[tuple[int, int]]]`, 長さ: `T-1` (各フレームペアの `(親idx, 子idx)` 確定エッジリスト)<br>- `None`: 未使用スロット<br>- `link_probs`: `list[list[float]]`, 長さ: `T-1` (各確定エッジの確率値 `0.0〜1.0` のリスト) | 全フレームの座標・幾何特徴・輝度・SOON・占有キャッシュを読み込み、探索半径30μm・近傍k=16で候補ペアを抽出してエッジ推論を行い、貪欲デコードでエッジと確率を確定。 |
-| 3 | `EdgeEnsemble.__call__()`<br>(内部で `UnetCellPoseEdgeTransformer.forward()`) | `link_movie_from_cache()`<br>(内部の `_decode_pair()` → `_pair_logits()`) | - `*args`: `feat_t, feat_t1, coords_t, coords_t1, volumes_t, volumes_t1` (テンソル群)<br>- `**kwargs`: `soon_t, intensity_t, occ_next, pair_mask, return_fork=True` 等 | `dict[str, Tensor]` (5-fold平均化された出力辞書)<br>- `logits`: `(N_t, N_t1)` ペア接続ロジット<br>- `config_logits`: `(N_t, N_configs)` 分裂設定対数確率<br>- `kind_logits`: `(N_t, 2)` 分裂有無分類ロジット<br>- `config_child1`, `config_child2`: `(N_t, N_configs)` 娘細胞ID候補 | 5-fold の各エッジモデル (`m.forward()`) を順次実行し、1対1ペア接続ロジットおよび細胞分裂(fork)設定ロジット等の出力テンソルを平均化して1つの辞書にまとめて返す。 |
-| 4 | `decode_fork_configurations()`<br>(補助: `resolve_refractory_by_prob()`) | `link_movie_from_cache()` | - `config_output`: `dict[str, np.ndarray]` (`fork_output` のNumPy辞書: `config_logits, config_mask, config_kind, config_child1, config_child2`)<br>- `threshold`: `float` = 0.0<br>- `max_children`: `int` = 2 | `tuple[list[tuple[int, int]], list[float]]`<br>- `links`: `list[tuple[int, int]]`, 長さ: `E` (`(親idx, 子idx)` の採択エッジリスト)<br>- `link_probs`: `list[float]`, 長さ: `E` (各採択エッジに対応する確率値 `0.0〜1.0`) | 各親細胞の `config_logits` を Softmax して確率化し、空事象との対数オッズ比 `margin = log p(option) - log p(empty)` を降順ソート。親1つに最大1選択肢(単独または2分裂)、子1つに最大1親の制約を満たすよう貪欲(Greedy)にエッジを確定。 |
+| 2 | `link_movie_from_cache()` | `link_and_post()` | - `model`: `EdgeEnsemble`<br>- `cache_dir`: `Path`｜`str`<br>- `movie`: `str` 胚名称<br>- `support_radius_um`: `float` = 30.0<br>- `support_k`: `int` = 16<br>- `soon_dir`, `intensity_dir`, `occupancy_dir`, `occupancy_division_dir`: `Path`｜`str`｜`None` | - `tuple`: `(frames, links, None, link_probs)`<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)` (細胞座標)<br>- `links`: `list[list[tuple[int, int]]]`, 長さ: `T-1` (各フレームペアの `(親idx, 子idx)` 確定エッジリスト)<br>- `None`: 未使用スロット<br>- `link_probs`: `list[list[float]]`, 長さ: `T-1` (各確定エッジの確率値 `0.0〜1.0` のリスト) | 全フレームの座標・幾何特徴・輝度・SOON・占有キャッシュを読み込み、探索半径30μm・近傍k=16で候補ペアを抽出してエッジ推論を行い、貪欲デコードでエッジと確率を確定。 |
+| 3 | `EdgeEnsemble.__call__()`<br>(内部で `UnetCellPoseEdgeTransformer.forward()`) | `link_movie_from_cache()`<br>(内部の `_decode_pair()` → `_pair_logits()`) | - `*args`: `feat_t, feat_t1, coords_t, coords_t1, volumes_t, volumes_t1` (テンソル群)<br>- `**kwargs`: `soon_t, intensity_t, occ_next, pair_mask, return_fork=True` 等 | - `dict[str, Tensor]` (5-fold平均化された出力辞書)<br>- `logits`: `(N_t, N_t1)` ペア接続ロジット<br>- `config_logits`: `(N_t, N_configs)` 分裂設定対数確率<br>- `kind_logits`: `(N_t, 2)` 分裂有無分類ロジット<br>- `config_child1`, `config_child2`: `(N_t, N_configs)` 娘細胞ID候補 | 5-fold の各エッジモデル (`m.forward()`) を順次実行し、1対1ペア接続ロジットおよび細胞分裂(fork)設定ロジット等の出力テンソルを平均化して1つの辞書にまとめて返す。 |
+| 4 | `decode_fork_configurations()`<br>(補助: `resolve_refractory_by_prob()`) | `link_movie_from_cache()` | - `config_output`: `dict[str, np.ndarray]` (`fork_output` のNumPy辞書: `config_logits, config_mask, config_kind, config_child1, config_child2`)<br>- `threshold`: `float` = 0.0<br>- `max_children`: `int` = 2 | - `tuple[list[tuple[int, int]], list[float]]`<br>- `links`: `list[tuple[int, int]]`, 長さ: `E`(`(親idx, 子idx)`の採択エッジリスト)<br>- `link_probs`: `list[float]`, 長さ: `E`(各採択エッジに対応する確率値 `0.0〜1.0`) | 各親細胞の `config_logits` を Softmax して確率化し、空事象との対数オッズ比 `margin = log p(option) - log p(empty)` を降順ソート。親1つに最大1選択肢(単独または2分裂)、子1つに最大1親の制約を満たすよう貪欲(Greedy)にエッジを確定。 |
 ---
 
 ### フェーズ4: 後処理 (Post Processing)
@@ -864,7 +858,7 @@ sequenceDiagram
    - 生まれたばかりの娘細胞が、直後のフレームで再び分裂することを生物学的に禁止。
    - 競合が発生した場合は、予測信頼度が高い分裂を優先して採用。
 
-#### フェーズ4 処理シーケンス図
+#### フェーズ4 後処理(Post Processing)シーケン図
 
 ```mermaid
 sequenceDiagram
@@ -879,9 +873,9 @@ sequenceDiagram
 
     Note over Main: link_and_post() 内でグラフ構築・後処理
     Main->>GraphMod: graph_from_pair_links(B, frames, links)
-    GraphMod-->>Main: g (TrackGraph初期グラフ)
-
-    Main->>ScoreMod: link_confidence(frames, links, link_probs)
+    GraphMod-->>Main: TrackGraph型への詰め直し<br/>g(TrackGraph初期グラフ)
+    Main->>ScoreMod: link_confidence(frames, links, link_probs)<br/>frames:各フレームに含まれる細胞一覧のリスト(要素数len(f)が各フレームの細胞数)<br/>隣接フレーム間(t と t+1)で紐付けられた細胞ペア(i, j) のリスト<br/>各ペア(i, j)が同一細胞である予測確率
+    Note over ScoreMod: 時系列全体の各細胞(ノード)について、接続されているリンク(前後のフレームとの結びつき)の中で最も高い予測確率(確信度)を算出する
     ScoreMod-->>Main: conf (リンク確信度)
 
     Main->>TierGate: tiered_temporal_gate(g, conf, conf_thresh=0.3, min_len=3)
@@ -911,7 +905,7 @@ sequenceDiagram
 
 | No | 関数 / メソッド | 呼び出し元 | 引数 (型・shape・説明) | 戻り値 (型・shape・説明) | 主な処理内容と役割 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `graph_from_pair_links()` | `link_and_post()` | - `B`: モジュールオブジェクト<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)`<br>- `pair_links`: `list[list[tuple[int, int]]]` | `TrackGraph`<br>- `node_ids`: `np.ndarray`, shape: `(N_total,)`<br>- `node_t, z, y, x`: `np.ndarray`, shape: `(N_total,)`<br>- `edges`: `np.ndarray`, shape: `(E_total, 2)` | フレームごとのインデックス接続リストから、全体を表現する `TrackGraph` データ構造を構築。 |
+| 1 | `graph_from_pair_links()` | `link_and_post()` | - `B`: モジュールオブジェクト<br>- `frames`: `list[np.ndarray]`, 各shape: `(N_t, 3)`<br>- `pair_links`: `list[list[tuple[int, int]]]` | - `TrackGraph`<br>- `node_ids`: `np.ndarray`, shape: `(N_total,)`<br>- `node_t, z, y, x`: `np.ndarray`, shape: `(N_total,)`<br>- `edges`: `np.ndarray`, shape: `(E_total, 2)` | フレームごとのインデックス接続リストから、全体を表現する `TrackGraph` データ構造を構築。 |
 | 2 | `link_confidence()` | `link_and_post()` | - `frames`: `list[np.ndarray]`<br>- `links`: `list[list[tuple[int, int]]]`<br>- `link_probs`: `list[np.ndarray]`, 各shape: `(L_t,)` | `dict[tuple[int, int], float]`<br>(エッジ `(node_u, node_v)` をキー、確信度スコアを値とする辞書) | 各接続エッジの推論確率からリンクの総合確信度スコアを算出。 |
 | 3 | `tiered_temporal_gate()` | `link_and_post()` | - `g`: `TrackGraph`<br>- `conf`: `dict[tuple[int, int], float]`<br>- `conf_thresh`: `float` = 0.3<br>- `min_len`: `int` = 3 | `TrackGraph`<br>(低信頼かつ短期間の接続エッジが削除されたグラフ) | 確信度が低く、かつ持続期間が3フレーム未満の信頼性の低い短エッジを排除。 |
 | 4 | `postprocess_graph()` | `link_and_post()` | - `B`: モジュールオブジェクト<br>- `frames`: `list[np.ndarray]`<br>- `g`: `TrackGraph`<br>- `linefit`: `bool` = True<br>- `max_gap`: `int` = 1<br>- `gap_dist_um`: `float` = 4.0<br>- `gap_drift_um`: `float` = 30.0 | `TrackGraph`<br>(ギャップ補完・平滑化後の最終完成グラフ) | ギャップ補完、孤立点削除、短トラック削除、線形平滑化の後処理チェーンを一括統括。 |
@@ -940,45 +934,11 @@ sequenceDiagram
 | **フェーズ4** | `cell_tracking/linker/graph.py`<br>`cell_tracking/linker/postprocess.py` | `postprocess_graph()`, `linefit_smooth()`, `filter_short_tracks()` | ギャップ補完、孤立ノード削除、3フレーム未満トラックの除去、分裂保護付き線形フィッティング平滑化。 |
 | **出力** | `cell_tracking/common/tracks.py` | `graph_to_rows()`, `write_submission()` | 完成したトラックグラフから提出用フォーマットの行データを生成し、`submission.csv` へ書き出し。 |
 
-### コード内の重要パラメータ一覧
-
-| 変数名 | 設定値 | 意味と役割 |
-| :--- | :--- | :--- |
-| `DET_TTA` | `"xy"` | 検出時のテスト時データ拡張(XY平面の反転4通り)。 |
-| `DET_AUTOCAST` / `SOON_AUTOCAST` | `"fp16"` | 推論時の半精度高速化。 |
-| `SOON_BATCH` | `64` | Soon Net推論時のバッチサイズ。 |
-| `EDGE_SHORTLIST` | `"consensus"` | エッジ候補選別の合意形成戦略。 |
-| `THRESHOLD` | `0.1` | エッジ採用の最小閾値。 |
-| `MAX_CHILDREN` | `2` | 1つの親ノードが持てる最大子ノード数(分裂時は2)。 |
-| `DIV_REFRACTORY` | `True` | 分裂直後の再分裂を禁止する不応期ルールの有効化。 |
-| `DIV_REFRACTORY_ORDER` | `"prob"` | 分裂不応期の競合解決を確率スコア順で実施。 |
-| `LINEFIT` | `True` | 線形フィッティング平滑化の適用。 |
-| `MAX_GAP` | `1` | ギャップ補完で許容する最大フレーム間隔(1フレーム欠損を救済)。 |
-| `GAP_UM` / `GAP_DRIFT_UM` | `4.0` / `30.0` | ギャップ補完時の距離閾値(μm)およびドリフト許容半径。 |
-
 ---
 
-## 検証結果とスコアの推移
+## 2位解法との比較：
 
-1位解法のCV(交差検証)アブレーション結果は、各コンポーネントの圧倒的な有効性を証明しています。
-
-### 表: 全処理統合後の最終 5-fold CV スコア
-
-| 評価GT | Soon Net単体 | 全処理統合後 (Full) | 通常エッジJaccard (単体 / フル) | 分裂Jaccard (単体 / フル) | 分裂 TP / FP / FN (フル) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Original GT** (元正解) | 0.9288 | **0.9575** | 0.8914 / 0.9089 | 0.3738 / **0.4857** | TP: 102 / FP: 62 / FN: 46 |
-| **Augmented GT** (拡張正解) | 0.9464 | **0.9856** | 0.8903 / 0.9090 | 0.5617 / **0.7654** | TP: 434 / FP: 62 / FN: 71 |
-
-- **Soon Netの占有マップ単体でも 0.9288〜0.9464** という極めて高い初期スコアを達成。
-- **全処理統合後(リンカー統合後)** では、元正解で **0.9575**、拡張正解で **0.9856** という驚異的な一致率に到達。
-- 特に分裂Jaccardにおいて、0.3738 → **0.4857** (拡張GTでは0.5617 → **0.7654**) と劇的な精度向上を記録。
-- **最終リーダーボード:** Public LB: **0.976** / Private LB: **0.977** (見事単独1位を獲得)。
-
----
-
-## 2位解法との比較：何が勝敗を分けたのか？
-
-| 項目 | 1位解法 (sersasj) | 2位解法 (soheilayati) |
+| 項目 | 1位解法(sersasj) | 2位解法(soheilayati) |
 | :--- | :--- | :--- |
 | **追跡の基本思想** | **ビジュアルトラッキング (視覚的追跡)**<br>細胞の見た目変化・FPN占有マップから直接追跡 | **幾何ヒューリスティクス + 特徴量工学**<br>座標間距離・速度・カルマンフィルタに基づく |
 | **分裂(Division)の捉え方** | **Soon Netによる事前検知**<br>「間期・直前・直後」の3クラス分類 + 娘細胞占有マップ | **ペア特徴量 + 分裂スタッキングモデル**<br>距離・幾何特徴からLightGBM/ペアモデルで判定 |
@@ -986,12 +946,3 @@ sequenceDiagram
 | **デコード方式** | **シンプルな貪欲デコード (Greedy Decode)**<br>対数オッズ比による高速・堅牢な逐次決定 | **多段制約ソルバー & 競合調停**<br>(Stage-6リランキング、エッジ合意、フォーク投票) |
 | **システム複雑度** | **コンパクトかつ洗練されたDNN設計**<br>(総パラメータ数は数M程度でコードも簡潔) | **極めて複雑な処理構成**<br>(多数の重みファイルと何百行もの特徴量抽出) |
 
-### 勝因のまとめ
-1. **問題の本質を突いたモデル設計:**
-   「細胞追跡において最も難しいのは分裂である」「細胞は分裂前に見た目が変わる」という生物学的真実に着目し、幾何計算ではなく専用の深層学習モデル(`Soon Net`)で解かせたこと。
-2. **占有マップ(Occupancy Map)による視覚的リンク候補の提示:**
-   単に状態を分類するだけでなく、FPNによって「次のフレームで細胞が存在する領域」「娘細胞が出現する領域」を画像ベースのヒートマップとして予測させたため、リンカーが迷わずに正しいエッジを選択できたこと。
-3. **データ不完全性への完璧な対処:**
-   スパースな正解アノテーションに対して、MAE自己教師あり学習、高精度な疑似ラベル生成、そして「アノテーション済みエッジのみで損失を計算する」損失関数設計を徹底したこと。
-4. **過学習のない強固な交差検証(CV)の仕組み:**
-   検出器・Soon Net・リンカーの全段階で厳密にOOF(Out-Of-Fold)を徹底し、テスト時も5-fold平均とTTAを貫いたため、Private LBでも全くシェイクせず(Public 0.976 → Private 0.977)圧倒的な精度を維持できたこと。
