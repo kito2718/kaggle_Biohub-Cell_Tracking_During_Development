@@ -53,6 +53,8 @@
 **Values in parentheses indicate Division Jaccard.**  
 カッコ内の数値は分裂Jaccard(Division Jaccard)を表しています。  
 
+![](https://www.googleapis.com/download/storage/v1/b/kaggle-user-content/o/inbox%2F745525%2F11838c91b2611653d8c246657fd05b02%2Fpipeline.png?generation=1790727945719645&alt=media)
+
 ---
 
 ### 2. Data and Validation (データと検証)
@@ -701,17 +703,9 @@ A7: 補間座標のアフィン微小調整
 **Values in parentheses indicate Division Jaccard.**  
 カッコ内の数値は分裂Jaccard(Division Jaccard)を表しています。  
 
-**Table 1. Building the complete pipeline.**  
-表1. 完全なパイプラインの構築。  
-
-**Starting from A0, we progressively add or replace stages to reach the final configuration.**  
-A0から開始し、段階的にステージを追加または置き換えることで最終構成に到達します。  
-
-**Every row starts from the same OOF detections for all 199 training videos, with the videos, folds, and scoring implementation fixed.**  
-すべての行は、動画、フォールド、および採点実装を固定した状態で、199本の全トレーニング動画に対する同一のOOF検出結果からスタートしています。  
-
-**Optimization and post-processing can change which nodes are retained, add interpolated nodes, and refine coordinates.**  
-最適化と後処理により、どのノードを保持するかが変更され、補間ノードが追加され、座標が洗練されます。  
+**Table 1. Building the complete pipeline.** Starting from A0, we progressively add or replace stages to reach the final configuration. Every row starts from the same OOF detections for all 199 training videos, with the videos, folds, and scoring implementation fixed. Optimization and post-processing can change which nodes are retained, add interpolated nodes, and refine coordinates.
+表1. 完全なパイプラインの構築。A0から開始し、段階的にステージを追加または置き換えることで最終構成に到達します。  
+すべての行は、動画、フォールド、および採点実装を固定した状態で、199本の全トレーニング動画に対する同一のOOF検出結果からスタートしています。最適化と後処理により、どのノードを保持するかが変更され、補間ノードが追加され、座標が洗練されます。  
 
 | ID | Configuration / change | Adjusted edge Jaccard | Division Jaccard | Total score |
 | :--- | :--- | :--- | :--- | :--- |
