@@ -134,7 +134,42 @@ flowchart TD
 
 ---
 
-## パイプラインの詳細解説(Stage別シーケンス図・A0〜A7対応・ソースコード行数)
+## パイプラインの詳細解説
+
+### Stage 1. Mainシーケンス(サブプロセス呼び出し)
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Runner as biohub_inference_run.py<br/>main() (L153-L174)
+    participant Parent as biohub_infer/__main__.py<br/>[親](args.shard = None)
+    participant Worker0 as biohub_infer/__main__.py<br/>[子0](--shard 0, GPU 0)
+    participant Worker1 as biohub_infer/__main__.py<br/>[子1](--shard 1, GPU 1)
+    participant Clip as biohub_infer/infer/clip.py<br/>run() (Stage 1〜3: 検出・3D Dense Flow(空間ベクトル場)・分裂)
+
+    Runner->>Parent: subprocess.run("python -m biohub_infer ...") ※--shard なし
+    Note over Parent: args.shard is None<br/>preflight() で重みMD5チェック (L96)<br/>run_workers() を実行 (L102)
+
+    par GPUごとに子プロセスを起動 (L61-L64)
+        Parent->>Worker0: subprocess.Popen("python -m biohub_infer ... --shards 2 --shard 0")<br/>env: CUDA_VISIBLE_DEVICES="0"
+        Note over Worker0: args.shard == 0 (not None!)<br/>L90 の if ブロックに入る
+        Worker0->>Clip: clip.run(偶数番目の動画 ids[0::2]) (L92)
+        Clip-->>Worker0: キャッシュ保存完了
+        Worker0-->>Parent: L93 で return してプロセス終了 (exit 0)
+    and 2枚目のGPUがある場合
+        Parent->>Worker1: subprocess.Popen("python -m biohub_infer ... --shards 2 --shard 1")<br/>env: CUDA_VISIBLE_DEVICES="1"
+        Note over Worker1: args.shard == 1 (not None!)<br/>L90 の if ブロックに入る
+        Worker1->>Clip: clip.run(奇数番目の動画 ids[1::2]) (L92)
+        Clip-->>Worker1: キャッシュ保存完了
+        Worker1-->>Parent: L93 で return してプロセス終了 (exit 0)
+    end
+
+    Note over Parent: 全子プロセスの終了を proc.wait() で待機 (L65)<br/>続いて L115 の build_submission() (Stage 4〜6: CPU処理) へ進む
+    Parent-->>Runner: submission.csv 出力完了 & プロセス終了
+```
+
+---
+
 
 ### Stage 1. 細胞検出(Cell Detection): 実行時間の55%を投入した最重要基盤【対応: A0】
 
