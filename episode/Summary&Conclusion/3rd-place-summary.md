@@ -2,14 +2,20 @@
 <img src="image.png" width="800" />
 
 ## Abstract
-- biohub 3位解法(yu4u / ren4yu、submission 060: Private 0.96918 / Public 0.97832)のまとめ
-- 高精度な細胞検出アンサンブル(2.5D U-Net + 3D SegResNet)に実行時間の55%を投入
-- 3Dデンスフローによる運動補正、4系統の分裂同定モデル(div3f)、そして整数計画法(Lineage LP)による大域的最適化とアフィン座標微小調整により、圧倒的な分裂検知精度(Division Jaccard 0.540)と高い追跡精度を両立した洗練されたパイプラインの完全解説
+- biohub 3位解法(yu4u / ren4yuさん Private 0.96918 / Public 0.97832)のまとめ
+
+※この方日本人なんですね。。。Kaggle Grandmasterだって。すごいや。
+
+**用語解説**
+
+- ドリフトベクトル ... フレーム(64×256×256)で1つのベクトル(Δz,Δy,Δx)。※1動画は100フレーム=フレーム境界t→t+1 は99。なので、ドリフトベクトルも99本存在する。
+- 3D Dense Flow(空間ベクトル場) ... ボクセル座標(z,y,x) ごとのベクトル。
+
 
 ## 概要
 先日、Biohub細胞トラッキングコンペが完了しました。
 Private LB 1353位/3800人と大変悔しい結果に終わりましたが、Kaggleの素晴らしいところは、トップランカーたちの卓越した解法が惜しみなく公開されることです。
-この学びの宝庫を徹底的に解析し、確実に自身のスキルへと昇華させるべく、今回は3位に入賞されたKaggle Grandmaster・内田氏(yu4u / ren4yu)の解法を深掘りします。
+この学びの宝庫を徹底的に解析し、確実に自身のスキルへと昇華させるべく、今回は3位に入賞されたKaggle Grandmaster(yu4u / ren4yuさん)の解法を深掘りします。
 
 ## biohub 3位の解法まとめ
 3位の解法は、各ステージが極めて論理的かつ堅牢に設計されており、コンペ特有の「疎なアノテーション(全細胞の約2.8%)」と「極端に少ない分裂データ(全199動画でわずか151件)」という困難な課題に対して、王道かつ高度な機械学習・数理最適化技術を結集してアプローチしています。
@@ -55,7 +61,7 @@ https://www.kaggle.com/code/ren4yu/biohub-inference-run
 │   ├── dl_275_fold0~4_last.engine     # 検出器2: 3D SegResNet (5-fold, TRT)
 │   ├── dl_492_fold0~4_last.engine     # 検出器3: EfficientNet-B7 2.5D U-Net (5-fold, TRT)
 │   ├── dl_401_fold0~4_last.ckpt       # マッチャー: 2.5D EmbedUnet (5-fold, PyTorch)
-│   ├── ssl_flow_flow_164_ep48.pt      # デンスフロー: FlowNet3D (PyTorch)
+│   ├── ssl_flow_flow_164_ep48.pt      # 3D Dense Flow(空間ベクトル場): FlowNet3D (PyTorch)
 │   ├── div_415_*.engine               # 分裂親細胞モデル (parent, 5-fold, TRT)
 │   ├── div_478_pre_*.engine           # 分裂前モデル (pre, 5-fold, TRT)
 │   ├── div_478_post_*.engine          # 分裂後モデル (post, 5-fold, TRT)
@@ -73,7 +79,7 @@ https://www.kaggle.com/code/ren4yu/biohub-inference-run
 | カテゴリ | モデル名・ファイル | アーキテクチャ / 規模 | 役割・機能 |
 | :--- | :--- | :--- | :--- |
 | **Detection (検出)** | `dl_284` (5-fold)<br>`dl_275` (5-fold)<br>`dl_492` (5-fold) | EfficientNetV2-L 2.5D U-Net (重み0.3)<br>3D SegResNet (重み0.3)<br>EfficientNet-B7 2.5D U-Net (重み0.4) | **細胞中心のヒートマップ検出:** 計15個のモデルアンサンブル。ガウシアンブラー(σ0.7)とNMS(3, 7, 7)で細胞中心ピークを抽出。実行時間の55%を占める最重要基盤。 |
-| **Motion (運動)** | `ssl_flow_flow_164_ep48.pt` | 3D FlowNet (PyTorch) | **3Dデンスフロー推定:** 連続フレーム間の3次元ボクセル変位場を推定し、細胞の運動を補正。マッチングと画像アライメントの双方に再利用。 |
+| **Motion (運動)** | `ssl_flow_flow_164_ep48.pt` | 3D FlowNet (PyTorch) | **3D Dense Flow(空間ベクトル場)推定:** 連続フレーム間の3次元ボクセル変位場を推定し、細胞の運動を補正。マッチングと画像アライメントの双方に再利用。 |
 | **Matching (対応付け)** | `dl_401_fold0~4_last.ckpt` | 2.5D Siamese EmbedUnet (5-fold) | **細胞埋め込み特徴抽出:** フレーム内の各細胞位置から埋め込みベクトルを抽出し、時間方向の対応付け確率(ロジット平均)を算出。 |
 | **Division (分裂判定)** | `div_415` (parent)<br>`div_478_pre` (pre)<br>`div_478_post` (post)<br>`div_762` (native) | div3f エンコーダ/デコーダ (各5-fold、計40 engines) | **4系統の分裂ステージ分類:** rot4 TTA(4方向回転)と時間ウィンドウ間でのエンコーダ特徴量再利用により高速推論。親細胞・分裂前・分裂後を高精度に識別。 |
 | **Calibration (較正)** | `model_fold-1.json`<br>`native.txt` / `wide.txt` | LightGBM / XGBoost / Logistic Regression | **候補スコアの確率較正:** 距離、フロー補正距離、マッチング確率、分裂スコアなど多様な特徴量を統合し、通常リンク確率と分裂イベント確率へ変換。 |
@@ -82,7 +88,7 @@ https://www.kaggle.com/code/ren4yu/biohub-inference-run
 
 ---
 
-## 3位解法の全体像(Stage 1〜6 と アブレーション A0〜A7 の対応)
+## 3位解法の全体像
 
 3位解法は、直感的なヒューリスティクスだけに頼るのではなく、**「強力な検出(A0)」→「フロー補正(A1)＋マッチング(A2)」→「専門化された分裂判定＋GBDT較正＋整数計画法による大域的一括解決(A3)」→「4段階の精密な後処理(A4〜A7)」**という極めて論理的な6段階パイプラインを構築しています。
 
@@ -186,25 +192,25 @@ sequenceDiagram
 
 ---
 
-### Stage 2. デンスフローと細胞マッチング(Dense Flow & Matching)【対応: A1, A2】
+### Stage 2. 3D Dense Flow(空間ベクトル場)と細胞マッチング(Dense Flow & Matching)【対応: A1, A2】
+生物の細胞は組織全体の流動や自律的な移動を伴うため、単純なユークリッド距離だけでは誤った対応付けを起こします。
 
+* **3D Dense Flow(空間ベクトル場) (FlowNet3D)**:
+  - 連続するフレーム $t \to t+1$ 間の全ボクセルの変位場 $(\Delta z, \Delta y, \Delta x)$ を推定。
+  - 前フレームの細胞座標をフローベクトルで移動補正し、見かけの移動を大幅にキャンセル。
+* **EmbedUnet による細胞特徴量抽出**:
+  - 2.5D Siamese UNet構造により、各細胞の周囲領域から32次元の埋め込み特徴ベクトルを抽出。
+  - 2つの細胞間のコサイン類似度・内積から対応付け確証度を計算。
+* **候補グラフの生成**:
+  - フロー補正後の距離ゲート(12 µm以内)を満たす上位候補を抽出。
+  - 初期割り当てとしてのHungarian法、および近傍半径12 µm以内のTop-5候補エッジを構築。
 生物の細胞は組織全体の流動や自律的な移動を伴うため、単純なユークリッド距離だけでは誤った対応付けを起こします。Stage 2では「画像全体の3Dオプティカルフロー推定(**A1**)」と「細胞単位の外見・位置アテンションによるマッチング(**A2**)」の2段階アプローチで対応候補を絞り込みます。
-
-* **アブレーション `A1`: 3Dデンスフローによる運動補正 (Dense flow)**:
-  - **スコア**: Adjusted Edge Jaccard `0.901919` (**+0.011708**) / Division Jaccard `0.000000` / **Total `0.901919`**
-  - `(z, y, x) = (1, 4, 4)` でダウンサンプリングした等方性グリッド(1.625 µm間隔)上で動作する小型3D FlowNet(`ssl_flow_flow_164_ep48.pt`)により、連続フレーム $t \to t+1$ 間の3次元変位場 $(\Delta z, \Delta y, \Delta x)$ を推定します。
-  - **A1** では、時刻 $t$ の細胞座標にこのデンスフロー変位を加算してから残差ドリフト補正(2回)とハンガリアン法を適用します。これだけでエッジJaccardが **+0.0117** 向上し、さらにこのフロー場はStage 3の分裂モデルの画像アライメントにも再利用されます。
-* **アブレーション `A2`: 細胞マッチングによる候補フィルタリングとスコアリング (Cell matching)**:
-  - **スコア**: Adjusted Edge Jaccard `0.901953` (**+0.000034**) / Division Jaccard `0.000000` / **Total `0.901953`**
-  - 検出器とは独立した `EfficientNetV2-S` バックボーンの2.5D Siamese U-Net(`dl_401_fold0~4_last.ckpt`)の中間デコーダ層から、各検出座標の64次元特徴量をサンプリングします。
-  - Self-Attention / Cross-Attention とロール埋め込みにより、フロー補正後の半径 `12.0 µm` 以内の候補ペアに対する対応ロジットと、「対応先なし(消失/新規出現)」を表す `null_a`, `null_b` ロジットを予測します。
-  - **A2** では、Matcherの上位5候補(`TOPK=5`)に絞り込んだ上で、コスト関数 $d + 12(1 - p)$ ($d$: フロー補正後距離、$p$: 双方向マッチング確率)によるハンガリアン割り当てを行います。A2単体でのハンガリアン法上のゲインは微小(+0.000034)ですが、ここで算出される双方向確率(`sims`)・逆方向確率(`revs`)・対称確率(`syms`)・第2ラウンド確率(`r2p`)が、次ステージ(**A3**)のGBDT較正とLP最適化における最重要特徴量となります。
 
 #### Stage 2 関連ソースコードと行数
 | ファイルパス | 関数・クラス | 行番号 | 処理内容 |
 | :--- | :--- | :---: | :--- |
 | infer/clip.py | `detect_sample_embed()`, `EnsembleMatcher`, `EnsembleEmb` | L26-L75 | 5-foldのEmbedUnetから各検出位置の特徴量をサンプリングして連結(L26-L54)、5-foldのMatcherロジットを平均(L57-L68) |
-| infer/clip.py | `infer_clip()` 内の Stage ② 呼び出し | L213-L230 | 特徴量抽出 → デンスフロー推定 → Matcherスコア算出 → 第2ラウンド推論 → LP初期配線とTop-5候補抽出 |
+| infer/clip.py | `infer_clip()` 内の Stage ② 呼び出し | L213-L230 | 特徴量抽出 → 3D Dense Flow(空間ベクトル場)推定 → Matcherスコア算出 → 第2ラウンド推論 → LP初期配線とTop-5候補抽出 |
 | infer/div797_parent.py | `flow_with_dense()` | L12-L25 | FlowNet3Dで連続フレーム間の変位場を推論し、各検出点の物理変位(`offsets`)と密な3Dフロー場(`dense`)を出力 |
 | ssl_flow/inference.py | `point_priors()` | L84-L120 | 3Dフロー場から各細胞座標のサブボクセル変位ベクトルをトリリニア補間で取得 |
 | infer/linking.py | `build_matcher_scores()`, `matcher_bidir_probs()`, `matcher_rev_probs()`, `matcher_sym_probs()` | L16-L118 | フロー変位補正付きでMatcherロジットを算出(L16-L55)し、双方向・逆方向(娘→親)・対称の3種の確率行列へ変換(L58-L118) |
@@ -227,7 +233,7 @@ sequenceDiagram
     Emb-->>Clip: per_t: 各フレームの (座標 pk_np, 5-fold連結特徴量)
     Clip->>Flow: flow_with_dense(array, quantiles, peaks, flow_model) (L217)
     Flow-->>Clip: offsets (各検出点のµm変位ベクトル), dense (3D密フロー場)
-    Note over Clip,Link_: 【A1 検証ポイント】<br/>座標に offsets(デンスフロー)を加算してハンガリアン法を実行 (Total: 0.901919, +0.0117)
+    Note over Clip,Link_: 【A1 検証ポイント】<br/>座標に offsets(3D Dense Flow(空間ベクトル場))を加算してハンガリアン法を実行 (Total: 0.901919, +0.0117)
     Clip->>Link_: build_matcher_scores(per_t, emb, cfg_emb, offsets) (L16-L55)
     Link_->>Emb: model.matcher(fa, ga, fb, gb, radius=12.0µm, offset) (L48-L50)
     Emb-->>Link_: ペアロジット logits & 消失/出現ロジット null_a, null_b
@@ -246,11 +252,14 @@ sequenceDiagram
 ---
 
 ### Stage 3. 分裂同定(Division Identification): 4系統の専門モデル【対応: A3(前半)】
-
 細胞分裂(1つの親細胞が2つの娘細胞に分裂するイベント)は、全データ中でごく稀にしか起きず、アノテーションも極めて不足しています(全199動画でわずか151件)。3位解法では、分裂を単一の分類器で解くのではなく、**時間的役割と入力解像度が異なる4系統のモデル群(計40個のTensorRTエンジン)**に分割して解きました。
 
+* **特徴量再利用 (Feature Reuse)**:
+  - 重複する時間ウィンドウ間でエンコーダ特徴量をキャッシュして再利用することで、計算負荷の高い40個のTensorRT分裂エンジンを極めて効率的に動作させています。
+* **rot4 TTA**:
+  - 4方向の90度回転TTA(Test-Time Augmentation)を適用し、細胞の分裂軸の方向に依存しない安定したスコアを獲得。
 1. **`native_parent` (元解像度・フローアライメント親モデル / メイン親モデル)**:
-   - `(1, 2, 2)` ダウンサンプリングの高解像度グリッド上で、Stage 2で推定した3Dデンスフロー(`dense`)を用いて前後のフレームを中心フレーム $t$ にワーピング(位置合わせ)し、**5つのボリューム `[元t-1, tへワープしたt-1, 元t, tへワープしたt+1, 元t+1]`** を入力します。
+   - `(1, 2, 2)` ダウンサンプリングの高解像度グリッド上で、Stage 2で推定した3D Dense Flow(空間ベクトル場)(`dense`)を用いて前後のフレームを中心フレーム $t$ にワーピング(位置合わせ)し、**5つのボリューム `[元t-1, tへワープしたt-1, 元t, tへワープしたt+1, 元t+1]`** を入力します。
    - 通常の細胞移動による見え方の変化をワーピングで打ち消すことで、「1つから2つに分裂する純粋な形態変化」だけを鋭敏に捉えます。
 2. **`parent` (3フレーム親細胞モデル)**:
    - 元画像の連続3フレーム `[t-1, t, t+1]` のみを入力とし、時刻 $t$ で分裂直前の親細胞である確信度を判定します。
@@ -269,7 +278,7 @@ sequenceDiagram
 | :--- | :--- | :---: | :--- |
 | config.py | `DIV_ROLES`, `DIV_FRAMES`, `DIV_GRID`, `DIV_TTA` | L22-L29 | 4系統モデル(`div_415`, `div_478_pre`, `div_478_post`, `div_762`)とフレーム数(`3,3,3,5`)、`rot4` TTAの定義 |
 | infer/clip.py | `div3f_scores_roles_reuse()` | L78-L123 | `parent`, `pre`, `post` の3モデルについて、時間ウィンドウ間でエンコーダ特徴量をキャッシュ再利用しながら `rot4` TTA推論 |
-| infer/div797_parent_reuse.py | `parent_scores_reuse()` | L18-L65 | デンスフローで前後フレームをワープさせ、`[prev, warp_prev, cur, warp_next, next]` の5入力で `native_parent` スコアを推論 |
+| infer/div797_parent_reuse.py | `parent_scores_reuse()` | L18-L65 | 3D Dense Flow(空間ベクトル場)で前後フレームをワープさせ、`[prev, warp_prev, cur, warp_next, next]` の5入力で `native_parent` スコアを推論 |
 | div3f/data.py | `FlowWarp.warp()` | L43-L115 | 前方フローと符号反転逆フローを用いた3Dボリュームのグリッドサンプリング(ワーピング) |
 | lineage/div797_features.py | `radius16_graph()` | L31-L97 | 親スコア閾値以上のノードについて、フロー補正後半径16 µm以内の娘候補ペアを探索し追加分裂グラフを構築 |
 | infer/clip.py | `infer_clip()` 内の Stage ④ 呼び出しと保存 | L232-L254 | 4種の分裂スコアと半径16 µmグラフを計算し、`graphs/`, `confidence/`, `div_scores/`, `division_graphs/` に保存 |
@@ -314,7 +323,15 @@ sequenceDiagram
 ---
 
 ### Stage 4. 候補スコアの確率較正(Calibration)【対応: A3(中盤)】
+ニューラルネットが出力する生スコアや距離メトリクスを、後続の整数計画法で直接比較可能な**確率値(Log-odds)**へと変換します。
 
+* **特徴量エンジニアリング**:
+  - 物理距離、フロー補正後距離
+  - Matcher 双方向スコア、候補ランク、マージン
+  - 検出ヒートマップの信頼度(Confidence)
+  - 分裂モデル群の親スコア、preスコア、postスコア、および前後の先行細胞への伝播スコア
+* **モデル構成**:
+  - LightGBM、XGBoost、ロジスティック回帰を組み合わせ、通常エッジの接続確率 $P(\text{edge})$ と、分裂イベントの成立確率 $P(\text{div})$ を極めて正確に較正。
 ニューラルネットが出力する生スコアや距離メトリクスを、後段の整数計画法(Stage 5)の目的関数で直接比較可能な**「期待真陽性数(Expected TP)」と「期待偽陽性数(Expected FP)」**へと較正します。
 
 * **疎なアノテーション(約2.8%)を克服する「2段階確率分解 ($a \times q$)」**:
@@ -365,7 +382,6 @@ sequenceDiagram
 ---
 
 ### Stage 5. 系譜グラフ最適化(Lineage Graph Optimization): 整数計画法(LP/MILP)による一括解決【対応: A3(後半)】
-
 局所的なハンガリアン法や貪欲法では、「通常リンクを先に確定すると、本来分裂の娘である細胞が別の親に奪われてしまい、後から分裂を追加できなくなる」という競合問題が起きます。Stage 5では、**保持するノード、通常リンク、分裂イベント(親1＋娘2の三つ組)を単一の数理計画問題として同時に選択**します。
 
 * **アブレーション `A3` (Division models + Calibration + Joint LP/MILP optimization) の劇的効果**:
@@ -439,7 +455,6 @@ sequenceDiagram
 ---
 
 ### Stage 6. 後処理(Post-processing): スコアを極限まで押し上げる4つの仕上げ【対応: A4, A5, A6, A7】
-
 Stage 5のLP最適化で得られた系譜グラフ(`raw/<sid>.npz`)に対して、コンペの評価指標(Adjusted Edge Jaccard & Division Jaccard)の性質に合わせて設計された**4段階の後処理(`A4` → `A5` → `A6` → `A7`)**を順番に適用します。
 
 1. **アブレーション `A4`: Gap Closing — 最大3フレームのギャップ補完**:
@@ -524,7 +539,7 @@ sequenceDiagram
 | 実験ID | 対応Stage | 構成・変更点 | 主な該当ソースコード(行数) | 調整済み Edge Jaccard | Division Jaccard | トータルスコア |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **A0** | **Stage 1** | 検出 + ハンガリアン法(ドリフト補正あり) | common.py(L120-L139)<br>linking.py(L170-L236) | 0.890211 | 0.000000 | 0.890211 |
-| **A1** | **Stage 2 前半** | + 運動補正用デンスフロー(FlowNet3D) | div797_parent.py(L12-L25)<br>linking.py(L212-L222) | 0.901919 | 0.000000 | 0.901919 |
+| **A1** | **Stage 2 前半** | + 運動補正用3D Dense Flow(空間ベクトル場)(FlowNet3D) | div797_parent.py(L12-L25)<br>linking.py(L212-L222) | 0.901919 | 0.000000 | 0.901919 |
 | **A2** | **Stage 2 後半** | + Matcher候補フィルタリング & 対応スコア | clip.py(L26-L75)<br>linking.py(L16-L118) | 0.901953 | 0.000000 | 0.901953 |
 | **A3** | **Stage 3 + 4 + 5** | **+ 分裂モデル群 + GBDT較正 + 整数計画法(LP/MILP)同時最適化** | clip.py(L78-L123)<br>div797_parent_reuse.py(L18-L65)<br>div846_lineage.py(L33-L93)<br>metric_event_optimizer.py(L36-L219) | **0.911017** | **0.534759** | **0.964493** |
 | **A4** | **Stage 6 (1/4)** | + ギャップクロージング(Gap closing: 最大3フレーム) | gap_close.py(L39-L115) | 0.916111 | 0.534759 | 0.969587 |
@@ -558,7 +573,7 @@ sequenceDiagram
 
 Biohubコンペの3位解法は、
 1. **「検出こそがすべての土台」**として計算時間の過半(55%)を強力なアンサンブル検出器に注ぎ込んだこと
-2. 単純なユークリッド距離ではなく**「3Dデンスフローによる運動補正」**を徹底したこと
+2. 単純なユークリッド距離ではなく**「3D Dense Flow(空間ベクトル場)による運動補正」**を徹底したこと
 3. 分裂現象を**「parent / pre / post / native」の4視点から専門モデル化**したこと
 4. 局所的な追跡ミスを防ぐため**「整数計画法(LP)による大域的最適化」**で一括解決したこと
 5. 最後に**「オプティカルフローに沿った座標のアフィン微小調整」**で限界まで削り出したこと
